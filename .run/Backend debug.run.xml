@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <!--
+    브레이크포인트를 걸려면 이 설정을 씁니다. (IntelliJ IDEA Ultimate 필요)
+    start:debug 스크립트가 `nest start --debug --watch` 로 9229 포트를 열고,
+    IDE 가 거기에 붙습니다.
+  -->
+  <configuration default="false" name="Backend debug (9229)" type="js.build_tools.npm" nameIsGenerated="false">
+    <package-json value="$PROJECT_DIR$/Backend/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="start:debug" />
+    </scripts>
+    <node-interpreter value="project" />
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>

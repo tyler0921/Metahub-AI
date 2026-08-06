@@ -1,0 +1,128 @@
+.card {
+  position: absolute;
+  top: 82px;
+  left: 84px;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 300px;
+  min-height: 70px;
+  padding: 9px 10px;
+  border: 1px solid var(--hud-line);
+  border-radius: 14px;
+  background: var(--hud-bg-strong);
+  color: var(--hud-text);
+  box-shadow: var(--hud-shadow);
+  transition: width 0.18s ease, transform 0.18s ease;
+}
+
+.roomIcon {
+  position: relative;
+  display: grid;
+  flex: 0 0 48px;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 2px;
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border: 1px solid #d8dee7;
+  border-radius: 10px;
+  background: #f1f4f7;
+}
+
+.roomIcon i {
+  border-radius: 3px;
+  background: #dce4eb;
+}
+
+.roomIcon i:nth-child(2),
+.roomIcon i:nth-child(3) {
+  background: #e7dfd2;
+}
+
+.roomIcon span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #5577f2;
+  box-shadow: 0 0 0 3px rgb(85 119 242 / 14%);
+  transform: translate(-50%, -50%);
+}
+
+.roomInfo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.roomInfo > span {
+  color: var(--hud-accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.55px;
+}
+
+.roomInfo strong {
+  margin: 1px 0 2px;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomInfo small {
+  overflow: hidden;
+  color: var(--hud-dim);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presence {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding-left: 8px;
+}
+
+.presence i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.presence b {
+  margin-left: 4px;
+  color: var(--hud-dim);
+  font-size: 9px;
+}
+
+.compact {
+  width: 270px;
+  transform: translateY(-2px);
+}
+
+@media (width <= 900px) {
+  .card {
+    top: 72px;
+    left: 76px;
+    width: 240px;
+  }
+
+  .presence {
+    display: none;
+  }
+}

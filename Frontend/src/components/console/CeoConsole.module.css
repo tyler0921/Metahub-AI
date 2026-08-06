@@ -1,0 +1,191 @@
+.console {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 17px;
+  background: var(--space-chrome);
+  color: var(--space-chrome-text);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow: 0 20px 54px rgb(3 8 18 / 40%);
+  transition: max-width 0.2s ease, transform 0.2s ease;
+}
+
+.expanded {
+  border-color: rgb(126 156 255 / 32%);
+}
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 58px;
+  padding: 8px;
+}
+
+.expandBtn,
+.submit,
+.cancelBtn {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.expandBtn {
+  width: 40px;
+  height: 40px;
+  background: rgb(255 255 255 / 8%);
+  color: rgb(255 255 255 / 68%);
+  font-size: 20px;
+}
+
+.expandBtn:hover {
+  background: rgb(255 255 255 / 13%);
+  color: #fff;
+}
+
+.commandIcon {
+  display: flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 40px;
+  color: #91a7ff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  max-height: 116px;
+  padding: 10px 4px;
+  overflow-y: auto;
+  border: 0;
+  background: transparent;
+  color: #f6f8fb;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.input::placeholder {
+  color: rgb(235 241 250 / 44%);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.submit {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(145deg, #7e9cff, #5574e3);
+  color: #fff;
+  font-size: 18px;
+  box-shadow: 0 7px 18px rgb(82 111 218 / 34%);
+}
+
+.submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.submit:disabled,
+.cancelBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cancelBtn {
+  min-width: 64px;
+  height: 42px;
+  padding: 0 13px;
+  background: rgb(239 68 68 / 15%);
+  color: #ff9d9d;
+}
+
+.quickRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px 11px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+  background: rgb(255 255 255 / 3%);
+}
+
+.quickLabel {
+  flex-shrink: 0;
+  color: rgb(255 255 255 / 45%);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.chips {
+  display: flex;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+}
+
+.chip {
+  padding: 6px 9px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 99px;
+  background: rgb(255 255 255 / 6%);
+  color: rgb(255 255 255 / 68%);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: rgb(126 156 255 / 34%);
+  background: rgb(126 156 255 / 12%);
+  color: #dce3ff;
+}
+
+.keyboardHint {
+  flex-shrink: 0;
+  color: rgb(255 255 255 / 34%);
+  font-size: 9px;
+}
+
+.followUpNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 11px;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+  background: rgb(126 156 255 / 10%);
+  color: rgb(255 255 255 / 66%);
+  font-size: 10.5px;
+}
+
+.followUpNotice b {
+  margin-right: 5px;
+  color: #b9c7ff;
+}
+
+.followUpNotice button {
+  border: 0;
+  background: transparent;
+  color: #b9c7ff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+@media (width <= 640px) {
+  .keyboardHint,
+  .quickLabel {
+    display: none;
+  }
+
+  .chips {
+    overflow-x: auto;
+  }
+}

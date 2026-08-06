@@ -1,0 +1,161 @@
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--sidebar-line);
+  border-radius: var(--radius);
+  background: var(--sidebar-panel);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 28%);
+  overflow: hidden;
+}
+
+.titleBar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--sidebar-line);
+  background: rgb(255 255 255 / 3%);
+}
+
+.title {
+  color: var(--sidebar-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.titleHint {
+  color: var(--hud-accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.65px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.sectionLabel {
+  margin: 0 0 8px;
+  color: var(--sidebar-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.actionList {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--sidebar-line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 3%);
+  color: var(--sidebar-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.actionBtn:hover {
+  border-color: rgb(59 130 246 / 45%);
+  background: rgb(59 130 246 / 10%);
+}
+
+.arrow {
+  color: rgb(255 255 255 / 30%);
+  font-size: 15px;
+}
+
+.promptGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.promptBtn {
+  padding: 9px 8px;
+  border: 1px solid rgb(59 130 246 / 30%);
+  border-radius: var(--radius-sm);
+  background: rgb(59 130 246 / 14%);
+  color: #93c5fd;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, filter 0.15s;
+}
+
+.promptBtn:hover {
+  background: rgb(59 130 246 / 24%);
+  filter: brightness(1.06);
+}
+
+/* ── 오피스 오버레이 흰색 테마 ── */
+.light {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 4px 24px rgb(16 24 40 / 10%);
+}
+
+.light .titleBar {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.light .title {
+  color: #1e293b;
+}
+
+.light .sectionLabel {
+  color: #64748b;
+}
+
+.light .actionBtn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+}
+
+.light .actionBtn:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.light .arrow {
+  color: #94a3b8;
+}
+
+.light .promptBtn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.light .promptBtn:hover {
+  background: #dbeafe;
+  filter: none;
+}
+
+.light .body {
+  background: #fff;
+}

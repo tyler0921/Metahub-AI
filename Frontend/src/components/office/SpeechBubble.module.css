@@ -1,0 +1,36 @@
+.bubble {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  max-width: 230px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgb(31 42 57 / 12%);
+  background: rgb(255 255 255 / 96%);
+  color: #2f3a49;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 7px 20px rgb(16 24 40 / 18%);
+  pointer-events: none;
+  animation: pop 0.18s ease-out;
+
+  /* 말하는 직원의 색을 위쪽 띠로 표시 */
+  border-top: 3px solid transparent;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: rgb(255 255 255 / 96%);
+  border-bottom: 0;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%) scale(0.9);
+  }
+}

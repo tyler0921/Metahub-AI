@@ -1,0 +1,52 @@
+.notice {
+  padding: 16px;
+  border: 1px solid rgb(239 68 68 / 35%);
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.title {
+  color: var(--warn);
+  font-size: 13.5px;
+}
+
+.notice p {
+  margin: 8px 0;
+  color: var(--dim);
+}
+
+.notice code {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--panel-2);
+}
+
+.code {
+  margin: 8px 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ok);
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.detail {
+  font-size: 11px;
+}
+
+.retry {
+  margin-top: 8px;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}

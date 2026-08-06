@@ -1,0 +1,21 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Vite dev cache (Frontend/node_modules/.vite 등)
+**/.vite/
+**/.vite-temp/
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# AI 직원들이 만든 산출물 (기본 볼트 경로)
+vault/
+
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

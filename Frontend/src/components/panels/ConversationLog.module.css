@@ -1,0 +1,126 @@
+.empty {
+  padding: 40px 10px;
+  color: var(--dim);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  animation: slide 0.22s ease-out;
+}
+
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+}
+
+.who {
+  font-weight: 800;
+}
+
+.arrow {
+  color: var(--dim);
+}
+
+.phase {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--panel-2);
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.body {
+  position: relative;
+  max-height: 150px;
+  overflow: hidden;
+  color: #374151;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.expanded {
+  max-height: none;
+}
+
+.clipped::after {
+  content: '⌄ 더 보기';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding-top: 22px;
+  background: linear-gradient(transparent, var(--panel-2) 55%);
+  color: var(--accent);
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.system {
+  margin: 12px 0;
+  padding: 7px;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+  color: var(--dim);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* ── 사이드바 다크 컨텍스트 ── */
+.sidebarEmpty {
+  color: var(--sidebar-dim);
+}
+
+.sidebarItem {
+  background: rgb(255 255 255 / 4%);
+  border-color: var(--sidebar-line);
+}
+
+.sidebarItem .phase {
+  background: rgb(255 255 255 / 8%);
+  color: var(--sidebar-dim);
+}
+
+.sidebarItem .arrow {
+  color: var(--sidebar-dim);
+}
+
+.sidebarBody {
+  color: rgb(255 255 255 / 78%);
+}
+
+.sidebarSystem {
+  border-color: var(--sidebar-line);
+  color: var(--sidebar-dim);
+}
+
+.sidebarClipped::after {
+  background: linear-gradient(transparent, rgb(31 38 50 / 96%) 55%);
+  color: #93c5fd;
+}

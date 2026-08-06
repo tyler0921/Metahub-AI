@@ -1,0 +1,13 @@
+{
+  "name": "@ai-company/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend / Frontend 가 공유하는 타입 전용 계약 패키지",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts"
+    }
+  },
+  "license": "MIT"
+}

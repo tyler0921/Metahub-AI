@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <!-- 백엔드와 프론트엔드를 한 번에 띄웁니다 -->
+  <configuration default="false" name="All (Backend + Frontend)" type="CompoundRunConfigurationType">
+    <toRun name="Backend dev" type="js.build_tools.npm" />
+    <toRun name="Frontend dev" type="js.build_tools.npm" />
+    <method v="2" />
+  </configuration>
+</component>

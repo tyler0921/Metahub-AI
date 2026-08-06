@@ -1,0 +1,77 @@
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--frame);
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--frame);
+}
+
+.officeArea {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  background: var(--frame);
+}
+
+.consoleDock {
+  position: absolute;
+  right: 84px;
+  bottom: 16px;
+  left: 84px;
+  z-index: 8;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.consoleDock > * {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 760px;
+}
+
+.consoleDockCollapsed > * {
+  width: 100%;
+  min-width: 360px;
+  max-width: min(640px, calc(100% - 32px));
+}
+
+.offlineMain {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+@media (width <= 900px) {
+  .officeArea {
+    flex: 1;
+    padding: 0;
+  }
+
+  .consoleDock {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+  }
+
+  .consoleDockCollapsed > * {
+    max-width: none;
+    width: 100%;
+  }
+}

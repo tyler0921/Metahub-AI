@@ -1,0 +1,27 @@
+{
+  "name": "metaverse-ai-company",
+  "version": "2.0.0",
+  "private": true,
+  "description": "메타버스 오피스에서 AI 직원들이 부서별로 협업해 산출물을 만드는 멀티에이전트 시스템",
+  "workspaces": [
+    "shared",
+    "Backend",
+    "Frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c cyan,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --workspace @ai-company/backend run start:dev",
+    "dev:frontend": "npm --workspace @ai-company/frontend run dev",
+    "build": "npm --workspace @ai-company/backend run build && npm --workspace @ai-company/frontend run build",
+    "typecheck": "npm --workspace @ai-company/backend run typecheck && npm --workspace @ai-company/frontend run typecheck",
+    "start:backend": "npm --workspace @ai-company/backend run start:prod",
+    "preview": "npm --workspace @ai-company/frontend run preview"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}
