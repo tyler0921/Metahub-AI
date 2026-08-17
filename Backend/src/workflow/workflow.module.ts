@@ -17,6 +17,7 @@ import { WorkflowService } from './workflow.service';
 import { AutonomousWorkService } from './autonomous-work.service';
 import { AutonomousStateStore } from './autonomous-state.store';
 import { AutonomousWorkController } from './autonomous-work.controller';
+import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 
 @Module({
   imports: [AgentsModule, LlmModule, VaultModule, WorkspaceModule],
@@ -26,6 +27,7 @@ import { AutonomousWorkController } from './autonomous-work.controller';
     WorkflowService,
     AutonomousWorkService,
     AutonomousStateStore,
+    AdminMutationGuard,
     KickoffPhase,
     DraftPhase,
     FeedbackPhase,

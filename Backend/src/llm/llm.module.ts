@@ -6,6 +6,7 @@ import {
   type LlmProvider,
 } from './interfaces/llm-provider.interface';
 import { LlmService } from './llm.service';
+import { LlmBudgetService } from './llm-budget.service';
 import { ClaudeProvider } from './providers/claude.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { GroqProvider } from './providers/groq.provider';
@@ -50,7 +51,7 @@ const llmProviderFactory: Provider = {
 };
 
 @Module({
-  providers: [llmProviderFactory, LlmService],
-  exports: [LlmService],
+  providers: [llmProviderFactory, LlmBudgetService, LlmService],
+  exports: [LlmBudgetService, LlmService],
 })
 export class LlmModule {}

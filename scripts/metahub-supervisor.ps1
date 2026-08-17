@@ -11,8 +11,13 @@ if (-not $repoRoot.StartsWith('D:\', [System.StringComparison]::OrdinalIgnoreCas
 }
 
 $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
+$node = (Get-Command node.exe -ErrorAction Stop).Source
+$backendEntry = Join-Path $repoRoot 'Backend\dist\main.js'
+$frontendEntry = Join-Path $repoRoot 'node_modules\vite\bin\vite.js'
 $logDir = Join-Path $repoRoot 'data\logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+$launchSequence = 0
+$supervisorLog = Join-Path $logDir 'supervisor.log'
 
 $mutex = [System.Threading.Mutex]::new($false, 'Local\MetaHubAISupervisor')
 if (-not $mutex.WaitOne(0)) {
@@ -23,12 +28,19 @@ if (-not $mutex.WaitOne(0)) {
 function Start-MetaHubProcess {
   param(
     [Parameter(Mandatory)] [string]$Name,
-    [Parameter(Mandatory)] [string[]]$Arguments
+    [Parameter(Mandatory)] [string]$EntryPoint,
+    [Parameter(Mandatory)] [string]$WorkingDirectory,
+    [string[]]$Arguments = @()
   )
 
-  $stdout = Join-Path $logDir "$Name.out.log"
-  $stderr = Join-Path $logDir "$Name.error.log"
-  return Start-Process -FilePath $npm -ArgumentList $Arguments -WorkingDirectory $repoRoot `
+  $script:launchSequence++
+  $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+  $logPrefix = "$Name.$stamp.$($script:launchSequence)"
+  $stdout = Join-Path $logDir "$logPrefix.out.log"
+  $stderr = Join-Path $logDir "$logPrefix.error.log"
+  $quotedEntryPoint = '"' + $EntryPoint + '"'
+  $nodeArguments = @($quotedEntryPoint) + $Arguments
+  return Start-Process -FilePath $node -ArgumentList $nodeArguments -WorkingDirectory $WorkingDirectory `
     -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 }
 
@@ -47,40 +59,49 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'MetaHub production build failed.' }
   }
 
-  $backend = Start-MetaHubProcess -Name 'backend' -Arguments @('run', 'start:backend')
-  $frontend = Start-MetaHubProcess -Name 'frontend' -Arguments @(
-    '--workspace', '@ai-company/frontend', 'run', 'preview', '--',
-    '--host', '127.0.0.1', '--port', '5173', '--strictPort'
+  $backend = Start-MetaHubProcess -Name 'backend' -EntryPoint $backendEntry `
+    -WorkingDirectory (Join-Path $repoRoot 'Backend')
+  $frontend = Start-MetaHubProcess -Name 'frontend' -EntryPoint $frontendEntry `
+    -WorkingDirectory (Join-Path $repoRoot 'Frontend') -Arguments @(
+    'preview', '--host', '127.0.0.1', '--port', '5173', '--strictPort'
   )
 
   $healthFailures = 0
   while ($true) {
     Start-Sleep -Seconds 8
-
-    if ($backend.HasExited) {
-      $backend = Start-MetaHubProcess -Name 'backend' -Arguments @('run', 'start:backend')
-      $healthFailures = 0
-    } else {
-      try {
-        Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/health' -TimeoutSec 4 | Out-Null
+    try {
+      if ($backend.HasExited) {
+        $backend = Start-MetaHubProcess -Name 'backend' -EntryPoint $backendEntry `
+          -WorkingDirectory (Join-Path $repoRoot 'Backend')
         $healthFailures = 0
-      } catch {
-        $healthFailures++
-        if ($healthFailures -ge $HealthFailureLimit) {
-          Stop-MetaHubProcess -Process $backend
-          $backend = Start-MetaHubProcess -Name 'backend' -Arguments @('run', 'start:backend')
+      } else {
+        try {
+          Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/health' -TimeoutSec 4 | Out-Null
           $healthFailures = 0
+        } catch {
+          $healthFailures++
+          if ($healthFailures -ge $HealthFailureLimit) {
+            Stop-MetaHubProcess -Process $backend
+            $backend = Start-MetaHubProcess -Name 'backend' -EntryPoint $backendEntry `
+              -WorkingDirectory (Join-Path $repoRoot 'Backend')
+            $healthFailures = 0
+          }
         }
       }
-    }
 
-    if ($frontend.HasExited) {
-      $frontend = Start-MetaHubProcess -Name 'frontend' -Arguments @(
-        '--workspace', '@ai-company/frontend', 'run', 'preview', '--',
-        '--host', '127.0.0.1', '--port', '5173', '--strictPort'
-      )
+      if ($frontend.HasExited) {
+        $frontend = Start-MetaHubProcess -Name 'frontend' -EntryPoint $frontendEntry `
+          -WorkingDirectory (Join-Path $repoRoot 'Frontend') -Arguments @(
+          'preview', '--host', '127.0.0.1', '--port', '5173', '--strictPort'
+        )
+      }
+    } catch {
+      Add-Content -LiteralPath $supervisorLog -Value "$(Get-Date -Format o) $($_.Exception.Message)"
     }
   }
+} catch {
+  Add-Content -LiteralPath $supervisorLog -Value "$(Get-Date -Format o) fatal: $($_.Exception.ToString())"
+  throw
 } finally {
   Stop-MetaHubProcess -Process $backend
   Stop-MetaHubProcess -Process $frontend

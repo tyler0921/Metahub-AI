@@ -47,6 +47,16 @@ const envSchema = z.object({
     z.coerce.number().int().min(0).max(1000).optional(),
   ),
   LLM_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(3),
+  LLM_DAILY_CALL_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(0).max(100_000).optional(),
+  ),
+  LLM_DAILY_TOKEN_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  ),
+  LLM_BUDGET_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+  ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
 
   OBSIDIAN_VAULT: z.preprocess(emptyToUndefined, z.string().optional()),
   OBSIDIAN_ROOT: z.string().default('AI Company'),
@@ -59,6 +69,7 @@ const envSchema = z.object({
   FEEDBACK_ROUNDS: z.coerce.number().int().min(0).max(3).default(1),
   MAX_REWORK: z.coerce.number().int().min(0).max(3).default(1),
   SESSION_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+  SESSION_DATABASE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
   AUTONOMOUS_WORK_ENABLED: z.preprocess(emptyToUndefined, z.string().optional()),
   AUTONOMOUS_WORK_STARTUP_DELAY_MS: z.preprocess(
     emptyToUndefined,

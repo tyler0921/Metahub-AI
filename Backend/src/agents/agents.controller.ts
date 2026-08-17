@@ -8,13 +8,16 @@ import type {
   LlmConfig,
   VaultConfig,
   WorkflowConfig,
+  SecurityConfig,
 } from '../config/configuration';
+import { LlmBudgetService } from '../llm/llm-budget.service';
 
 @Controller()
 export class AgentsController {
   constructor(
     private readonly agents: AgentsService,
     private readonly config: ConfigService,
+    private readonly budget: LlmBudgetService,
   ) {}
 
   /** 직원 명단 + 오피스 맵 */
@@ -38,6 +41,8 @@ export class AgentsController {
     const vault = this.config.getOrThrow<VaultConfig>('vault');
     const workflow = this.config.getOrThrow<WorkflowConfig>('workflow');
     const autonomousWork = this.config.getOrThrow<AutonomousWorkConfig>('autonomousWork');
+    const security = this.config.getOrThrow<SecurityConfig>('security');
+    const budget = this.budget.snapshot();
 
     return {
       provider: llm.provider,
@@ -46,6 +51,14 @@ export class AgentsController {
       vaultRoot: vault.rootFolder,
       feedbackRounds: workflow.feedbackRounds,
       maxRework: workflow.maxRework,
+      adminAuthRequired: security.adminToken.length > 0,
+      llmBudget: {
+        calls: budget.calls,
+        inputTokens: budget.inputTokens,
+        outputTokens: budget.outputTokens,
+        dailyCallLimit: budget.dailyCallLimit,
+        dailyTokenLimit: budget.dailyTokenLimit,
+      },
       autonomousWork: {
         enabled: autonomousWork.enabled,
         intervalMinutes: Math.round(autonomousWork.intervalMs / 60_000),

@@ -20,6 +20,14 @@ export interface AppConfigResponse {
   vaultRoot: string;
   feedbackRounds: number;
   maxRework: number;
+  adminAuthRequired: boolean;
+  llmBudget: {
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    dailyCallLimit: number;
+    dailyTokenLimit: number;
+  };
   autonomousWork: {
     enabled: boolean;
     intervalMinutes: number;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Sse } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Sse, UseGuards } from '@nestjs/common';
 import type {
   CreateSessionResponse,
   SessionDetailResponse,
@@ -10,6 +10,7 @@ import { CreateSessionDto } from './dto/create-session.dto';
 import { SessionIdParamDto } from './dto/session-id.param.dto';
 import { SessionRepository } from './repositories/session.repository';
 import { WorkflowService } from './workflow.service';
+import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 
 /** Nest 의 @Sse() 가 요구하는 봉투 형식 */
 interface SseEnvelope {
@@ -17,6 +18,7 @@ interface SseEnvelope {
 }
 
 @Controller('sessions')
+@UseGuards(AdminMutationGuard)
 export class WorkflowController {
   constructor(
     private readonly workflow: WorkflowService,

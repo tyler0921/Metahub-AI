@@ -34,6 +34,16 @@ export interface LlmConfig {
   contextWindow: number;
   /** 한 번의 호출을 기다려주는 시간 (ms) — 로컬 모델은 느릴 수 있습니다 */
   timeoutMs: number;
+  /** 하루 논리 호출 한도. 0이면 제한하지 않습니다. */
+  dailyCallLimit: number;
+  /** 하루 입력+출력 토큰 한도. 0이면 제한하지 않습니다. */
+  dailyTokenLimit: number;
+  budgetStatePath: string;
+}
+
+export interface SecurityConfig {
+  /** 설정된 경우 변경 API에 Bearer 또는 x-admin-token 헤더가 필요합니다. */
+  adminToken: string;
 }
 
 export interface VaultConfig {
@@ -171,8 +181,20 @@ export const llmConfig = registerAs('llm', (): LlmConfig => {
     contextWindow: toInt(process.env.OLLAMA_NUM_CTX, 16_384),
     // 로컬 모델은 첫 호출에 모델을 올리느라 오래 걸립니다
     timeoutMs: toInt(process.env.OLLAMA_TIMEOUT_MS, 300_000),
+    dailyCallLimit: Math.max(0, toInt(process.env.LLM_DAILY_CALL_LIMIT, 200)),
+    dailyTokenLimit: Math.max(0, toInt(process.env.LLM_DAILY_TOKEN_LIMIT, 500_000)),
+    budgetStatePath:
+      process.env.LLM_BUDGET_STATE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'llm-budget.json'),
   };
 });
+
+export const securityConfig = registerAs(
+  'security',
+  (): SecurityConfig => ({
+    adminToken: process.env.ADMIN_TOKEN?.trim() ?? '',
+  }),
+);
 
 /**
  * 코드형 산출물이 저장되는 곳.
@@ -241,4 +263,5 @@ export const configurations = [
   workspaceConfig,
   workflowConfig,
   autonomousWorkConfig,
+  securityConfig,
 ];

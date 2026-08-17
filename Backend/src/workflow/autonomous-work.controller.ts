@@ -1,8 +1,10 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import type { AutonomousWorkStatusResponse } from '@shared';
 import { AutonomousWorkService } from './autonomous-work.service';
+import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 
 @Controller('autonomous-work')
+@UseGuards(AdminMutationGuard)
 export class AutonomousWorkController {
   constructor(private readonly autonomousWork: AutonomousWorkService) {}
 
