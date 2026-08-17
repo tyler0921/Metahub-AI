@@ -50,7 +50,7 @@ export class WorkflowController {
 
   @Get()
   findRecent(): SessionSummary[] {
-    return this.sessions.findRecent().map((s) => s.toSummary());
+    return this.sessions.findRecentSummaries();
   }
 
   @Get('active')
@@ -60,8 +60,7 @@ export class WorkflowController {
 
   @Get(':id')
   findOne(@Param() params: SessionIdParamDto): SessionDetailResponse {
-    const session = this.sessions.findById(params.id);
-    return { session: session.toSummary(), result: session.result };
+    return this.sessions.findDetail(params.id);
   }
 
   /**
@@ -71,8 +70,7 @@ export class WorkflowController {
   @Sse(':id/events')
   stream(@Param() params: SessionIdParamDto): Observable<SseEnvelope> {
     return this.sessions
-      .findById(params.id)
-      .asObservable()
+      .findEvents(params.id)
       .pipe(map((event) => ({ data: event })));
   }
 }

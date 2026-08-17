@@ -45,6 +45,8 @@ export interface WorkflowConfig {
   feedbackRounds: number;
   maxRework: number;
   sessionTtlMs: number;
+  /** 서버 재시작 후에도 세션 기록을 유지하는 SQLite 파일 */
+  sessionDatabasePath: string;
   /**
    * 세션 끝에 부서별 회고를 돌릴지.
    *
@@ -208,6 +210,9 @@ export const workflowConfig = registerAs(
     feedbackRounds: Math.max(0, toInt(process.env.FEEDBACK_ROUNDS, 1)),
     maxRework: Math.max(0, toInt(process.env.MAX_REWORK, 1)),
     sessionTtlMs: toInt(process.env.SESSION_TTL_MS, 60 * 60 * 1000),
+    sessionDatabasePath:
+      process.env.SESSION_DATABASE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'sessions.sqlite'),
     reflect: process.env.WORKFLOW_REFLECT?.trim().toLowerCase() !== 'false',
   }),
 );
