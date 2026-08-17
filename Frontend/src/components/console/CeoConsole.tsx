@@ -8,6 +8,11 @@ interface CeoConsoleProps {
   disabled: boolean;
   presetBrief?: string;
   followUpFrom?: string | null;
+  /**
+   * 값이 바뀌면 콘솔을 펼치고 커서를 놓습니다.
+   * 오피스의 대표 집무실·로비에서 이 신호를 보냅니다.
+   */
+  focusRequestId?: number;
   onPresetConsumed?: () => void;
   onCollapsedChange?: (collapsed: boolean) => void;
   onCancelFollowUp?: () => void;
@@ -23,6 +28,7 @@ export function CeoConsole({
   disabled,
   presetBrief,
   followUpFrom,
+  focusRequestId = 0,
   onPresetConsumed,
   onCollapsedChange,
   onCancelFollowUp,
@@ -42,6 +48,12 @@ export function CeoConsole({
     setExpanded(true);
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [followUpFrom]);
+
+  useEffect(() => {
+    if (focusRequestId === 0) return;
+    setExpanded(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [focusRequestId]);
 
   useEffect(() => {
     if (!presetBrief) return;
@@ -88,10 +100,10 @@ export function CeoConsole({
           aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded ? '−' : '+'}
+          <span aria-hidden="true">{expanded ? '−' : '+'}</span>
         </button>
 
-        <span className={styles.commandIcon} aria-hidden="true">⌘</span>
+        <span className={styles.commandIcon}>대표 지시</span>
 
         <textarea
           ref={inputRef}
@@ -124,9 +136,8 @@ export function CeoConsole({
             type="submit"
             className={styles.submit}
             disabled={disabled || !brief.trim()}
-            aria-label="지시 보내기"
           >
-            ↗
+            전달
           </button>
         )}
       </div>

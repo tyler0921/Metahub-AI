@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Agent, SpeechEvent } from '@shared';
 import { toPlainText } from '@/lib/markdown';
-import { useSessionStore, type LogEntry } from '@/store/session.store';
+import { useSessionStore, type LogEntry, type LogLevel } from '@/store/session.store';
 import styles from './ConversationLog.module.css';
 
 /** 이 높이를 넘으면 접고 '더 보기'를 표시 */
@@ -54,10 +54,35 @@ interface LogRowProps {
   resolve: (id: SpeechEvent['agent']) => Agent | null;
 }
 
+/**
+ * 시스템 로그의 성격별 표시.
+ *
+ * 스토어는 `level` 만 넘기고, 색과 글리프는 여기서 정합니다.
+ * 이모지 대신 도형을 쓰는 이유는 업무 화면에서 이모지가 게임 신호로
+ * 읽히기 때문입니다. 도형은 상태 3색과 함께 위계만 전달합니다.
+ */
+const LEVEL_GLYPH: Record<LogLevel, string> = {
+  info: '·',
+  ok: '✓',
+  warn: '!',
+  error: '×',
+};
+
 function LogRow({ entry, theme, resolve }: LogRowProps): React.JSX.Element | null {
   if (entry.kind === 'system') {
     return (
-      <div className={`${styles.system} ${theme === 'sidebar' ? styles.sidebarSystem : ''}`}>
+      <div
+        className={[
+          styles.system,
+          styles[entry.level],
+          theme === 'sidebar' ? styles.sidebarSystem : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <span className={styles.systemGlyph} aria-hidden="true">
+          {LEVEL_GLYPH[entry.level]}
+        </span>
         {entry.text}
       </div>
     );
@@ -89,20 +114,22 @@ function SpeechRow({
   if (!speaker) return null;
 
   return (
+    /*
+     * 부서 색은 왼쪽 4px 띠에만 남깁니다. 이름·화살표까지 부서 색을 칠하면
+     * 목록 전체가 알록달록해져서 정작 읽어야 할 본문이 뒤로 밀립니다.
+     */
     <article
       className={`${styles.item} ${theme === 'sidebar' ? styles.sidebarItem : ''}`}
       style={{ borderLeftColor: speaker.color }}
     >
       <header className={styles.head}>
-        <span className={styles.who} style={{ color: speaker.color }}>
-          {speaker.emoji} {speaker.name} {speaker.title}
+        <span className={styles.who}>
+          {speaker.name} {speaker.title}
         </span>
         {listener && (
           <>
             <span className={styles.arrow}>→</span>
-            <span style={{ color: listener.color }}>
-              {listener.emoji} {listener.dept}
-            </span>
+            <span className={styles.listener}>{listener.dept}</span>
           </>
         )}
         <span className={styles.phase}>{event.phase}</span>

@@ -2,16 +2,14 @@
   position: absolute;
   bottom: 150px;
   left: 84px;
-  z-index: 5;
-  width: min(310px, calc(100% - 36px));
-  padding: 12px 13px;
-  border: 1px solid;
-  border-left-width: 3px;
-  border-radius: var(--hud-radius);
-  background: var(--hud-bg-strong);
-  color: var(--hud-text);
-  backdrop-filter: var(--hud-blur);
-  box-shadow: var(--hud-shadow);
+  z-index: 8;
+  width: min(268px, calc(100% - 36px));
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
   animation: rise 0.18s ease-out;
   pointer-events: auto;
 }
@@ -25,49 +23,92 @@
 
 .head {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   align-items: center;
 }
 
-.emoji {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.badge {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--hud-line);
   border-radius: 10px;
-  background: rgb(255 255 255 / 7%);
-  font-size: 19px;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--status-color, var(--accent));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .name {
-  font-size: 12.5px;
-  font-weight: 800;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .meta {
+  display: flex;
+  gap: 5px;
+  align-items: center;
   margin-top: 2px;
-  color: var(--hud-dim);
-  font-size: 11.5px;
+  color: var(--dim);
+  font-size: 11px;
 }
 
-.specialty {
-  margin: 9px 0 0;
-  color: var(--hud-dim);
+.statusDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.chipOn,
+.chipOff {
+  margin: 10px 0 0;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.chipOn {
+  background: rgb(79 168 120 / 14%);
+  color: var(--st-done);
+}
+
+.chipOff {
+  background: var(--accent-soft);
+  color: var(--dim);
+}
+
+/* 카드 안의 한 덩어리 — 라벨 + 본문 */
+.section {
+  margin-top: 11px;
+}
+
+.sectionLabel {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.section p {
+  margin: 0;
+  color: var(--text-2);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
 .quote {
-  margin: 8px 0 0;
   padding: 8px 9px;
-  border: 1px solid var(--hud-line);
-  border-radius: 8px;
-  background: var(--hud-panel);
-  color: var(--hud-dim);
-  font-size: 11.5px;
-  line-height: 1.45;
+  border-left: 2px solid var(--st-talk);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-soft);
+  font-size: 11.5px !important;
 }
 
 .interactHint {
@@ -76,20 +117,20 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin-top: 10px;
-  padding: 7px;
-  border: 1px solid rgb(124 156 255 / 28%);
-  border-radius: 9px;
-  background: rgb(124 156 255 / 10%);
-  color: var(--hud-accent-strong);
+  margin-top: 11px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
   font: inherit;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .interactHint:hover {
-  background: rgb(124 156 255 / 17%);
+  background: var(--hover-soft);
 }
 
 .interactHint kbd {
@@ -98,46 +139,47 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border: 1px solid var(--hud-accent-strong);
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: var(--hud-accent-strong);
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-dark);
   font: inherit;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.actions button:first-child {
+  grid-column: 1 / -1;
 }
 
 .actions button {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  border: 1px solid var(--hud-line);
-  border-radius: 9px;
-  background: var(--hud-panel);
-  color: var(--hud-text);
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  color: var(--text-2);
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .actions button:hover {
-  border-color: rgb(124 156 255 / 40%);
-  background: var(--hud-hover);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 @media (width <= 640px) {
   .card {
     bottom: 70px;
     left: 8px;
-    width: min(310px, calc(100% - 16px));
+    width: min(268px, calc(100% - 16px));
   }
 }

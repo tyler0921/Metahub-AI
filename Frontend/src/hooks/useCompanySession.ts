@@ -21,6 +21,7 @@ interface CompanySession {
 
 const streamUrlOf = (sessionId: string): string =>
   `/api/sessions/${sessionId}/events`;
+const AUTONOMOUS_DISCOVERY_MS = 4_000;
 
 /**
  * 세션 생성 → 스트림 구독 → 스토어 갱신의 수명주기를 담당합니다.
@@ -99,6 +100,40 @@ export function useCompanySession(): CompanySession {
 
     return () => {
       stale = true;
+    };
+  }, [attach, resumeSession]);
+
+  useEffect(() => {
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const discoverAutonomousSession = async (): Promise<void> => {
+      if (stopped) return;
+      const state = useSessionStore.getState();
+      if (!state.isRunning && !activeSession.load()) {
+        try {
+          const sessions = await companyService.listSessions();
+          if (!stopped && !useSessionStore.getState().isRunning) {
+            const active = sessions.find(
+              (session) => session.status === 'running' || session.status === 'pending',
+            );
+            if (active) {
+              resumeSession(active.id, active.brief);
+              activeSession.save(active.id);
+              attach(streamUrlOf(active.id));
+            }
+          }
+        } catch {
+          // Health/config polling owns offline UI; discovery retries quietly.
+        }
+      }
+      if (!stopped) timer = setTimeout(discoverAutonomousSession, AUTONOMOUS_DISCOVERY_MS);
+    };
+
+    timer = setTimeout(discoverAutonomousSession, 1_500);
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
     };
   }, [attach, resumeSession]);
 

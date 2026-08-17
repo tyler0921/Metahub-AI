@@ -55,6 +55,12 @@ export class SessionRepository implements OnModuleDestroy {
       .slice(0, limit);
   }
 
+  findActive(): WorkSessionEntity | null {
+    return [...this.sessions.values()].find(
+      (session) => session.status === 'pending' || session.status === 'running',
+    ) ?? null;
+  }
+
   private sweep(): void {
     const deadline = Date.now() - this.ttlMs;
     let removed = 0;

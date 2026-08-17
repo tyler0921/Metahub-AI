@@ -1,0 +1,228 @@
+.empty {
+  padding: 40px 10px;
+  color: var(--dim);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-left-color: var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  animation: slide 0.2s ease-out;
+}
+
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+.brief {
+  border-left-color: var(--accent);
+}
+
+.plan {
+  border-left-color: var(--accent);
+}
+
+.phase {
+  border-left-color: var(--st-work);
+}
+
+.speech {
+  border-left-color: var(--st-talk);
+}
+
+.artifact {
+  border-left-color: var(--accent-strong);
+}
+
+.tool {
+  border-left-color: #8b7355;
+}
+
+.review {
+  border-left-color: var(--st-talk);
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+.done {
+  border-left-color: var(--st-done);
+}
+
+.warn {
+  border-left-color: var(--st-talk);
+}
+
+.error {
+  border-left-color: var(--danger);
+}
+
+.head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 7px;
+}
+
+.kind {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.phaseKey {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.title {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.meta {
+  margin: 4px 0 0;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.agentLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.agentLink:hover {
+  text-decoration: underline;
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.team button:hover {
+  border-color: var(--accent);
+}
+
+.team strong {
+  font-size: 12px;
+}
+
+.team span {
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.speaker {
+  display: block;
+  margin-bottom: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.speaker span {
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.speaker:hover {
+  color: var(--accent);
+}
+
+.speechBody {
+  position: relative;
+  max-height: 120px;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.expanded {
+  max-height: none;
+}
+
+.clipped::after {
+  content: '더 보기';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding-top: 20px;
+  background: linear-gradient(transparent, var(--panel-solid) 55%);
+  color: var(--accent);
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.review .card,
+.review article {
+  margin: 0;
+}

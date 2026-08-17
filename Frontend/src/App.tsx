@@ -2,9 +2,9 @@ import { useCallback, useState } from 'react';
 import { BootingNotice } from '@/components/common/BootingNotice';
 import { OfflineNotice } from '@/components/common/OfflineNotice';
 import { CeoConsole } from '@/components/console/CeoConsole';
-import { TopBar } from '@/components/layout/TopBar';
+import { ProjectStatusBar } from '@/components/layout/ProjectStatusBar';
 import { OfficeCanvas } from '@/components/office/OfficeCanvas';
-import { OFFICE_HEADCOUNT } from '@/components/office/office-staff';
+import { DeliverableFocus } from '@/components/panels/DeliverableFocus';
 import { useCompanyConfig } from '@/hooks/useCompanyConfig';
 import { useCompanySession } from '@/hooks/useCompanySession';
 import { useSessionStore } from '@/store/session.store';
@@ -18,6 +18,8 @@ export default function App(): React.JSX.Element {
   const clearFollowUp = useSessionStore((s) => s.clearFollowUp);
   const [presetBrief, setPresetBrief] = useState<string | undefined>();
   const [ceoCollapsed, setCeoCollapsed] = useState(true);
+  /** 오피스에서 "지시하기"를 눌렀을 때 콘솔을 펼치는 신호 */
+  const [consoleFocusId, setConsoleFocusId] = useState(0);
 
   const isOffline = Boolean(error);
 
@@ -29,10 +31,16 @@ export default function App(): React.JSX.Element {
     setPresetBrief(undefined);
   }, []);
 
+  const handleOpenConsole = useCallback(() => {
+    setConsoleFocusId((id) => id + 1);
+  }, []);
+
   return (
     <div className={styles.app}>
-      <TopBar config={config} agentCount={OFFICE_HEADCOUNT} isOffline={isOffline} />
-
+      {/*
+        상단 바가 없습니다 (시안 1c · 최소 크롬).
+        세션 상태는 공간 위에 뜨는 알약이, 실행 환경은 좌측 레일 하단이 맡습니다.
+      */}
       {isWaitingForServer ? (
         <main className={styles.offlineMain}>
           <BootingNotice />
@@ -44,7 +52,12 @@ export default function App(): React.JSX.Element {
       ) : (
         <main className={styles.workspace}>
           <div className={styles.officeArea}>
-            <OfficeCanvas onSelectBrief={handleSelectBrief} />
+            <ProjectStatusBar />
+            <OfficeCanvas
+              onSelectBrief={handleSelectBrief}
+              onOpenConsole={handleOpenConsole}
+              config={config}
+            />
             <div
               className={`${styles.consoleDock} ${ceoCollapsed ? styles.consoleDockCollapsed : ''}`}
             >
@@ -54,6 +67,7 @@ export default function App(): React.JSX.Element {
                 disabled={agents.length === 0}
                 presetBrief={presetBrief}
                 followUpFrom={followUpFrom}
+                focusRequestId={consoleFocusId}
                 onPresetConsumed={handlePresetConsumed}
                 onCollapsedChange={setCeoCollapsed}
                 onCancelFollowUp={clearFollowUp}
@@ -62,6 +76,9 @@ export default function App(): React.JSX.Element {
               />
             </div>
           </div>
+
+          {/* 산출물 집중 모드 — 오피스·콘솔 위를 통째로 덮습니다 */}
+          <DeliverableFocus />
         </main>
       )}
     </div>

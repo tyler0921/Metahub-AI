@@ -1,58 +1,68 @@
+/*
+ * Cozy Pixel Operations Room
+ *
+ * 두 개의 표면이 있습니다.
+ *  - **오피스**: 따뜻한 픽셀 공간. 캔버스가 알아서 칠합니다.
+ *  - **관제 패널**: 차분한 아이보리. 오피스 위에 얹혀 정보를 나릅니다.
+ *
+ * 둘을 같은 톤으로 만들면 서로를 잡아먹습니다. 아이보리 패널이
+ * 픽셀 화면과 충돌하지 않으면서도 읽히는 이유가 이 분리에 있습니다.
+ *
+ * 규칙은 그대로입니다 — 액센트 1색 + 상태 4색. UI 색은 여기서만 나옵니다.
+ */
 :root {
-  /* 앱 전체 다크 프레임 (참조 이미지 #1a1b1e 계열) */
-  --bg: #1a1d24;
-  --frame: #161b24;
-  --panel: #ffffff;
-  --panel-2: #f4f6f9;
-  --line: #dfe5ee;
-  --line-strong: #c8d1de;
-  --text: #1a2332;
-  --dim: #6b7a90;
-  --accent: #f0a92c;
-  --accent-ink: #7a4d00;
-  --accent-2: #3b82f6;
-  --ok: #10b981;
-  --warn: #ef4444;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 3px rgb(16 24 40 / 8%), 0 8px 24px rgb(16 24 40 / 6%);
-  --shadow-lg: 0 16px 48px rgb(16 24 40 / 14%);
+  /* 표면 — 오피스는 딥 뉴트럴, 패널은 아이보리 */
+  --bg:            #ece9e1;
+  --frame:         #151923;   /* 캔버스 뒤 */
+  --panel:         #f7f5ef;   /* 관제 패널 본체 — 솔리드입니다 */
+  --panel-solid:   #fdfcf8;   /* 패널 위에 얹히는 카드 */
+  --panel-dark:    rgb(17 24 39 / 88%);   /* 다크 알약·레일 */
+  --line:          rgb(20 30 40 / 12%);
+  --line-dark:     rgb(255 255 255 / 12%);
+  --text:          #202631;
+  --text-2:        #4a5361;
+  --dim:           #8a9099;
+  --text-on-dark:  #f4f2ec;
+  --dim-on-dark:   rgb(244 242 236 / 62%);
 
-  /* ZEP Lite 공간 HUD */
-  --hud-bg: rgb(249 250 251 / 92%);
-  --hud-bg-strong: rgb(255 255 255 / 97%);
-  --hud-panel: #f4f6f8;
-  --hud-line: rgb(31 42 57 / 12%);
-  --hud-text: #1f2937;
-  --hud-dim: #687386;
-  --hud-accent: #315f8c;
-  --hud-accent-strong: #234b70;
-  --hud-hover: rgb(49 95 140 / 9%);
-  --hud-active: rgb(49 95 140 / 14%);
-  --hud-success: #21664f;
-  --space-chrome: rgb(17 23 34 / 92%);
-  --space-chrome-solid: #111722;
-  --space-chrome-line: rgb(255 255 255 / 10%);
-  --space-chrome-text: #f6f8fb;
-  --space-chrome-dim: rgb(235 241 250 / 62%);
-  --hud-radius: 14px;
-  --hud-blur: blur(18px) saturate(130%);
-  --hud-shadow: 0 12px 32px rgb(19 33 50 / 14%);
+  /* 액센트 — 딱 하나 */
+  --accent:        #6c63ff;
+  --accent-strong: #574fd6;
+  /* 이름과 달리 액센트 색조가 아니라 "한 단계 눌린 표면"입니다 */
+  --accent-soft:   #ece9e1;
 
-  /* 사이드바 — 프레임과 동일 톤 */
-  --sidebar-bg: var(--frame);
-  --sidebar-panel: #1f2632;
-  --sidebar-panel-2: #252d3b;
-  --sidebar-line: rgb(255 255 255 / 9%);
-  --sidebar-text: #e8edf4;
-  --sidebar-dim: rgb(255 255 255 / 48%);
+  /* 상태 4색 */
+  --st-work:  #f2b84b;   /* 작업 중 */
+  --st-talk:  #4a90e2;   /* 대화 중 */
+  --st-done:  #4fa878;   /* 완료   */
+  --st-idle:  #9aa0a8;   /* 대기   */
+  --danger:   #d95c5c;
+  /* 같은 색상, 어두운 표면에서 읽히는 명도 — 새 색이 아니라 대비 짝입니다 */
+  --danger-on-dark: #e88a8a;
 
-  /* 윈도우 크롬 */
-  --dot-red: #ff5f57;
-  --dot-yellow: #febc2e;
-  --dot-green: #28c840;
+  /*
+   * 그림자는 크고 흐린 것 하나만. 여러 겹을 쌓으면 아이보리가 탁해집니다.
+   * blur 는 남겨 두되 레일처럼 공간 위에 직접 뜨는 것에만 씁니다.
+   */
+  --blur:      blur(10px);
+  --shadow:    0 10px 30px rgb(16 22 34 / 18%);
+  --shadow-lg: 0 18px 48px rgb(16 22 34 / 26%);
+  --radius:    12px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  /* 보조 표면 */
+  --panel-strong: #f7f5ef;
+  --line-strong:  rgb(20 30 40 / 20%);
+  --chrome-panel: #1e2531;
+  --hover-soft:   rgb(108 99 255 / 10%);
 
   color-scheme: light;
+
+  /* 윈도우 크롬 — 상태색으로 흡수 */
+  --dot-red:    var(--danger);
+  --dot-yellow: var(--st-work);
+  --dot-green:  var(--st-done);
 }
 
 * {
@@ -85,7 +95,7 @@ button {
 button:focus-visible,
 [role='button']:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #91a9ff;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -101,7 +111,7 @@ textarea:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #aebaca;
+  background: var(--dim);
   background-clip: content-box;
 }
 

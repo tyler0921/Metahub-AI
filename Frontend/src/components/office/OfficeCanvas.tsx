@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { SpeechEvent } from '@shared';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { AgentId, AgentStatus, AppConfigResponse, SpeechEvent } from '@shared';
 import { WorkspaceSidebar, type WorkspaceTabKey } from '@/components/layout/WorkspaceSidebar';
 import { useSessionStore } from '@/store/session.store';
 import { ConversationFlow } from './ConversationFlow';
+import { MeetingRoomBadge } from './MeetingRoomBadge';
 import { NearbyCard } from './NearbyCard';
+import { OfficeMinimap } from './OfficeMinimap';
 import { OfficeOverview } from './OfficeOverview';
 import { SpeechBubble } from './SpeechBubble';
 import { useOfficeRenderer } from './useOfficeRenderer';
+import { spaceActionAt } from './office-interactions';
 import styles from './OfficeCanvas.module.css';
 
 const MAX_BUBBLES = 4;
@@ -14,11 +17,24 @@ const SPEECH_VISIBLE_MS = 14_000;
 
 interface OfficeCanvasProps {
   onSelectBrief: (brief: string) => void;
+  /** 대표 집무실·로비에서 지시 콘솔을 펼칠 때 씁니다 */
+  onOpenConsole?: () => void;
+  /**
+   * 실행 환경 (프로바이더·모델).
+   * App 에서 이미 받아온 값을 내려받습니다 — 여기서 useCompanyConfig 를
+   * 다시 부르면 부팅 때 같은 요청이 두 번 나갑니다.
+   */
+  config: AppConfigResponse | null;
 }
 
-export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.Element {
+export function OfficeCanvas({
+  onSelectBrief,
+  onOpenConsole,
+  config,
+}: OfficeCanvasProps): React.JSX.Element {
   const logs = useSessionStore((s) => s.logs);
   const agentMap = useSessionStore((s) => s.agentMap);
+  const avatars = useSessionStore((s) => s.avatars);
   const [now, setNow] = useState(() => Date.now());
   const [interactionOpen, setInteractionOpen] = useState(false);
   const [panelRequest, setPanelRequest] = useState<{ tab: WorkspaceTabKey; id: number }>({
@@ -34,7 +50,7 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
     return () => window.clearInterval(timer);
   }, []);
 
-  const activeSpeeches = useMemo(() => {
+  const sessionSpeeches = useMemo(() => {
     const latest = new Map<string, SpeechEvent>();
     for (const entry of logs) {
       if (
@@ -50,18 +66,20 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
   const anchorIds = useMemo(
     () => [
       ...new Set(
-        activeSpeeches.flatMap((speech) =>
+        sessionSpeeches.flatMap((speech) =>
           speech.to ? [speech.agent, speech.to] : [speech.agent],
         ),
       ),
     ],
-    [activeSpeeches],
+    [sessionSpeeches],
   );
 
   const {
     canvasRef,
     stageRef,
     anchors,
+    positions,
+    ambientSpeeches,
     nearby,
     currentZone,
     isLoading,
@@ -72,24 +90,45 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
     resetZoom,
   } = useOfficeRenderer(anchorIds);
 
-  const openPanel = (tab: WorkspaceTabKey): void => {
-    setPanelRequest((request) => ({ tab, id: request.id + 1 }));
-  };
+  const activeSpeeches = useMemo(
+    () => [...sessionSpeeches, ...ambientSpeeches]
+      .filter((speech) => now - speech.at <= SPEECH_VISIBLE_MS)
+      .sort((a, b) => b.at - a.at)
+      .slice(0, MAX_BUBBLES),
+    [sessionSpeeches, ambientSpeeches, now],
+  );
 
-  const handleZoneInteraction = (): void => {
-    if (!currentZone) return;
-    if (currentZone.id === 'reception') {
-      openPanel('vault');
-      return;
+  const avatarStatuses = useMemo(() => {
+    const map = new Map<AgentId, AgentStatus>();
+    for (const [id, avatar] of avatars) {
+      map.set(id, avatar.status);
     }
-    if (currentZone.kind === 'meeting') {
-      onSelectBrief('현재 안건을 회의실에서 관련 부서들이 함께 검토하고 결론을 보고해줘.');
-      return;
+    return map;
+  }, [avatars]);
+
+  const openPanel = useCallback((tab: WorkspaceTabKey): void => {
+    setPanelRequest((request) => ({ tab, id: request.id + 1 }));
+  }, []);
+
+  const playerPosition = positions.get('ceo');
+  const zoneAction = useMemo(
+    () => spaceActionAt(playerPosition, currentZone),
+    [playerPosition, currentZone],
+  );
+
+  const runZoneAction = useCallback((): void => {
+    if (!zoneAction) return;
+    switch (zoneAction.type) {
+      case 'panel':
+        openPanel(zoneAction.tab);
+        return;
+      case 'console':
+        onOpenConsole?.();
+        return;
+      case 'brief':
+        onSelectBrief(zoneAction.brief);
     }
-    if (currentZone.kind === 'department') {
-      onSelectBrief(`${currentZone.label}에 다음 업무를 요청할게: `);
-    }
-  };
+  }, [zoneAction, openPanel, onOpenConsole, onSelectBrief]);
 
   useEffect(() => {
     setInteractionOpen(false);
@@ -116,12 +155,12 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
       if (event.key.toLowerCase() === 'f') {
         event.preventDefault();
         if (nearby) setInteractionOpen(true);
-        else handleZoneInteraction();
+        else runZoneAction();
       }
     };
     window.addEventListener('keydown', handleInteraction);
     return () => window.removeEventListener('keydown', handleInteraction);
-  }, [nearby, currentZone]);
+  }, [nearby, runZoneAction]);
 
   const dismissGuide = (): void => {
     setShowGuide(false);
@@ -136,6 +175,8 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
   return (
     <div className={styles.stage} ref={stageRef}>
       <canvas ref={canvasRef} className={styles.canvas} />
+
+      <MeetingRoomBadge />
 
       <ConversationFlow
         speeches={activeSpeeches}
@@ -183,28 +224,25 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
         />
       )}
 
-      {!nearby && currentZone && ['reception', 'meeting', 'department'].includes(currentZone.kind) && (
-        <button type="button" className={styles.zoneAction} onClick={handleZoneInteraction}>
+      {!nearby && zoneAction && (
+        <button type="button" className={styles.zoneAction} onClick={runZoneAction}>
           <kbd>F</kbd>
           <span>
-            <b>{currentZone.label}</b>
-            {currentZone.id === 'reception'
-              ? 'Vault 열기'
-              : currentZone.kind === 'meeting'
-                ? '협업 회의 시작'
-                : '부서에 업무 요청'}
+            <b>{zoneAction.label}</b>
+            {zoneAction.hint}
           </span>
         </button>
       )}
 
       {showGuide && !isLoading && !error && (
         <section className={styles.guide} aria-label="오피스 이동 안내">
-          <div className={styles.guideAvatar} aria-hidden="true">👋</div>
           <div>
             <strong>MetaHub 오피스에 오신 것을 환영합니다</strong>
             <p><kbd>WASD</kbd> 또는 클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
           </div>
-          <button type="button" onClick={dismissGuide} aria-label="안내 닫기">✕</button>
+          <button type="button" onClick={dismissGuide} aria-label="안내 닫기">
+            <span aria-hidden="true">×</span>
+          </button>
         </section>
       )}
 
@@ -213,6 +251,9 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
         <div className={styles.railGroup}>
           <button type="button" className={styles.railActive} aria-label="오피스 보기" data-label="오피스" onClick={resetZoom}>
             <span aria-hidden="true">⌂</span>
+          </button>
+          <button type="button" aria-label="업무 열기" data-label="업무" onClick={() => openPanel('tasks')}>
+            <span aria-hidden="true">◰</span>
           </button>
           <button type="button" aria-label="대화 열기" data-label="대화" onClick={() => openPanel('log')}>
             <span aria-hidden="true">◌</span>
@@ -225,6 +266,15 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
           </button>
         </div>
         <div className={styles.railBottom}>
+          {/* TopBar 를 없애면서 실행 환경 표시가 여기로 내려왔습니다 */}
+          {config && (
+            <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
+              <span>{config.provider}</span>
+              <span className={styles.railMetaModel}>
+                {config.provider === 'mock' ? '체험 모드' : config.model}
+              </span>
+            </div>
+          )}
           <button type="button" aria-label="이동 도움말" data-label="도움말" onClick={() => setShowGuide(true)}>
             <span aria-hidden="true">?</span>
           </button>
@@ -232,6 +282,8 @@ export function OfficeCanvas({ onSelectBrief }: OfficeCanvasProps): React.JSX.El
       </nav>
 
       <OfficeOverview currentZone={currentZone} compact={Boolean(nearby)} />
+
+      <OfficeMinimap positions={positions} statuses={avatarStatuses} />
 
       <div className={styles.zoomControls}>
         <button type="button" className={styles.zoomBtn} onClick={zoomOut} aria-label="축소">

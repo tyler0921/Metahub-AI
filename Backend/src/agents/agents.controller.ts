@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import type { Agent, AgentsResponse, AppConfigResponse } from '@shared';
 import { AgentsService } from './agents.service';
 import { AgentIdParamDto } from './dto/agent-id.param.dto';
-import type { LlmConfig, VaultConfig, WorkflowConfig } from '../config/configuration';
+import type {
+  AutonomousWorkConfig,
+  LlmConfig,
+  VaultConfig,
+  WorkflowConfig,
+} from '../config/configuration';
 
 @Controller()
 export class AgentsController {
@@ -32,6 +37,7 @@ export class AgentsController {
     const llm = this.config.getOrThrow<LlmConfig>('llm');
     const vault = this.config.getOrThrow<VaultConfig>('vault');
     const workflow = this.config.getOrThrow<WorkflowConfig>('workflow');
+    const autonomousWork = this.config.getOrThrow<AutonomousWorkConfig>('autonomousWork');
 
     return {
       provider: llm.provider,
@@ -40,6 +46,11 @@ export class AgentsController {
       vaultRoot: vault.rootFolder,
       feedbackRounds: workflow.feedbackRounds,
       maxRework: workflow.maxRework,
+      autonomousWork: {
+        enabled: autonomousWork.enabled,
+        intervalMinutes: Math.round(autonomousWork.intervalMs / 60_000),
+        dailyLimit: autonomousWork.dailyLimit,
+      },
     };
   }
 }

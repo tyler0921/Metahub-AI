@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "sprites": "node tools/generate_sprites.mjs"
+    "sprites": "node tools/generate_sprites.mjs && node tools/build_reference_characters.mjs",
+    "sprites:characters": "node tools/build_reference_characters.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

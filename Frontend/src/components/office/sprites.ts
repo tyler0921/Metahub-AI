@@ -1,8 +1,8 @@
 /**
  * 스프라이트 로더.
  *
- * `Frontend/tools/generate_sprites.py` 가 만든 PNG 3장과 좌표 매니페스트를 읽어들입니다.
- * 에셋을 다시 그리고 싶으면 그 파이썬 스크립트를 고치고 다시 실행하세요.
+ * `Frontend/tools/generate_sprites.mjs` 가 만든 PNG 3장과 좌표 매니페스트를 읽어들입니다.
+ * 에셋을 다시 그리려면 `npm --workspace @ai-company/frontend run sprites` 를 실행하세요.
  */
 
 export interface SpriteRect {
@@ -29,6 +29,7 @@ export interface SpriteAssets {
   characters: HTMLImageElement;
   tiles: HTMLImageElement;
   props: HTMLImageElement;
+  officeMap: HTMLImageElement;
   manifest: SpriteManifest;
   /** 카펫을 방 색으로 물들인 캔버스 캐시 */
   tintedCarpet: Map<string, HTMLCanvasElement>;
@@ -52,14 +53,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export async function loadSpriteAssets(): Promise<SpriteAssets> {
-  const [characters, tiles, props, manifest] = await Promise.all([
+  const [characters, tiles, props, officeMap, manifest] = await Promise.all([
     loadImage(`${BASE}/characters.png`),
     loadImage(`${BASE}/tiles.png`),
     loadImage(`${BASE}/props.png`),
+    loadImage('/map/office-v2.png'),
     fetch(`${BASE}/manifest.json`).then((r) => r.json() as Promise<SpriteManifest>),
   ]);
 
-  return { characters, tiles, props, manifest, tintedCarpet: new Map() };
+  return { characters, tiles, props, officeMap, manifest, tintedCarpet: new Map() };
 }
 
 /**

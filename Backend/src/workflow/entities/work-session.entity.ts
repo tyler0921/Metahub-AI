@@ -50,7 +50,13 @@ export class WorkSessionEntity {
     readonly parentSessionId: string | null = null,
     /** 원본 세션의 산출물 — 후속 지시일 때만 채워집니다 */
     readonly parentResult: Deliverable | null = null,
-  ) {}
+  ) {
+    // LLM 호출이 끝날 때마다 프론트로 누적량을 보냅니다
+    this.usage.onChange((usage, delta) => {
+      if (this._status !== 'running') return;
+      this.events$.next({ type: 'usage', usage, delta });
+    });
+  }
 
   get signal(): AbortSignal {
     return this.aborter.signal;

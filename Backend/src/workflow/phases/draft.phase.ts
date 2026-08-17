@@ -120,7 +120,7 @@ export class DraftPhase implements WorkflowPhase {
         '- 팀원이 놓친 부분이 있으면 직접 채웁니다.',
         '- 팀원 이름을 문장에 노출하지 마세요.',
       ].join('\n'),
-      { maxTokens: 3000 },
+      { maxTokens: 3000, signal: session.signal },
       session.usage,
     );
   }

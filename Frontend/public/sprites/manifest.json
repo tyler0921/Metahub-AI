@@ -1,7 +1,7 @@
 {
   "characters": {
-    "frameWidth": 32,
-    "frameHeight": 48,
+    "frameWidth": 48,
+    "frameHeight": 72,
     "directions": [
       "down",
       "left",
@@ -18,7 +18,8 @@
       "dev": 5,
       "finance": 6,
       "writer": 7
-    }
+    },
+    "source": "docs/design/character-cutouts-v2.png"
   },
   "tileSize": 32,
   "tiles": {

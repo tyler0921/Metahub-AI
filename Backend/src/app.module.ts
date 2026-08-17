@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { LlmModule } from './llm/llm.module';
 import { VaultModule } from './vault/vault.module';
 import { WorkflowModule } from './workflow/workflow.module';
+import { WorkspaceModule } from './workspace/workspace.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WorkflowModule } from './workflow/workflow.module';
     AgentsModule,
     LlmModule,
     VaultModule,
+    WorkspaceModule,
     WorkflowModule,
   ],
 })

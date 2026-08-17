@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Deliverable, ReviewResult } from '@shared';
+import type { ArtifactFile, Deliverable, ReviewResult } from '@shared';
 import { AgentsService } from '../agents/agents.service';
 import type { WorkflowConfig } from '../config/configuration';
 import { LlmCancelledError } from '../llm/errors/llm.errors';
 import { LlmService } from '../llm/llm.service';
 import { VaultService } from '../vault/vault.service';
+import { WorkspaceService } from '../workspace/workspace.service';
 import type { WorkSessionEntity } from './entities/work-session.entity';
+import { BuildPhase } from './phases/build.phase';
 import { DraftPhase } from './phases/draft.phase';
 import { FeedbackPhase, type FeedbackInbox } from './phases/feedback.phase';
 import { IntegratePhase } from './phases/integrate.phase';
@@ -15,6 +17,15 @@ import { ReviewPhase } from './phases/review.phase';
 import { RevisePhase } from './phases/revise.phase';
 import type { PhaseContext } from './phases/workflow-phase.interface';
 import { SessionRepository } from './repositories/session.repository';
+
+/** 통합·빌드 단계가 공통으로 돌려주는 것 */
+interface ProducedOutput {
+  /** 검수와 볼트 저장에 쓰는 텍스트 표현 */
+  body: string;
+  artifacts: ArtifactFile[];
+  previewUrl: string | null;
+  workspaceFolder: string | null;
+}
 
 /**
  * SOP 파이프라인 오케스트레이터.
@@ -32,12 +43,14 @@ export class WorkflowService {
     private readonly sessions: SessionRepository,
     private readonly agents: AgentsService,
     private readonly vault: VaultService,
+    private readonly workspace: WorkspaceService,
     private readonly llm: LlmService,
     private readonly kickoff: KickoffPhase,
     private readonly draft: DraftPhase,
     private readonly feedback: FeedbackPhase,
     private readonly revise: RevisePhase,
     private readonly integrate: IntegratePhase,
+    private readonly build: BuildPhase,
     private readonly review: ReviewPhase,
   ) {
     this.config = configService.getOrThrow<WorkflowConfig>('workflow');
@@ -91,10 +104,25 @@ export class WorkflowService {
     /* 0. 회상 — 볼트에서 과거 기록을 찾아 전 부서에 공유 */
     session.emit({ type: 'phase', key: 'recall', label: '사내 지식 저장소 검색' });
     session.emit({ type: 'status', agent: 'chief', status: 'thinking', note: '과거 기록 확인 중' });
+    session.emit({
+      type: 'tool',
+      agent: 'chief',
+      tool: 'vault',
+      status: 'started',
+      label: '과거 기록 검색',
+    });
 
     const recalled = await this.vault.recall(session.brief);
     const recallContext = this.vault.buildRecallContext(recalled);
     const context: PhaseContext = { session, agents: this.agents, recallContext };
+
+    session.emit({
+      type: 'tool',
+      agent: 'chief',
+      tool: 'vault',
+      status: 'completed',
+      label: recalled.length > 0 ? `노트 ${recalled.length}건` : '관련 기록 없음',
+    });
 
     if (recalled.length > 0) {
       session.emit({ type: 'recall', notes: this.vault.toRecalledNotes(recalled) });
@@ -143,26 +171,68 @@ export class WorkflowService {
       );
     }
 
-    /* 5~6. 통합 · 검수 (반려 시 재작업) */
-    let merged = '';
+    /* 5~6. 산출 · 검수 (반려 시 재작업) */
+    const isWebsite = session.plan.kind === 'website';
+
+    // 코드형이면 파일이 쌓일 폴더를 먼저 만들어 둡니다.
+    // 재작업 때도 같은 폴더를 덮어써야 미리보기 주소가 바뀌지 않습니다.
+    const buildProject = isWebsite
+      ? await this.workspace.createProject(session.brief)
+      : null;
+
+    let output: ProducedOutput = {
+      body: '',
+      artifacts: [],
+      previewUrl: null,
+      workspaceFolder: null,
+    };
     let verdict: ReviewResult | null = null;
 
     for (let attempt = 0; attempt <= this.config.maxRework; attempt++) {
       this.checkpoint(session);
-      session.emit({
-        type: 'phase',
-        key: this.integrate.key,
-        label: attempt === 0 ? this.integrate.label : '문서팀 재작업',
-      });
-      merged = await this.integrate.merge(context, {
-        attempt,
-        previousDraft: merged,
-        rejection: verdict,
-      });
+
+      if (isWebsite && buildProject) {
+        session.emit({
+          type: 'phase',
+          key: this.build.key,
+          label: attempt === 0 ? this.build.label : '개발팀 재작업',
+        });
+        const built = await this.build.build(context, {
+          project: buildProject,
+          attempt,
+          previousFiles: output.artifacts,
+          rejection: verdict,
+        });
+        output = {
+          body: this.describeArtifacts(built.files, built.previewUrl),
+          artifacts: built.files,
+          previewUrl: built.previewUrl,
+          workspaceFolder: buildProject.folderName,
+        };
+      } else {
+        session.emit({
+          type: 'phase',
+          key: this.integrate.key,
+          label: attempt === 0 ? this.integrate.label : '문서팀 재작업',
+        });
+        const merged = await this.integrate.merge(context, {
+          attempt,
+          previousDraft: output.body,
+          rejection: verdict,
+        });
+        output = { ...output, body: merged };
+      }
 
       this.checkpoint(session);
       session.emit({ type: 'phase', key: this.review.key, label: this.review.label });
-      verdict = await this.review.judge(context, merged, attempt, this.config.maxRework);
+      verdict = await this.review.judge(
+        context,
+        // 코드형은 요약이 아니라 코드 자체를 보여줘야 검수가 됩니다
+        isWebsite ? this.renderArtifactsForReview(output.artifacts) : output.body,
+        attempt,
+        this.config.maxRework,
+        session.plan.kind,
+      );
       session.review = verdict;
 
       if (verdict.verdict === 'approve') break;
@@ -171,20 +241,38 @@ export class WorkflowService {
     /* 7. 보존 — 여기까지 왔으면 중단하지 않고 결과를 남깁니다 */
     this.checkpoint(session);
     session.emit({ type: 'phase', key: 'save', label: 'Obsidian 볼트 저장' });
+    session.emit({
+      type: 'tool',
+      agent: 'chief',
+      tool: 'vault',
+      status: 'started',
+      label: '볼트 저장',
+    });
     await this.vault.saveMinutes(project, session.transcript);
     await this.vault.saveDeliverable(
       project,
       session.brief,
-      merged,
+      output.body,
       verdict,
       session.usage.snapshot(),
     );
     await this.vault.appendToIndex(project, session.brief, verdict?.score ?? null);
+    session.emit({
+      type: 'tool',
+      agent: 'chief',
+      tool: 'vault',
+      status: 'completed',
+      label: project.folderName,
+    });
 
     const result: Deliverable = {
       sessionId: session.id,
       brief: session.brief,
-      body: merged,
+      kind: session.plan.kind,
+      body: output.body,
+      artifacts: output.artifacts,
+      previewUrl: output.previewUrl,
+      workspaceFolder: output.workspaceFolder,
       review: verdict,
       plan: session.plan,
       team: session.team,
@@ -197,6 +285,42 @@ export class WorkflowService {
     this.logger.log(
       `세션 ${session.id} 완료 — ${result.elapsedSeconds}초, LLM ${result.usage.calls}회 호출`,
     );
+  }
+
+  /**
+   * 코드형 산출물의 볼트 노트 본문.
+   *
+   * 파일 내용을 통째로 옮기지는 않습니다. 볼트는 "무엇을 만들었는지"를
+   * 기억하는 곳이고, 실물은 워크스페이스에 있습니다. 대신 다음번 회상에서
+   * 걸리도록 파일 목록과 지시 맥락을 남깁니다.
+   */
+  private describeArtifacts(files: ArtifactFile[], previewUrl: string): string {
+    const totalBytes = files.reduce((sum, f) => sum + f.bytes, 0);
+
+    return [
+      '## 만들어진 파일',
+      '',
+      '| 파일 | 종류 | 크기 |',
+      '| --- | --- | --- |',
+      ...files.map(
+        (f) => `| \`${f.path}\` | ${f.language} | ${f.bytes.toLocaleString()} B |`,
+      ),
+      '',
+      `총 ${files.length}개 · ${totalBytes.toLocaleString()} 바이트`,
+      '',
+      '## 열어보기',
+      '',
+      `\`${previewUrl}\``,
+      '',
+      '서버가 떠 있는 동안 위 주소로 접속하면 바로 열립니다.',
+    ].join('\n');
+  }
+
+  /** 검수용 — 비서실장이 코드를 직접 읽을 수 있게 펼칩니다 */
+  private renderArtifactsForReview(files: ArtifactFile[]): string {
+    return files
+      .map((f) => `### ${f.path}\n\`\`\`${f.language}\n${f.content}\n\`\`\``)
+      .join('\n\n');
   }
 
   private speakAsChief(session: WorkSessionEntity, text: string): void {

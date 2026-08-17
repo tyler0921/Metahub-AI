@@ -4,6 +4,7 @@ import type {
   CreateSessionResponse,
   HealthResponse,
   SessionDetailResponse,
+  SessionSummary,
 } from '@shared';
 import { http } from './http.client';
 
@@ -27,6 +28,8 @@ export const companyService = {
 
   getSession: (id: string): Promise<SessionDetailResponse> =>
     http.get(`/sessions/${id}`),
+
+  listSessions: (): Promise<SessionSummary[]> => http.get('/sessions'),
 
   /** 진행 중인 세션 중단 — 돌고 있는 LLM 호출까지 끊습니다 */
   cancelSession: (id: string): Promise<SessionDetailResponse> =>

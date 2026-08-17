@@ -1,5 +1,6 @@
 import type { PhaseKey } from '@shared';
-import { PHASE_SEQUENCE } from '@/constants/phases';
+import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
+import { deptAbbrev, STATUS_COLOR, STATUS_LABEL } from '@/lib/agent-status';
 import { useSessionStore } from '@/store/session.store';
 import styles from './CoPilotPanel.module.css';
 
@@ -36,7 +37,7 @@ const SMART_PROMPTS: readonly SmartPrompt[] = [
 const phaseLabel = (key: PhaseKey | null): string =>
   PHASE_SEQUENCE.find((p) => p.key === key)?.label ?? '대기';
 
-/** Co-pilot 추천 액션 + 스마트 프롬프트 */
+/** Co-pilot 추천 액션 + 스마트 프롬프트 + 투입 부서 진행 스택 */
 export function CoPilotPanel({
   className,
   theme = 'dark',
@@ -46,6 +47,15 @@ export function CoPilotPanel({
   const currentPhase = useSessionStore((s) => s.currentPhase);
   const result = useSessionStore((s) => s.result);
   const logs = useSessionStore((s) => s.logs);
+  const team = useSessionStore((s) => s.team);
+  const agentMap = useSessionStore((s) => s.agentMap);
+  const avatars = useSessionStore((s) => s.avatars);
+
+  const phaseProgress = currentPhase
+    ? Math.round(((phaseIndexOf(currentPhase) + 1) / PHASE_SEQUENCE.length) * 100)
+    : result
+      ? 100
+      : 0;
 
   const actions: readonly string[] = (() => {
     if (result) {
@@ -64,6 +74,8 @@ export function CoPilotPanel({
     return ['시장 조사 프로젝트 시작', '기술 검토 요청', '마케팅 전략 수립'];
   })();
 
+  const showDeptStack = isRunning && team.length > 0;
+
   return (
     <section
       className={[
@@ -79,6 +91,39 @@ export function CoPilotPanel({
       </header>
 
       <div className={styles.body}>
+        {showDeptStack && (
+          <>
+            <h3 className={styles.sectionLabel}>투입 부서 · {phaseProgress}%</h3>
+            <ul className={styles.deptStack}>
+              {team.map((id) => {
+                const agent = agentMap.get(id);
+                const avatar = avatars.get(id);
+                if (!agent) return null;
+                const status = avatar?.status ?? 'idle';
+                return (
+                  <li key={id} className={styles.deptRow}>
+                    <span className={styles.deptBadge}>{deptAbbrev(agent.dept)}</span>
+                    <div className={styles.deptCopy}>
+                      <strong>{agent.dept}</strong>
+                      <small style={{ color: STATUS_COLOR[status] }}>
+                        {STATUS_LABEL[status]}
+                      </small>
+                    </div>
+                    <span className={styles.deptBar} aria-hidden="true">
+                      <i
+                        style={{
+                          width: `${phaseProgress}%`,
+                          background: STATUS_COLOR[status],
+                        }}
+                      />
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
         <h3 className={styles.sectionLabel}>추천 다음 액션</h3>
         <ul className={styles.actionList}>
           {actions.map((action) => (

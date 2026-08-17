@@ -29,27 +29,30 @@
   background: var(--frame);
 }
 
+/*
+ * 지시 콘솔 — 하단 중앙 도크.
+ *
+ * 펼쳐도 캔버스를 덮지 않도록 폭을 720px 로 묶습니다.
+ * 우측 미니맵·사이드바를 피하려고 가용 폭에서 220px 를 뺍니다.
+ */
 .consoleDock {
   position: absolute;
-  right: 84px;
-  bottom: 16px;
-  left: 84px;
-  z-index: 8;
-  display: flex;
-  justify-content: center;
+  bottom: 18px;
+  left: 50%;
+  z-index: 9;
+  width: min(720px, calc(100% - 220px));
+  transform: translateX(-50%);
+  transition: width 160ms ease;
   pointer-events: none;
 }
 
 .consoleDock > * {
-  pointer-events: auto;
   width: 100%;
-  max-width: 760px;
+  pointer-events: auto;
 }
 
-.consoleDockCollapsed > * {
-  width: 100%;
-  min-width: 360px;
-  max-width: min(640px, calc(100% - 32px));
+.consoleDockCollapsed {
+  width: 420px;
 }
 
 .offlineMain {
@@ -64,14 +67,9 @@
     padding: 0;
   }
 
-  .consoleDock {
-    right: 8px;
+  .consoleDock,
+  .consoleDockCollapsed {
     bottom: 8px;
-    left: 8px;
-  }
-
-  .consoleDockCollapsed > * {
-    max-width: none;
-    width: 100%;
+    width: calc(100% - 16px);
   }
 }

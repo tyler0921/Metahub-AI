@@ -20,6 +20,11 @@ export interface AppConfigResponse {
   vaultRoot: string;
   feedbackRounds: number;
   maxRework: number;
+  autonomousWork: {
+    enabled: boolean;
+    intervalMinutes: number;
+    dailyLimit: number;
+  };
 }
 
 /** POST /api/sessions 요청 본문 */

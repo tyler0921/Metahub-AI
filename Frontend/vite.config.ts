@@ -29,6 +29,12 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+        // 코드형 산출물(랜딩페이지 등)을 iframe 으로 띄우는 경로.
+        // 백엔드가 정적으로 서빙하므로 /api 와 같은 방식으로 넘깁니다.
+        '/workspace': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
       },
       fs: {
         // shared 패키지가 Frontend 폴더 바깥에 있으므로 접근을 허용

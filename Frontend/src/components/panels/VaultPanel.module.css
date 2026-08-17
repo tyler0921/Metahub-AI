@@ -26,7 +26,7 @@
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel-2);
+  background: var(--accent-soft);
   font-size: 12.5px;
 }
 
@@ -41,19 +41,19 @@
 }
 
 .sidebarEmpty {
-  color: var(--sidebar-dim);
+  color: var(--dim-on-dark);
 }
 
 .sidebarRoot {
-  color: var(--sidebar-text);
+  color: var(--text-on-dark);
 }
 
 .sidebarRoot .path,
 .sidebarRoot .date {
-  color: var(--sidebar-dim);
+  color: var(--dim-on-dark);
 }
 
 .sidebarRoot .item {
-  border-color: var(--sidebar-line);
+  border-color: var(--line-dark);
   background: rgb(255 255 255 / 4%);
 }

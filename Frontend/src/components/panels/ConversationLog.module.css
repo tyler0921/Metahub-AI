@@ -15,7 +15,7 @@
   padding: 10px 12px;
   border-left: 3px solid var(--line);
   border-radius: 10px;
-  background: var(--panel-2);
+  background: var(--accent-soft);
   border: 1px solid var(--line);
   animation: slide 0.22s ease-out;
 }
@@ -37,10 +37,11 @@
 }
 
 .who {
-  font-weight: 800;
+  font-weight: 700;
 }
 
-.arrow {
+.arrow,
+.listener {
   color: var(--dim);
 }
 
@@ -48,7 +49,7 @@
   margin-left: auto;
   padding: 2px 7px;
   border-radius: 99px;
-  background: var(--panel-2);
+  background: var(--accent-soft);
   color: var(--dim);
   font-size: 10px;
 }
@@ -70,57 +71,85 @@
 }
 
 .clipped::after {
-  content: '⌄ 더 보기';
+  content: '더 보기';
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
   padding-top: 22px;
-  background: linear-gradient(transparent, var(--panel-2) 55%);
+  background: linear-gradient(transparent, var(--accent-soft) 55%);
   color: var(--accent);
   font-size: 10.5px;
   text-align: center;
 }
 
+/*
+ * 시스템 로그 — 이모지 대신 도형 글리프 + 상태 3색.
+ * 색은 level 이 정하고, 기본(info)은 색을 쓰지 않습니다.
+ */
 .system {
-  margin: 12px 0;
-  padding: 7px;
-  border-top: 1px dashed var(--line);
-  border-bottom: 1px dashed var(--line);
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  margin: 8px 0;
+  padding: 5px 2px;
   color: var(--dim);
   font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.systemGlyph {
+  flex-shrink: 0;
+  width: 12px;
+  font-weight: 700;
   text-align: center;
+}
+
+.info .systemGlyph {
+  color: var(--st-idle);
+}
+
+.ok {
+  color: var(--st-done);
+}
+
+.warn {
+  color: var(--st-talk);
+}
+
+.error {
+  color: var(--danger);
 }
 
 /* ── 사이드바 다크 컨텍스트 ── */
 .sidebarEmpty {
-  color: var(--sidebar-dim);
+  color: var(--dim-on-dark);
 }
 
 .sidebarItem {
   background: rgb(255 255 255 / 4%);
-  border-color: var(--sidebar-line);
+  border-color: var(--line-dark);
 }
 
 .sidebarItem .phase {
   background: rgb(255 255 255 / 8%);
-  color: var(--sidebar-dim);
+  color: var(--dim-on-dark);
 }
 
 .sidebarItem .arrow {
-  color: var(--sidebar-dim);
+  color: var(--dim-on-dark);
 }
 
 .sidebarBody {
   color: rgb(255 255 255 / 78%);
 }
 
-.sidebarSystem {
-  border-color: var(--sidebar-line);
-  color: var(--sidebar-dim);
+/* 다크 컨텍스트에서는 info 만 흐리게 — ok/warn/error 는 상태색을 유지합니다 */
+.sidebarSystem.info {
+  color: var(--dim-on-dark);
 }
 
 .sidebarClipped::after {
-  background: linear-gradient(transparent, rgb(31 38 50 / 96%) 55%);
-  color: #93c5fd;
+  background: linear-gradient(transparent, rgb(35 43 55 / 96%) 55%);
+  color: var(--text-on-dark);
 }

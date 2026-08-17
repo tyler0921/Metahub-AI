@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
+import { AgentDetailPanel } from '@/components/panels/AgentDetailPanel';
 import { CoPilotPanel } from '@/components/panels/CoPilotPanel';
-import { ConversationLog } from '@/components/panels/ConversationLog';
 import { DeliverablePanel } from '@/components/panels/DeliverablePanel';
+import { TaskBoardPanel } from '@/components/panels/TaskBoardPanel';
 import { VaultPanel } from '@/components/panels/VaultPanel';
+import { UsagePanel } from '@/components/panels/UsagePanel';
+import { WorkTimeline } from '@/components/panels/WorkTimeline';
 import { useSessionStore } from '@/store/session.store';
 import styles from './WorkspaceSidebar.module.css';
 
-export type WorkspaceTabKey = 'log' | 'result' | 'vault';
+export type WorkspaceTabKey = 'tasks' | 'log' | 'result' | 'vault';
 
 const TABS: ReadonlyArray<{ key: WorkspaceTabKey; label: string }> = [
-  { key: 'log', label: '대화' },
+  { key: 'tasks', label: '업무' },
+  { key: 'log', label: '진행' },
   { key: 'result', label: '산출물' },
   { key: 'vault', label: '문서' },
 ];
@@ -33,6 +37,8 @@ export function WorkspaceSidebar({
   const result = useSessionStore((s) => s.result);
   const isRunning = useSessionStore((s) => s.isRunning);
   const agents = useSessionStore((s) => s.agents);
+  const selectedAgentId = useSessionStore((s) => s.selectedAgentId);
+  const selectAgent = useSessionStore((s) => s.selectAgent);
   const logCount = useSessionStore((s) => s.logs.length);
   const workingCount = useSessionStore((s) =>
     [...s.avatars.values()].filter((avatar) =>
@@ -70,8 +76,15 @@ export function WorkspaceSidebar({
     if (!openTab || openRequestId === 0) return;
     setActiveTab(openTab);
     setDrawerOpen(true);
+    // 레일에서 탭을 고른 건 "목록으로 돌아가겠다"는 뜻입니다
+    selectAgent(null);
     if (openTab === 'log') setUnreadCount(0);
-  }, [openTab, openRequestId]);
+  }, [openTab, openRequestId, selectAgent]);
+
+  // 캔버스에서 직원을 클릭하면 패널이 닫혀 있어도 열어 상세를 보여줍니다
+  useEffect(() => {
+    if (selectedAgentId) setDrawerOpen(true);
+  }, [selectedAgentId]);
 
   const selectTab = (tab: WorkspaceTabKey): void => {
     setActiveTab(tab);
@@ -106,31 +119,51 @@ export function WorkspaceSidebar({
           <strong>팀 활동</strong>
         </div>
         <div className={styles.headerMeta}>
-          <span><i />{isRunning ? `${workingCount}명 작업 중` : `${agents.length}명 온라인`}</span>
-          <button type="button" aria-label="활동 패널 닫기" onClick={() => setDrawerOpen(false)}>✕</button>
+          <span>
+            <i className={isRunning ? styles.dotWorking : styles.dotOnline} />
+            {isRunning ? `${workingCount}명 작업 중` : `${agents.length}명 온라인`}
+          </span>
+          <button type="button" aria-label="활동 패널 닫기" onClick={() => setDrawerOpen(false)}>
+            <span aria-hidden="true">×</span>
+          </button>
         </div>
       </header>
 
-      <div className={styles.tabs} role="tablist" aria-label="업무 보기">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            className={activeTab === tab.key ? styles.activeTab : ''}
-            onClick={() => selectTab(tab.key)}
-          >
-            {tab.label}
-            {tab.key === 'log' && unreadCount > 0 && <b>{unreadCount}</b>}
-          </button>
-        ))}
-      </div>
+      {/* 직원 상세를 보는 동안에는 탭을 숨깁니다 — 되돌아갈 길은 패널 안에 있습니다 */}
+      {!selectedAgentId && (
+        <div className={styles.tabs} role="tablist" aria-label="업무 보기">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={activeTab === tab.key ? styles.activeTab : ''}
+              onClick={() => selectTab(tab.key)}
+            >
+              {tab.label}
+              {tab.key === 'log' && unreadCount > 0 && <b>{unreadCount}</b>}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className={styles.body} role="tabpanel" data-scroll-root>
-        {activeTab === 'log' && <ConversationLog theme="light" />}
-        {activeTab === 'result' && <DeliverablePanel theme="light" />}
-        {activeTab === 'vault' && <VaultPanel theme="light" />}
+        {selectedAgentId ? (
+          <AgentDetailPanel
+            agentId={selectedAgentId}
+            onBack={() => selectAgent(null)}
+            onSelectBrief={onSelectBrief}
+          />
+        ) : (
+          <>
+            {activeTab === 'tasks' && <TaskBoardPanel />}
+            {activeTab === 'log' && <WorkTimeline />}
+            {activeTab === 'result' && <DeliverablePanel theme="light" />}
+            {activeTab === 'vault' && <VaultPanel theme="light" />}
+            <UsagePanel />
+          </>
+        )}
       </div>
 
       <CoPilotPanel

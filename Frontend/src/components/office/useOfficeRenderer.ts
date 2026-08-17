@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import type { AgentId } from '@shared';
+import type { AgentId, SpeechEvent } from '@shared';
 import { useSessionStore } from '@/store/session.store';
 import { DEPARTMENT_ZONES } from './office-map';
 import { STAFF_SEATS } from './office-staff';
 import { OfficeRenderer, ZOOM_DEFAULT, type NearbyInfo, type ZoneInfo } from './office-renderer';
+import type { ActorPosition } from './OfficeMinimap';
 import { loadSpriteAssets } from './sprites';
 
 interface OfficeBinding {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   stageRef: RefObject<HTMLDivElement | null>;
   anchors: Map<string, { left: number; top: number }>;
+  positions: ReadonlyMap<string, ActorPosition>;
+  ambientSpeeches: SpeechEvent[];
   nearby: NearbyInfo | null;
   currentZone: ZoneInfo | null;
   isLoading: boolean;
@@ -43,6 +46,8 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
   const rendererRef = useRef<OfficeRenderer | null>(null);
 
   const [anchors, setAnchors] = useState<Map<string, { left: number; top: number }>>(new Map());
+  const [positions, setPositions] = useState<ReadonlyMap<string, ActorPosition>>(new Map());
+  const [ambientSpeeches, setAmbientSpeeches] = useState<SpeechEvent[]>([]);
   const [nearby, setNearby] = useState<NearbyInfo | null>(null);
   const [currentZone, setCurrentZone] = useState<ZoneInfo | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -70,6 +75,15 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
           onNearbyChange: setNearby,
           onZoneChange: setCurrentZone,
           onZoomChange: (current, base) => setZoom({ current, base }),
+          onActorPositions: setPositions,
+          onAmbientSpeech: (event) => {
+            const cutoff = Date.now() - 14_000;
+            setAmbientSpeeches((current) =>
+              [...current.filter((speech) => speech.at >= cutoff), event].slice(-8),
+            );
+          },
+          // 클릭은 스토어로 바로 보냅니다 — 사이드바가 그 값을 보고 상세로 전환합니다
+          onActorSelect: (agentId) => useSessionStore.getState().selectAgent(agentId),
         });
         rendererRef.current = renderer;
 
@@ -93,6 +107,9 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
         setLoading(false);
 
         let lastPhase: string | null = null;
+        let lastTeamKey = '';
+        let lastToolKey = '';
+        let lastAlert = false;
         const lastSignature = new Map<AgentId, string>();
 
         unsubscribe = useSessionStore.subscribe((state) => {
@@ -108,17 +125,52 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
             if (avatar.talkingTo) renderer.faceToward(id, avatar.talkingTo);
           }
 
+          // 도구 아이콘 — Map 내용을 키로 비교해 바뀐 때만 반영합니다
+          const toolKey = [...state.activeTools.entries()]
+            .map(([id, t]) => `${id}:${t.tool}:${t.label}`)
+            .sort()
+            .join('|');
+          if (toolKey !== lastToolKey) {
+            lastToolKey = toolKey;
+            for (const id of SEATS.keys()) {
+              const active = state.activeTools.get(id);
+              renderer.setTool(id, active?.tool ?? null, active?.label ?? '');
+            }
+          }
+
+          const alertOn = Boolean(state.errorMessage);
+          if (alertOn !== lastAlert) {
+            lastAlert = alertOn;
+            renderer.setSessionAlert(alertOn);
+          }
+
+          // 투입 부서가 정해지면 나머지 구역의 조명을 낮춥니다
+          const teamKey = state.team.join(',');
+          if (teamKey !== lastTeamKey) {
+            lastTeamKey = teamKey;
+            renderer.setActiveTeams(state.isRunning ? state.team : []);
+          }
+
           const phase = state.currentPhase;
           if (phase !== lastPhase) {
             lastPhase = phase;
             const inMeeting = phase !== null && MEETING_PHASES.has(phase);
-            const team = [...state.avatars.keys()].filter((id) =>
-              state.logs.some((l) => l.kind === 'speech' && l.event.agent === id),
-            );
+            const team =
+              state.team.length > 0
+                ? state.team
+                : [...state.avatars.keys()].filter((id) =>
+                    state.logs.some((l) => l.kind === 'speech' && l.event.agent === id),
+                  );
             renderer.setMeetingMode(inMeeting, team, SEATS);
           }
 
-          if (!state.isRunning && state.logs.length === 0) renderer.resetAll(SEATS);
+          if (!state.isRunning && state.logs.length === 0) {
+            renderer.resetAll(SEATS);
+            renderer.setActiveTeams([]);
+            lastTeamKey = '';
+            lastToolKey = '';
+            lastAlert = false;
+          }
         });
       })
       .catch((err: unknown) => {
@@ -137,7 +189,10 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
   }, [agents]);
 
   // 말풍선이 떠 있는 대상만 좌표를 계산하게 해 불필요한 리렌더를 막습니다
-  const anchorKey = anchorIds.join(',');
+  const ambientAnchorIds = ambientSpeeches.flatMap((speech) =>
+    speech.to ? [speech.agent, speech.to] : [speech.agent],
+  );
+  const anchorKey = [...new Set([...anchorIds, ...ambientAnchorIds])].join(',');
   useEffect(() => {
     rendererRef.current?.setAnchorTargets(anchorKey ? anchorKey.split(',') : []);
   }, [anchorKey, isLoading]);
@@ -146,6 +201,8 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     canvasRef,
     stageRef,
     anchors,
+    positions,
+    ambientSpeeches,
     nearby,
     currentZone,
     isLoading,

@@ -20,32 +20,32 @@ export interface OfficeStaffSeat {
 /** 부서별 팀원 좌석 (팀장 좌석은 `ZONES[].seat`) */
 export const STAFF_SEATS: readonly OfficeStaffSeat[] = [
   // ── 비서실
-  { id: 'chief-senior', sprite: 'chief', seat: { x: 28, y: 5 }, facing: 'down' },
-  { id: 'chief-junior', sprite: 'chief', seat: { x: 36, y: 5 }, facing: 'down' },
+  { id: 'chief-senior', sprite: 'chief', seat: { x: 24, y: 7 }, facing: 'down' },
+  { id: 'chief-junior', sprite: 'chief', seat: { x: 30, y: 7 }, facing: 'down' },
 
   // ── 리서치팀
-  { id: 'researcher-senior', sprite: 'researcher', seat: { x: 21, y: 16 }, facing: 'up' },
-  { id: 'researcher-junior', sprite: 'researcher', seat: { x: 25, y: 16 }, facing: 'up' },
+  { id: 'researcher-senior', sprite: 'researcher', seat: { x: 5, y: 8 }, facing: 'up' },
+  { id: 'researcher-junior', sprite: 'researcher', seat: { x: 13, y: 8 }, facing: 'up' },
 
   // ── 개발팀
-  { id: 'dev-senior', sprite: 'dev', seat: { x: 39, y: 16 }, facing: 'up' },
-  { id: 'dev-junior', sprite: 'dev', seat: { x: 43, y: 16 }, facing: 'up' },
+  { id: 'dev-senior', sprite: 'dev', seat: { x: 5, y: 18 }, facing: 'up' },
+  { id: 'dev-junior', sprite: 'dev', seat: { x: 11, y: 18 }, facing: 'up' },
 
   // ── 기획팀
-  { id: 'planner-senior', sprite: 'planner', seat: { x: 30, y: 16 }, facing: 'up' },
-  { id: 'planner-junior', sprite: 'planner', seat: { x: 34, y: 16 }, facing: 'up' },
+  { id: 'planner-senior', sprite: 'planner', seat: { x: 4, y: 28 }, facing: 'up' },
+  { id: 'planner-junior', sprite: 'planner', seat: { x: 10, y: 28 }, facing: 'up' },
 
   // ── 문서팀
-  { id: 'writer-senior', sprite: 'writer', seat: { x: 39, y: 27 }, facing: 'up' },
-  { id: 'writer-junior', sprite: 'writer', seat: { x: 43, y: 27 }, facing: 'up' },
+  { id: 'writer-senior', sprite: 'writer', seat: { x: 30, y: 19 }, facing: 'up' },
+  { id: 'writer-junior', sprite: 'writer', seat: { x: 34, y: 19 }, facing: 'up' },
 
   // ── 마케팅팀
-  { id: 'marketer-senior', sprite: 'marketer', seat: { x: 21, y: 27 }, facing: 'up' },
-  { id: 'marketer-junior', sprite: 'marketer', seat: { x: 25, y: 27 }, facing: 'up' },
+  { id: 'marketer-senior', sprite: 'marketer', seat: { x: 41, y: 18 }, facing: 'up' },
+  { id: 'marketer-junior', sprite: 'marketer', seat: { x: 47, y: 18 }, facing: 'up' },
 
   // ── 재무팀
-  { id: 'finance-senior', sprite: 'finance', seat: { x: 30, y: 27 }, facing: 'up' },
-  { id: 'finance-junior', sprite: 'finance', seat: { x: 34, y: 27 }, facing: 'up' },
+  { id: 'finance-senior', sprite: 'finance', seat: { x: 17, y: 19 }, facing: 'up' },
+  { id: 'finance-junior', sprite: 'finance', seat: { x: 21, y: 19 }, facing: 'up' },
 ];
 
 /** id → 좌석 (렌더러가 백엔드 직원 목록과 맞출 때 씁니다) */

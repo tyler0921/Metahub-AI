@@ -71,9 +71,41 @@ export type PhaseKey =
   | 'draft'
   | 'feedback'
   | 'revise'
+  /** 문서형 — 문서팀이 원고를 하나로 합칩니다 */
   | 'integrate'
+  /** 코드형 — 개발팀이 실행 가능한 파일을 만듭니다 */
+  | 'build'
   | 'review'
   | 'save';
+
+/**
+ * 산출물의 종류.
+ *
+ * `document` 는 읽는 것이 목적인 보고서·기획안이고,
+ * `website` 는 **브라우저에서 바로 열리는 파일 묶음**입니다.
+ * 이 값에 따라 파이프라인의 5단계가 통합(integrate)이 될지
+ * 빌드(build)가 될지 갈립니다.
+ */
+export type DeliverableKind = 'document' | 'website';
+
+/** 코드형 산출물이 만들어낸 파일 하나 */
+export interface ArtifactFile {
+  /** 프로젝트 폴더 기준 상대경로 (예: `index.html`, `assets/style.css`) */
+  path: string;
+  language: string;
+  content: string;
+  bytes: number;
+}
+
+/**
+ * 파일 메타데이터만 담은 형태.
+ * 내용까지 SSE 로 흘리면 스트림이 무거워지므로 진행 중에는 이것만 보냅니다.
+ */
+export interface ArtifactSummary {
+  path: string;
+  language: string;
+  bytes: number;
+}
 
 /** 아바타 상태 */
 export type AgentStatus = 'idle' | 'thinking' | 'talking' | 'done';
@@ -98,6 +130,8 @@ export interface WorkPlan {
   goal: string;
   successCriteria: string[];
   deliverable: string;
+  /** 보고서를 쓸 일인지, 실제로 만들 일인지 */
+  kind: DeliverableKind;
   assignments: Assignment[];
 }
 
@@ -129,7 +163,18 @@ export interface Deliverable {
   /** 이 산출물을 고쳐 만든 원본 세션 (후속 지시인 경우) */
   parentSessionId?: string;
   brief: string;
+  kind: DeliverableKind;
+  /**
+   * 문서형이면 산출물 본문 그 자체이고,
+   * 코드형이면 무엇을 만들었는지 설명하는 요약문입니다.
+   */
   body: string;
+  /** 코드형에서 실제로 만들어진 파일들 (문서형은 빈 배열) */
+  artifacts: ArtifactFile[];
+  /** 브라우저로 열어볼 수 있는 주소 — 코드형에서만 채워집니다 */
+  previewUrl: string | null;
+  /** workspace/ 아래 프로젝트 폴더명 — 코드형에서만 채워집니다 */
+  workspaceFolder: string | null;
   review: ReviewResult | null;
   plan: WorkPlan;
   team: AgentId[];

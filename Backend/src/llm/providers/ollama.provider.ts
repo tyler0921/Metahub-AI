@@ -21,6 +21,21 @@ interface OllamaResponse {
 }
 
 /**
+ * 추론 모델이 흘린 사고 과정을 걷어냅니다.
+ *
+ * `think: false` 를 붙여도 구버전 Ollama 나 일부 모델은 본문에 `<think>` 를
+ * 그대로 섞어 보냅니다. 이걸 안 걷어내면 사고 과정이 산출물 파일이나
+ * Obsidian 노트에 그대로 저장됩니다.
+ */
+function stripThinking(text: string): string {
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // 닫는 태그만 남은 경우 — 그 앞은 전부 사고 과정입니다
+    .replace(/^[\s\S]*?<\/think>/i, '')
+    .trim();
+}
+
+/**
  * Ollama 어댑터 — 내 PC 에서 도는 로컬 모델.
  *
  * API 키도, 요청 한도도, 토큰 비용도 없습니다. 대신 속도가 하드웨어에 달려 있고,
@@ -31,6 +46,8 @@ interface OllamaResponse {
  *    Ollama 는 요청을 직렬 처리하므로 병렬로 던지면 큐에 쌓여 오히려 느려집니다.
  *  - JSON 강제는 `format: 'json'` 으로 합니다.
  *  - 서버가 안 떠 있으면 ECONNREFUSED 가 나므로, 그 경우 설치·실행 방법을 안내합니다.
+ *  - qwen3 계열은 추론(thinking) 모델이라 `<think>` 블록을 앞에 답니다.
+ *    `think: false` 로 끄고, 그래도 새어 나오면 응답에서 걷어냅니다.
  */
 export class OllamaProvider implements LlmProvider {
   readonly name = 'ollama';
@@ -60,6 +77,8 @@ export class OllamaProvider implements LlmProvider {
     const body = {
       model: this.config.model,
       stream: false,
+      // 추론 모델의 사고 과정은 산출물에 필요 없습니다 (지원 안 하는 모델은 무시)
+      think: false,
       ...(wantsJson ? { format: 'json' } : {}),
       messages: [
         { role: 'system', content: request.system },
@@ -68,6 +87,8 @@ export class OllamaProvider implements LlmProvider {
       options: {
         temperature: request.temperature ?? 0.7,
         num_predict: request.maxTokens ?? 4000,
+        // 지정하지 않으면 4096 으로 잘려 프롬프트 앞부분이 사라집니다
+        num_ctx: this.config.contextWindow,
       },
     };
 
@@ -82,7 +103,7 @@ export class OllamaProvider implements LlmProvider {
     }
 
     return {
-      text: (response.message?.content ?? '').trim(),
+      text: stripThinking(response.message?.content ?? ''),
       usage: {
         inputTokens: response.prompt_eval_count ?? 0,
         outputTokens: response.eval_count ?? 0,

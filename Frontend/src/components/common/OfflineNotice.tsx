@@ -12,7 +12,7 @@ export function OfflineNotice({
 }: OfflineNoticeProps): React.JSX.Element {
   return (
     <div className={styles.notice} role="alert">
-      <b className={styles.title}>⚠️ Backend 서버에 연결할 수 없습니다.</b>
+      <b className={styles.title}>Backend 서버에 연결할 수 없습니다.</b>
 
       <p>다른 터미널에서 아래를 실행하세요.</p>
       <pre className={styles.code}>{'cd Backend\nnpm run start:dev'}</pre>
