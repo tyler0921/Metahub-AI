@@ -29,6 +29,8 @@ const ZOOM_STEP_PERCENT = 5;
  * 걷기 프레임(1, 3)을 번갈아 쓰면 팔이 미세하게 움직여 보입니다.
  */
 const TYPING_FRAMES = [0, 1, 0, 3] as const;
+/** 좌석 좌표는 이동용 발 위치이므로, 착석 렌더링은 의자 안쪽으로 올립니다. */
+const SEATED_FOOT_LIFT = TILE * 0.58;
 
 /**
  * 대기 직원이 잠깐 다녀오는 휴게 지점 (타일 좌표).
@@ -860,6 +862,20 @@ export class OfficeRenderer {
     };
   }
 
+  /**
+   * 맵의 좌석 좌표는 길찾기 도착점이라 앞쪽 벽 가까이에 있습니다.
+   * 그대로 전신을 그리면 직원의 다리가 벽 위로 튀어나오므로,
+   * 자기 자리에 멈춰 있는 동안에만 표시 기준점을 의자 쪽으로 올립니다.
+   */
+  private visualFootPx(actor: Actor): { x: number; y: number } {
+    const foot = this.footPx(actor);
+    const atHome = actor.homeX !== undefined && actor.homeY !== undefined &&
+      Math.hypot(actor.x - actor.homeX, actor.y - actor.homeY) < 0.35;
+    const seated = !actor.isPlayer && !actor.moving && !actor.atLeisure &&
+      !actor.ambientPartner && atHome;
+    return seated ? { x: foot.x, y: foot.y - SEATED_FOOT_LIFT } : foot;
+  }
+
   private screenToTile(sx: number, sy: number): { x: number; y: number } {
     const worldX = sx / this.zoom + this.camX;
     const worldY = sy / this.zoom + this.camY;
@@ -999,7 +1015,7 @@ export class OfficeRenderer {
   private drawActor(actor: Actor): void {
     const { ctx, assets } = this;
     const { frameWidth, frameHeight } = assets.manifest.characters;
-    const foot = this.footPx(actor);
+    const foot = this.visualFootPx(actor);
 
     // 자리에 앉아 일하는 중이면 책상 쪽(위)을 보고 타자 치듯 미세하게 움직입니다
     const atDesk = actor.homeX !== undefined && actor.homeY !== undefined &&
@@ -1041,40 +1057,6 @@ export class OfficeRenderer {
     ctx.beginPath();
     ctx.ellipse(foot.x, foot.y - 2, w * 0.28, w * 0.13, 0, 0, Math.PI * 2);
     ctx.fill();
-    // 검은 신발이 짙은 벽·가구와 겹쳐 다리가 잘린 것처럼 보이지 않게
-    // 발밑 기준선을 밝게 한 번 더 잡습니다.
-    ctx.globalAlpha = actor.isPlayer ? 0.72 : 0.34;
-    ctx.strokeStyle = actor.isPlayer ? '#a9a3ff' : '#f4f6fa';
-    ctx.lineWidth = actor.isPlayer ? 1.5 : 1;
-    ctx.stroke();
-    ctx.restore();
-
-    // 원본 캐릭터를 바꾸지 않고 런타임에서 하체에만 1px 픽셀 외곽선을 만듭니다.
-    // 얼굴과 머리까지 테두리를 두르면 스티커처럼 보여 기준 이미지의 인상이 깨집니다.
-    // 기본 줌(약 50%)에서는 2 world px가 화면의 1px 정도가 됩니다.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(drawX - 3, drawY + h * 0.55, w + 6, h * 0.45 + 4);
-    ctx.clip();
-    ctx.globalAlpha = actor.isPlayer ? 0.64 : 0.42;
-    ctx.filter = 'brightness(0) invert(1)';
-    const outlineOffsets = [
-      [-2, 0], [2, 0], [0, -2], [0, 2],
-      [-1, -1], [1, -1], [-1, 1], [1, 1],
-    ] as const;
-    for (const [ox, oy] of outlineOffsets) {
-      ctx.drawImage(
-        assets.characters,
-        rect.x,
-        rect.y,
-        rect.w,
-        rect.h,
-        drawX + ox,
-        drawY + oy,
-        w,
-        h,
-      );
-    }
     ctx.restore();
 
     ctx.drawImage(assets.characters, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
@@ -1246,7 +1228,7 @@ export class OfficeRenderer {
     for (const id of this.anchorTargets) {
       const actor = this.actors.get(id);
       if (!actor) continue;
-      const foot = this.footPx(actor);
+      const foot = this.visualFootPx(actor);
       const point = {
         left: (foot.x - this.camX) * this.zoom,
         top: (foot.y - this.camY) * this.zoom - 58,
