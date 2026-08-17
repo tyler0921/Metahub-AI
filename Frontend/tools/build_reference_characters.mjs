@@ -29,11 +29,54 @@ function alphaAt(x, y) {
   return pixels[(y * source.width + x) * 4 + 3] ?? 0;
 }
 
+function occupiedRuns(length, occupiedAt) {
+  const runs = [];
+  let start = -1;
+  for (let index = 0; index < length; index += 1) {
+    const occupied = occupiedAt(index);
+    if (occupied && start < 0) start = index;
+    if (!occupied && start >= 0) {
+      runs.push([start, index - 1]);
+      start = -1;
+    }
+  }
+  if (start >= 0) runs.push([start, length - 1]);
+  return runs;
+}
+
+// 이미지 생성 결과의 캐릭터 행은 정확히 같은 높이가 아닙니다.
+// source.height / 8 로 자르면 행마다 16~29px의 발이 다음 셀 경계 밖으로
+// 나가므로, 실제 불투명 픽셀 띠를 기준으로 8개 행을 찾습니다.
+const rowRuns = occupiedRuns(source.height, (y) => {
+  for (let x = 0; x < source.width; x += 1) {
+    if (alphaAt(x, y) >= 24) return true;
+  }
+  return false;
+});
+
+if (rowRuns.length !== ROLES.length) {
+  throw new Error(`Expected ${ROLES.length} character rows, found ${rowRuns.length}`);
+}
+
+const columnRunsByRow = rowRuns.map(([y0, y1], row) => {
+  const runs = occupiedRuns(source.width, (x) => {
+    for (let y = y0; y <= y1; y += 1) {
+      if (alphaAt(x, y) >= 24) return true;
+    }
+    return false;
+  });
+  if (runs.length !== DIRECTIONS) {
+    throw new Error(`Expected ${DIRECTIONS} directions in row ${row}, found ${runs.length}`);
+  }
+  return runs;
+});
+
 function contentBounds(column, row) {
-  const x0 = Math.floor(column * source.width / 4);
-  const x1 = Math.floor((column + 1) * source.width / 4) - 1;
-  const y0 = Math.floor(row * source.height / ROLES.length);
-  const y1 = Math.floor((row + 1) * source.height / ROLES.length) - 1;
+  const rowRun = rowRuns[row];
+  const columnRun = columnRunsByRow[row]?.[column];
+  if (!rowRun || !columnRun) throw new Error(`Missing source cell ${column},${row}`);
+  const [x0, x1] = columnRun;
+  const [y0, y1] = rowRun;
   let left = x1;
   let right = x0;
   let top = y1;
