@@ -4,6 +4,7 @@ import type { AutonomousWorkStatusResponse, SessionEvent } from '@shared';
 import type { Subscription } from 'rxjs';
 import type { AutonomousWorkConfig } from '../config/configuration';
 import { AutonomousStateStore } from './autonomous-state.store';
+import { AutonomousInboxStore } from './autonomous-inbox.store';
 import { SessionRepository } from './repositories/session.repository';
 import { WorkflowService } from './workflow.service';
 
@@ -28,6 +29,7 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
   constructor(
     config: ConfigService,
     private readonly stateStore: AutonomousStateStore,
+    private readonly inbox: AutonomousInboxStore,
     private readonly sessions: SessionRepository,
     private readonly workflow: WorkflowService,
   ) {
@@ -59,6 +61,7 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
   getStatus(): AutonomousWorkStatusResponse {
     this.stateStore.syncDay();
     const state = this.stateStore.snapshot();
+    const inbox = this.inbox.snapshot();
     return {
       configured: this.config.enabled,
       enabled: this.config.enabled && !state.paused,
@@ -70,6 +73,8 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
       lastRunAt: state.lastRunAt,
       lastSessionId: state.lastSessionId,
       activeSession: this.sessions.findActive()?.toSummary() ?? null,
+      queuedCount: inbox.backlog.filter((item) => item.status === 'queued').length,
+      pendingApprovalCount: inbox.approvals.filter((item) => item.status === 'pending').length,
     };
   }
 
@@ -119,8 +124,10 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
 
   private startAutonomousSession(): void {
     const state = this.stateStore.snapshot();
-    const brief = chooseAutonomousBrief(state.recentBriefs);
+    const backlogItem = this.inbox.nextQueued();
+    const brief = backlogItem?.brief ?? chooseAutonomousBrief(state.recentBriefs);
     const session = this.workflow.createSession(brief);
+    if (backlogItem) this.inbox.markStarted(backlogItem.id, session.id);
     this.stateStore.recordRun(brief, session.id);
     this.stateStore.setNextRunAt(null);
     this.logger.log(`자율 업무를 시작했습니다: ${session.id}`);
@@ -130,8 +137,13 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
       if (finished) return;
       if (event.type !== 'done' && event.type !== 'error' && event.type !== 'cancelled') return;
       finished = true;
-      if (event.type === 'done') this.stateStore.recordSuccess();
-      else this.stateStore.recordFailure();
+      if (event.type === 'done') {
+        this.stateStore.recordSuccess();
+        this.inbox.requestApproval(session.id, brief);
+      } else {
+        this.stateStore.recordFailure();
+      }
+      if (backlogItem) this.inbox.markFinished(backlogItem.id, event.type === 'done');
       this.clearSessionWatch();
       const failures = this.stateStore.snapshot().consecutiveFailures;
       const backoff = Math.min(this.config.intervalMs * 2 ** failures, 6 * 60 * 60 * 1000);

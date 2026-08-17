@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AutonomousInbox } from './AutonomousInbox';
 import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
 import { formatElapsed } from '@/lib/format-elapsed';
 import { estimateCost, formatUsd } from '@/lib/llm-cost';
@@ -32,6 +33,7 @@ export function ProjectStatusBar(): React.JSX.Element {
   );
   const [now, setNow] = useState(() => Date.now());
   const autonomous = useAutonomousWork();
+  const [inboxOpen, setInboxOpen] = useState(false);
 
   useEffect(() => {
     if (!running) return;
@@ -133,6 +135,17 @@ export function ProjectStatusBar(): React.JSX.Element {
               지금 실행
             </button>
           )}
+          <button
+            type="button"
+            className={styles.inboxButton}
+            onClick={() => setInboxOpen((open) => !open)}
+            aria-expanded={inboxOpen}
+          >
+            업무함
+            {(autonomous.status.queuedCount + autonomous.status.pendingApprovalCount) > 0 && (
+              <b>{autonomous.status.queuedCount + autonomous.status.pendingApprovalCount}</b>
+            )}
+          </button>
         </span>
       )}
 
@@ -167,6 +180,7 @@ export function ProjectStatusBar(): React.JSX.Element {
       <span className={styles.progressTrack} aria-hidden="true">
         <i />
       </span>
+      <AutonomousInbox open={inboxOpen} onClose={() => setInboxOpen(false)} />
     </header>
   );
 }

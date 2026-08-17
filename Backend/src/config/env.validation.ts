@@ -88,6 +88,7 @@ const envSchema = z.object({
     z.coerce.number().int().min(60_000).optional(),
   ),
   AUTONOMOUS_WORK_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+  AUTONOMOUS_WORK_INBOX_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -48,13 +48,16 @@ test('authenticated HTTP workflow streams and survives an application restart', 
     NODE_ENV: 'test',
     AI_PROVIDER: 'mock',
     ADMIN_TOKEN,
-    AUTONOMOUS_WORK_ENABLED: 'false',
+    AUTONOMOUS_WORK_ENABLED: 'true',
+    AUTONOMOUS_WORK_STARTUP_DELAY_MS: '600000',
+    AUTONOMOUS_WORK_INTERVAL_MS: '600000',
     FEEDBACK_ROUNDS: '0',
     MAX_REWORK: '0',
     WORKFLOW_REFLECT: 'false',
     SESSION_DATABASE_PATH: join(tempDir, 'sessions.sqlite'),
     LLM_BUDGET_STATE_PATH: join(tempDir, 'llm-budget.json'),
     AUTONOMOUS_WORK_STATE_PATH: join(tempDir, 'autonomous-work.json'),
+    AUTONOMOUS_WORK_INBOX_PATH: join(tempDir, 'autonomous-inbox.json'),
     OBSIDIAN_VAULT: join(tempDir, 'vault'),
     WORKSPACE_PATH: join(tempDir, 'workspace'),
   });
@@ -103,6 +106,51 @@ test('authenticated HTTP workflow streams and survives an application restart', 
     const eventText = await stream.text();
     assert.match(eventText, /"type":"done"/);
 
+    const backlogResponse = await fetch(`${first.baseUrl}/autonomous-work/backlog`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${ADMIN_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ brief: 'Run the queued autonomous integration task.', priority: 5 }),
+    });
+    assert.equal(backlogResponse.status, 201);
+    const backlog = await backlogResponse.json();
+
+    const runResponse = await fetch(`${first.baseUrl}/autonomous-work/run-now`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${ADMIN_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      body: '{}',
+    });
+    assert.equal(runResponse.status, 201);
+    const runStatus = await runResponse.json();
+    assert.ok(runStatus.activeSession?.id);
+    await waitForCompletion(first.baseUrl, runStatus.activeSession.id);
+
+    const inboxResponse = await fetch(`${first.baseUrl}/autonomous-work/inbox`);
+    const inbox = await inboxResponse.json();
+    assert.equal(inbox.backlog.find((item) => item.id === backlog.id)?.status, 'completed');
+    const approval = inbox.approvals.find(
+      (item) => item.sessionId === runStatus.activeSession.id,
+    );
+    assert.equal(approval?.status, 'pending');
+
+    const approveResponse = await fetch(
+      `${first.baseUrl}/autonomous-work/approvals/${approval.id}/approve`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${ADMIN_TOKEN}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ note: 'E2E approved' }),
+      },
+    );
+    assert.equal(approveResponse.status, 201);
+
     await first.app.close();
     first = undefined;
 
@@ -112,6 +160,11 @@ test('authenticated HTTP workflow streams and survives an application restart', 
     const restoredDetail = await restored.json();
     assert.equal(restoredDetail.session.status, 'completed');
     assert.equal(restoredDetail.result.sessionId, created.session.id);
+    const restoredInbox = await (await fetch(`${second.baseUrl}/autonomous-work/inbox`)).json();
+    assert.equal(
+      restoredInbox.approvals.find((item) => item.id === approval.id)?.status,
+      'approved',
+    );
   } finally {
     if (first) await first.app.close();
     if (second) await second.app.close();

@@ -122,7 +122,8 @@
 }
 
 .autonomousToggle,
-.runNow {
+.runNow,
+.inboxButton {
   min-height: 25px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: var(--radius-pill);
@@ -168,6 +169,22 @@
 .runNow {
   padding: 3px 8px;
   color: var(--text-on-dark);
+}
+
+.inboxButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+}
+
+.inboxButton b {
+  min-width: 15px;
+  border-radius: var(--radius-pill);
+  background: #8f6fff;
+  color: white;
+  font-size: 9px;
+  line-height: 15px;
 }
 
 .autonomousToggle:hover:not(:disabled),

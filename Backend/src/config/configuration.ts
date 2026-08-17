@@ -73,6 +73,7 @@ export interface AutonomousWorkConfig {
   dailyLimit: number;
   maxSessionMs: number;
   statePath: string;
+  inboxPath: string;
 }
 
 const toInt = (value: string | undefined, fallback: number): number => {
@@ -253,6 +254,9 @@ export const autonomousWorkConfig = registerAs(
     statePath:
       process.env.AUTONOMOUS_WORK_STATE_PATH?.trim() ||
       path.join(PROJECT_ROOT, 'data', 'autonomous-work.json'),
+    inboxPath:
+      process.env.AUTONOMOUS_WORK_INBOX_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'autonomous-inbox.json'),
   }),
 );
 
