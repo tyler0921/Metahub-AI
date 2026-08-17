@@ -17,7 +17,9 @@
     "start:backend": "npm --workspace @ai-company/backend run start:prod",
     "preview": "npm --workspace @ai-company/frontend run preview",
     "runtime:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/metahub-supervisor.ps1",
-    "runtime:build-start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/metahub-supervisor.ps1 -Build"
+    "runtime:build-start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/metahub-supervisor.ps1 -Build",
+    "runtime:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runtime-status.ps1",
+    "verify": "npm run typecheck && npm --workspace @ai-company/backend test && npm --workspace @ai-company/frontend run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
