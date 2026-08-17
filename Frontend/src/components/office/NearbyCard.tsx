@@ -8,6 +8,7 @@ interface NearbyCardProps {
   info: NearbyInfo;
   expanded: boolean;
   onExpand: () => void;
+  onClose: () => void;
   onSelectBrief: (brief: string) => void;
 }
 
@@ -19,6 +20,7 @@ export function NearbyCard({
   info,
   expanded,
   onExpand,
+  onClose,
   onSelectBrief,
 }: NearbyCardProps): React.JSX.Element | null {
   const agent = useSessionStore((s) => s.agentMap.get(info.agentId));
@@ -50,7 +52,10 @@ export function NearbyCard({
     Boolean(assignment);
 
   return (
-    <aside className={`${styles.card} ${expanded ? styles.expanded : ''}`}>
+    <aside
+      className={`${styles.card} ${expanded ? styles.expanded : ''}`}
+      aria-live="polite"
+    >
       <header className={styles.head}>
         <span
           className={styles.badge}
@@ -72,6 +77,11 @@ export function NearbyCard({
             {avatar?.note ? ` — ${avatar.note}` : ''}
           </div>
         </div>
+        {expanded && (
+          <button type="button" className={styles.close} onClick={onClose} aria-label="상호작용 닫기">
+            ×
+          </button>
+        )}
       </header>
 
       <p className={onTeam ? styles.chipOn : styles.chipOff}>
@@ -118,6 +128,16 @@ export function NearbyCard({
             }
           >
             보고 요청
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onSelectBrief(
+                `${agent.name} ${agent.title}와 업무 지시가 아닌 가벼운 일상 대화를 나눠줘. 지금 상태를 자연스럽게 물어봐줘.`,
+              )
+            }
+          >
+            대화하기
           </button>
           <button
             type="button"

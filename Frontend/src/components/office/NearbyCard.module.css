@@ -27,6 +27,30 @@
   align-items: center;
 }
 
+.head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.close {
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--dim);
+  font: inherit;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .badge {
   display: grid;
   flex-shrink: 0;
@@ -154,7 +178,8 @@
   margin-top: 11px;
 }
 
-.actions button:first-child {
+.actions button:first-child,
+.actions button:last-child {
   grid-column: 1 / -1;
 }
 

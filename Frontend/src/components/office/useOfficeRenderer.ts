@@ -21,6 +21,7 @@ interface OfficeBinding {
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
+  setMoveKey: (key: string, pressed: boolean) => void;
 }
 
 /** 교차검토·개정 단계에는 직원들이 회의실에 모입니다 */
@@ -211,5 +212,6 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     zoomIn: () => rendererRef.current?.zoomIn(),
     zoomOut: () => rendererRef.current?.zoomOut(),
     resetZoom: () => rendererRef.current?.resetZoom(),
+    setMoveKey: (key, pressed) => rendererRef.current?.setMoveKey(key, pressed),
   };
 }

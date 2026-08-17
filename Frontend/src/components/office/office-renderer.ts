@@ -253,6 +253,18 @@ export class OfficeRenderer {
     this.setZoom(this.baseZoom);
   }
 
+  /** 터치 컨트롤도 키보드와 같은 이동 상태를 사용합니다. */
+  setMoveKey(key: string, pressed: boolean): void {
+    if (!MOVE_KEYS.has(key)) return;
+    if (pressed) {
+      this.keys.add(key);
+      const player = this.actors.get('ceo');
+      if (player) player.path = [];
+      return;
+    }
+    this.keys.delete(key);
+  }
+
   /** 표시 배율(%) 기준으로 확대/축소 */
   private adjustZoomPercent(deltaPercent: number): void {
     const currentPercent = Math.round((this.zoom / this.baseZoom) * 100);

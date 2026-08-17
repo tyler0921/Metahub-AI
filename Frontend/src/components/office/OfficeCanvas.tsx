@@ -88,6 +88,7 @@ export function OfficeCanvas({
     zoomIn,
     zoomOut,
     resetZoom,
+    setMoveKey,
   } = useOfficeRenderer(anchorIds);
 
   const activeSpeeches = useMemo(
@@ -135,15 +136,6 @@ export function OfficeCanvas({
   }, [nearby?.agentId]);
 
   useEffect(() => {
-    if (!showGuide) return;
-    const timer = window.setTimeout(() => {
-      setShowGuide(false);
-      window.localStorage.setItem('metahub-office-guide-seen', '1');
-    }, 5_000);
-    return () => window.clearTimeout(timer);
-  }, [showGuide]);
-
-  useEffect(() => {
     const handleInteraction = (event: KeyboardEvent): void => {
       const target = event.target;
       if (
@@ -154,13 +146,18 @@ export function OfficeCanvas({
       }
       if (event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        if (nearby) setInteractionOpen(true);
+        if (nearby) setInteractionOpen((open) => !open);
         else runZoneAction();
+        return;
+      }
+      if (event.key === 'Escape' && interactionOpen) {
+        event.preventDefault();
+        setInteractionOpen(false);
       }
     };
     window.addEventListener('keydown', handleInteraction);
     return () => window.removeEventListener('keydown', handleInteraction);
-  }, [nearby, runZoneAction]);
+  }, [nearby, runZoneAction, interactionOpen]);
 
   const dismissGuide = (): void => {
     setShowGuide(false);
@@ -220,6 +217,7 @@ export function OfficeCanvas({
           info={nearby}
           expanded={interactionOpen}
           onExpand={() => setInteractionOpen(true)}
+          onClose={() => setInteractionOpen(false)}
           onSelectBrief={handleAgentBrief}
         />
       )}
@@ -284,6 +282,53 @@ export function OfficeCanvas({
       <OfficeOverview currentZone={currentZone} compact={Boolean(nearby)} />
 
       <OfficeMinimap positions={positions} statuses={avatarStatuses} />
+
+      <div className={styles.touchControls} aria-label="캐릭터 이동">
+        <button
+          type="button"
+          className={styles.touchUp}
+          aria-label="위로 이동"
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setMoveKey('ArrowUp', true);
+          }}
+          onPointerUp={() => setMoveKey('ArrowUp', false)}
+          onPointerCancel={() => setMoveKey('ArrowUp', false)}
+        >↑</button>
+        <button
+          type="button"
+          className={styles.touchLeft}
+          aria-label="왼쪽으로 이동"
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setMoveKey('ArrowLeft', true);
+          }}
+          onPointerUp={() => setMoveKey('ArrowLeft', false)}
+          onPointerCancel={() => setMoveKey('ArrowLeft', false)}
+        >←</button>
+        <button
+          type="button"
+          className={styles.touchDown}
+          aria-label="아래로 이동"
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setMoveKey('ArrowDown', true);
+          }}
+          onPointerUp={() => setMoveKey('ArrowDown', false)}
+          onPointerCancel={() => setMoveKey('ArrowDown', false)}
+        >↓</button>
+        <button
+          type="button"
+          className={styles.touchRight}
+          aria-label="오른쪽으로 이동"
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setMoveKey('ArrowRight', true);
+          }}
+          onPointerUp={() => setMoveKey('ArrowRight', false)}
+          onPointerCancel={() => setMoveKey('ArrowRight', false)}
+        >→</button>
+      </div>
 
       <div className={styles.zoomControls}>
         <button type="button" className={styles.zoomBtn} onClick={zoomOut} aria-label="축소">
