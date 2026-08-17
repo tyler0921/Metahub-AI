@@ -31,6 +31,8 @@ const ZOOM_STEP_PERCENT = 5;
 const TYPING_FRAMES = [0, 1, 0, 3] as const;
 /** 좌석 좌표는 이동용 발 위치이므로, 착석 렌더링은 의자 안쪽으로 올립니다. */
 const SEATED_FOOT_LIFT = TILE * 0.58;
+/** 착석·기립 전환 속도. 순간 이동하면 벽에 하체가 잘린 것처럼 보입니다. */
+const SEATED_TRANSITION_SPEED = TILE * 3.4;
 
 /**
  * 대기 직원이 잠깐 다녀오는 휴게 지점 (타일 좌표).
@@ -92,6 +94,8 @@ interface Actor {
   /** 지금 휴게 공간에 나와 있는가 */
   atLeisure?: boolean;
   ambientPartner?: AgentId;
+  /** 이동 좌표와 별개인 착석 표시 높이 */
+  seatedLift: number;
 }
 
 interface AmbientConversation {
@@ -186,6 +190,7 @@ export class OfficeRenderer {
       facing: 'up', distance: 0, moving: false,
       status: 'idle', isPlayer: true, path: [],
       tool: null, toolLabel: '',
+      seatedLift: 0,
     });
 
     for (const agent of agents) {
@@ -212,6 +217,7 @@ export class OfficeRenderer {
         path: [],
         tool: null,
         toolLabel: '',
+        seatedLift: SEATED_FOOT_LIFT,
       });
     }
   }
@@ -582,6 +588,7 @@ export class OfficeRenderer {
         this.followPath(actor, dt, WALK_SPEED);
         this.updateWander(actor);
       }
+      this.updateSeatedLift(actor, dt);
     }
     this.updateCamera();
     this.updateNearby();
@@ -869,11 +876,20 @@ export class OfficeRenderer {
    */
   private visualFootPx(actor: Actor): { x: number; y: number } {
     const foot = this.footPx(actor);
+    return actor.seatedLift > 0 ? { x: foot.x, y: foot.y - actor.seatedLift } : foot;
+  }
+
+  private updateSeatedLift(actor: Actor, dt: number): void {
     const atHome = actor.homeX !== undefined && actor.homeY !== undefined &&
       Math.hypot(actor.x - actor.homeX, actor.y - actor.homeY) < 0.35;
-    const seated = !actor.isPlayer && !actor.moving && !actor.atLeisure &&
-      !actor.ambientPartner && atHome;
-    return seated ? { x: foot.x, y: foot.y - SEATED_FOOT_LIFT } : foot;
+    const shouldSit = !actor.isPlayer && actor.path.length === 0 && !actor.moving &&
+      !actor.atLeisure && !actor.ambientPartner && atHome;
+    const target = shouldSit ? SEATED_FOOT_LIFT : 0;
+    const maxStep = (SEATED_TRANSITION_SPEED * dt) / 1000;
+    const delta = target - actor.seatedLift;
+    actor.seatedLift = Math.abs(delta) <= maxStep
+      ? target
+      : actor.seatedLift + Math.sign(delta) * maxStep;
   }
 
   private screenToTile(sx: number, sy: number): { x: number; y: number } {

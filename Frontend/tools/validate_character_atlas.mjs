@@ -34,21 +34,30 @@ for (const [role, row] of Object.entries(rows)) {
         frameHeight,
       ).data;
       let opaque = 0;
+      let leftOpaque = frameWidth;
+      let rightOpaque = -1;
+      let topOpaque = frameHeight;
       let bottomOpaque = -1;
       for (let y = 0; y < frameHeight; y += 1) {
         for (let x = 0; x < frameWidth; x += 1) {
           const alpha = data[(y * frameWidth + x) * 4 + 3];
           if (alpha === undefined || alpha <= 16) continue;
           opaque++;
+          leftOpaque = Math.min(leftOpaque, x);
+          rightOpaque = Math.max(rightOpaque, x);
+          topOpaque = Math.min(topOpaque, y);
           bottomOpaque = y;
         }
       }
       if (opaque < frameWidth * frameHeight * 0.08) {
         throw new Error(`${role}/${directions[direction]}/${frame} has too few character pixels.`);
       }
-      if (bottomOpaque >= frameHeight - 1) {
+      if (
+        leftOpaque <= 0 || rightOpaque >= frameWidth - 1 ||
+        topOpaque <= 0 || bottomOpaque >= frameHeight - 1
+      ) {
         throw new Error(
-          `${role}/${directions[direction]}/${frame} touches the frame bottom and may clip legs.`,
+          `${role}/${directions[direction]}/${frame} touches a frame edge and may clip the character.`,
         );
       }
       frameHashes.push(createHash('sha1').update(data).digest('hex'));
