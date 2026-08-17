@@ -34,11 +34,22 @@ for (const [role, row] of Object.entries(rows)) {
         frameHeight,
       ).data;
       let opaque = 0;
-      for (let offset = 3; offset < data.length; offset += 4) {
-        if (data[offset] > 16) opaque++;
+      let bottomOpaque = -1;
+      for (let y = 0; y < frameHeight; y += 1) {
+        for (let x = 0; x < frameWidth; x += 1) {
+          const alpha = data[(y * frameWidth + x) * 4 + 3];
+          if (alpha === undefined || alpha <= 16) continue;
+          opaque++;
+          bottomOpaque = y;
+        }
       }
       if (opaque < frameWidth * frameHeight * 0.08) {
         throw new Error(`${role}/${directions[direction]}/${frame} has too few character pixels.`);
+      }
+      if (bottomOpaque >= frameHeight - 1) {
+        throw new Error(
+          `${role}/${directions[direction]}/${frame} touches the frame bottom and may clip legs.`,
+        );
       }
       frameHashes.push(createHash('sha1').update(data).digest('hex'));
     }

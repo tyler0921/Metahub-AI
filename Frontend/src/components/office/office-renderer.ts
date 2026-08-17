@@ -1041,6 +1041,40 @@ export class OfficeRenderer {
     ctx.beginPath();
     ctx.ellipse(foot.x, foot.y - 2, w * 0.28, w * 0.13, 0, 0, Math.PI * 2);
     ctx.fill();
+    // 검은 신발이 짙은 벽·가구와 겹쳐 다리가 잘린 것처럼 보이지 않게
+    // 발밑 기준선을 밝게 한 번 더 잡습니다.
+    ctx.globalAlpha = actor.isPlayer ? 0.72 : 0.34;
+    ctx.strokeStyle = actor.isPlayer ? '#a9a3ff' : '#f4f6fa';
+    ctx.lineWidth = actor.isPlayer ? 1.5 : 1;
+    ctx.stroke();
+    ctx.restore();
+
+    // 원본 캐릭터를 바꾸지 않고 런타임에서 하체에만 1px 픽셀 외곽선을 만듭니다.
+    // 얼굴과 머리까지 테두리를 두르면 스티커처럼 보여 기준 이미지의 인상이 깨집니다.
+    // 기본 줌(약 50%)에서는 2 world px가 화면의 1px 정도가 됩니다.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(drawX - 3, drawY + h * 0.55, w + 6, h * 0.45 + 4);
+    ctx.clip();
+    ctx.globalAlpha = actor.isPlayer ? 0.64 : 0.42;
+    ctx.filter = 'brightness(0) invert(1)';
+    const outlineOffsets = [
+      [-2, 0], [2, 0], [0, -2], [0, 2],
+      [-1, -1], [1, -1], [-1, 1], [1, 1],
+    ] as const;
+    for (const [ox, oy] of outlineOffsets) {
+      ctx.drawImage(
+        assets.characters,
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+        drawX + ox,
+        drawY + oy,
+        w,
+        h,
+      );
+    }
     ctx.restore();
 
     ctx.drawImage(assets.characters, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
