@@ -1,5 +1,5 @@
 import type { PhaseKey } from '@shared';
-import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
+import { PHASE_SEQUENCE, phaseIndexOf, phaseLabelOf } from '@/constants/phases';
 import { deptAbbrev, STATUS_COLOR, STATUS_LABEL } from '@/lib/agent-status';
 import { useSessionStore } from '@/store/session.store';
 import styles from './CoPilotPanel.module.css';
@@ -35,7 +35,7 @@ const SMART_PROMPTS: readonly SmartPrompt[] = [
 ];
 
 const phaseLabel = (key: PhaseKey | null): string =>
-  PHASE_SEQUENCE.find((p) => p.key === key)?.label ?? '대기';
+  key ? phaseLabelOf(key) : '대기';
 
 /** Co-pilot 추천 액션 + 스마트 프롬프트 + 투입 부서 진행 스택 */
 export function CoPilotPanel({

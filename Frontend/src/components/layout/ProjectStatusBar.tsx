@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
 import { formatElapsed } from '@/lib/format-elapsed';
 import { estimateCost, formatUsd } from '@/lib/llm-cost';
+import { useAutonomousWork } from '@/hooks/useAutonomousWork';
 import { useSessionStore } from '@/store/session.store';
 import styles from './ProjectStatusBar.module.css';
 
@@ -30,6 +31,7 @@ export function ProjectStatusBar(): React.JSX.Element {
     ).length,
   );
   const [now, setNow] = useState(() => Date.now());
+  const autonomous = useAutonomousWork();
 
   useEffect(() => {
     if (!running) return;
@@ -101,6 +103,38 @@ export function ProjectStatusBar(): React.JSX.Element {
       <span className={styles.title}>
         {idle ? 'MetaHub AI 회사' : brief || '진행 중'}
       </span>
+
+      {autonomous.status?.configured && (
+        <span className={styles.autonomousControls} title={autonomous.error ?? undefined}>
+          <button
+            type="button"
+            className={styles.autonomousToggle}
+            data-enabled={autonomous.status.enabled}
+            onClick={() => void autonomous.toggle()}
+            disabled={autonomous.isBusy}
+            aria-pressed={autonomous.status.enabled}
+          >
+            <i aria-hidden="true" />
+            {autonomous.status.enabled ? '자율 ON' : '자율 정지'}
+            <small>
+              {autonomous.status.runsToday}/{autonomous.status.dailyLimit}
+            </small>
+          </button>
+          {!running && autonomous.status.enabled && !autonomous.status.activeSession && (
+            <button
+              type="button"
+              className={styles.runNow}
+              onClick={() => void autonomous.runNow()}
+              disabled={
+                autonomous.isBusy ||
+                autonomous.status.runsToday >= autonomous.status.dailyLimit
+              }
+            >
+              지금 실행
+            </button>
+          )}
+        </span>
+      )}
 
       <span className={styles.metrics}>
         {idle ? (

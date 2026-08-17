@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ArtifactFile, Deliverable, ReviewResult } from '@shared';
 import { AgentsService } from '../agents/agents.service';
 import type { WorkflowConfig } from '../config/configuration';
 import { LlmCancelledError } from '../llm/errors/llm.errors';
 import { LlmService } from '../llm/llm.service';
+import type { VaultNoteEntity } from '../vault/entities/vault-note.entity';
+import type { VaultProjectEntity } from '../vault/entities/vault-project.entity';
 import { VaultService } from '../vault/vault.service';
 import { WorkspaceService } from '../workspace/workspace.service';
 import type { WorkSessionEntity } from './entities/work-session.entity';
@@ -13,10 +15,23 @@ import { DraftPhase } from './phases/draft.phase';
 import { FeedbackPhase, type FeedbackInbox } from './phases/feedback.phase';
 import { IntegratePhase } from './phases/integrate.phase';
 import { KickoffPhase } from './phases/kickoff.phase';
+import { ReflectPhase } from './phases/reflect.phase';
 import { ReviewPhase } from './phases/review.phase';
 import { RevisePhase } from './phases/revise.phase';
 import type { PhaseContext } from './phases/workflow-phase.interface';
 import { SessionRepository } from './repositories/session.repository';
+
+/**
+ * 개요 노트를 다시 쓰는 데 필요한 것들.
+ *
+ * 세션이 실패·중단으로 끝나면 개요가 '진행중' 인 채로 볼트에 영원히 남습니다.
+ * 그 상태를 정정하려면 파이프라인이 끊긴 뒤에도 이 정보가 살아 있어야 합니다.
+ */
+interface VaultOverviewContext {
+  project: VaultProjectEntity;
+  recalled: VaultNoteEntity[];
+  parent: { folderName: string; title: string } | null;
+}
 
 /** 통합·빌드 단계가 공통으로 돌려주는 것 */
 interface ProducedOutput {
@@ -37,6 +52,8 @@ interface ProducedOutput {
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
   private readonly config: WorkflowConfig;
+  /** 진행 중인 세션의 개요 정보 — 성공·실패 어느 쪽으로 끝나도 지웁니다 */
+  private readonly vaultContexts = new Map<string, VaultOverviewContext>();
 
   constructor(
     configService: ConfigService,
@@ -52,17 +69,28 @@ export class WorkflowService {
     private readonly integrate: IntegratePhase,
     private readonly build: BuildPhase,
     private readonly review: ReviewPhase,
+    private readonly reflect: ReflectPhase,
   ) {
     this.config = configService.getOrThrow<WorkflowConfig>('workflow');
   }
 
   /** 세션을 만들고 백그라운드로 파이프라인을 돌린다 (응답은 즉시 반환) */
   createSession(brief: string, parentSessionId?: string): WorkSessionEntity {
+    const active = this.sessions.findActive();
+    if (active) {
+      throw new ConflictException(
+        `이미 진행 중인 업무가 있습니다: 「${active.brief.slice(0, 40)}」`,
+      );
+    }
+
     const session = this.sessions.create(brief, parentSessionId);
 
     void this.execute(session).catch((error: unknown) => {
       // 대표가 중단한 경우는 실패가 아닙니다 — 이벤트는 cancel() 이 이미 보냈습니다
-      if (error instanceof LlmCancelledError || session.isCancelled) {
+      const cancelled = error instanceof LlmCancelledError || session.isCancelled;
+      void this.markVaultInterrupted(session, cancelled ? '중단' : '실패');
+
+      if (cancelled) {
         this.logger.log(`세션 ${session.id} 중단됨 (${session.elapsedSeconds}초 경과)`);
         return;
       }
@@ -77,6 +105,11 @@ export class WorkflowService {
   /** 대표 지시로 진행 중인 세션을 중단합니다 */
   cancelSession(id: string): WorkSessionEntity {
     const session = this.sessions.findById(id);
+    if (session.isPreserving) {
+      throw new ConflictException(
+        '결과를 저장하는 중이라 지금은 중단할 수 없습니다. 잠시만 기다려 주세요.',
+      );
+    }
     session.cancel();
     return session;
   }
@@ -89,6 +122,33 @@ export class WorkflowService {
    */
   private checkpoint(session: WorkSessionEntity): void {
     if (session.isCancelled) throw new LlmCancelledError();
+  }
+
+  /**
+   * 끝내 완성되지 못한 프로젝트의 개요를 실제 상태로 정정합니다.
+   *
+   * 볼트 쓰기는 이미 실패한 세션의 뒤처리이므로, 여기서 또 던지면
+   * 원래 실패 원인을 가립니다. 경고만 남기고 삼킵니다.
+   */
+  private async markVaultInterrupted(
+    session: WorkSessionEntity,
+    status: '실패' | '중단',
+  ): Promise<void> {
+    const context = this.vaultContexts.get(session.id);
+    if (!context) return;
+    this.vaultContexts.delete(session.id);
+
+    try {
+      await this.vault.saveOverview(context.project, session.brief, session.plan, {
+        recalled: context.recalled,
+        parent: context.parent,
+        status,
+      });
+      await this.vault.refreshIndex();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`세션 ${session.id} 개요를 '${status}' 로 바꾸지 못했습니다: ${message}`);
+    }
   }
 
   private async execute(session: WorkSessionEntity): Promise<void> {
@@ -141,7 +201,19 @@ export class WorkflowService {
     await this.kickoff.execute(context);
 
     const project = await this.vault.createProject(session.brief);
-    await this.vault.saveOverview(project, session.brief, session.plan);
+    const parentLink = session.parentResult
+      ? {
+          folderName: session.parentResult.vaultFolder,
+          title: session.parentResult.brief.slice(0, 40),
+        }
+      : null;
+    this.vaultContexts.set(session.id, { project, recalled, parent: parentLink });
+
+    // 회상한 노트와 원본 프로젝트를 링크로 남겨 볼트가 서로 이어지게 합니다
+    await this.vault.saveOverview(project, session.brief, session.plan, {
+      recalled,
+      parent: parentLink,
+    });
 
     /* 2. 초안 */
     this.checkpoint(session);
@@ -238,8 +310,16 @@ export class WorkflowService {
       if (verdict.verdict === 'approve') break;
     }
 
-    /* 7. 보존 — 여기까지 왔으면 중단하지 않고 결과를 남깁니다 */
-    this.checkpoint(session);
+    /* 7. 보존 — 여기부터는 중단하지 않고 결과를 남깁니다 */
+    session.beginPreserve();
+
+    // 회고를 먼저 돌립니다 — 여기서 쓰는 LLM 호출까지 포함해야
+    // 볼트에 적히는 사용량과 대표에게 보고하는 사용량이 같아집니다
+    if (this.config.reflect) {
+      session.emit({ type: 'phase', key: this.reflect.key, label: this.reflect.label });
+      await this.reflect.run(context, project, verdict);
+    }
+
     session.emit({ type: 'phase', key: 'save', label: 'Obsidian 볼트 저장' });
     session.emit({
       type: 'tool',
@@ -249,6 +329,7 @@ export class WorkflowService {
       label: '볼트 저장',
     });
     await this.vault.saveMinutes(project, session.transcript);
+
     await this.vault.saveDeliverable(
       project,
       session.brief,
@@ -256,7 +337,16 @@ export class WorkflowService {
       verdict,
       session.usage.snapshot(),
     );
-    await this.vault.appendToIndex(project, session.brief, verdict?.score ?? null);
+
+    // 개요를 다시 씁니다 — status 를 '진행중' 에서 풀어주는 유일한 지점입니다
+    await this.vault.saveOverview(project, session.brief, session.plan, {
+      recalled,
+      parent: parentLink,
+      review: verdict,
+    });
+
+    this.vaultContexts.delete(session.id);
+    await this.vault.refreshIndex();
     session.emit({
       type: 'tool',
       agent: 'chief',

@@ -76,6 +76,8 @@ export type PhaseKey =
   /** 코드형 — 개발팀이 실행 가능한 파일을 만듭니다 */
   | 'build'
   | 'review'
+  /** 부서별 교훈을 지식 노트에 남깁니다 */
+  | 'reflect'
   | 'save';
 
 /**

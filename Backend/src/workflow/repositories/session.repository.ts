@@ -66,7 +66,10 @@ export class SessionRepository implements OnModuleDestroy {
     let removed = 0;
 
     for (const [id, session] of this.sessions) {
-      const finished = session.status === 'completed' || session.status === 'failed';
+      const finished =
+        session.status === 'completed' ||
+        session.status === 'failed' ||
+        session.status === 'cancelled';
       if (finished && session.createdAt.getTime() < deadline) {
         this.sessions.delete(id);
         removed++;

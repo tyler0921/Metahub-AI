@@ -8,20 +8,24 @@ import { DraftPhase } from './phases/draft.phase';
 import { FeedbackPhase } from './phases/feedback.phase';
 import { IntegratePhase } from './phases/integrate.phase';
 import { KickoffPhase } from './phases/kickoff.phase';
+import { ReflectPhase } from './phases/reflect.phase';
 import { ReviewPhase } from './phases/review.phase';
 import { RevisePhase } from './phases/revise.phase';
 import { SessionRepository } from './repositories/session.repository';
 import { WorkflowController } from './workflow.controller';
 import { WorkflowService } from './workflow.service';
 import { AutonomousWorkService } from './autonomous-work.service';
+import { AutonomousStateStore } from './autonomous-state.store';
+import { AutonomousWorkController } from './autonomous-work.controller';
 
 @Module({
   imports: [AgentsModule, LlmModule, VaultModule, WorkspaceModule],
-  controllers: [WorkflowController],
+  controllers: [WorkflowController, AutonomousWorkController],
   providers: [
     SessionRepository,
     WorkflowService,
     AutonomousWorkService,
+    AutonomousStateStore,
     KickoffPhase,
     DraftPhase,
     FeedbackPhase,
@@ -29,6 +33,7 @@ import { AutonomousWorkService } from './autonomous-work.service';
     IntegratePhase,
     BuildPhase,
     ReviewPhase,
+    ReflectPhase,
   ],
 })
 export class WorkflowModule {}

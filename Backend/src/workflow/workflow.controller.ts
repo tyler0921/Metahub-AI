@@ -25,6 +25,7 @@ export class WorkflowController {
 
   /**
    * 대표 지시를 접수한다. 실제 작업은 백그라운드로 돌고 즉시 응답합니다.
+   * 이미 진행 중인 세션이 있으면 409 Conflict.
    * 진행 상황은 응답의 `streamUrl` 을 EventSource 로 구독해서 받습니다.
    */
   @Post()
@@ -50,6 +51,11 @@ export class WorkflowController {
   @Get()
   findRecent(): SessionSummary[] {
     return this.sessions.findRecent().map((s) => s.toSummary());
+  }
+
+  @Get('active')
+  findActive(): SessionSummary | null {
+    return this.sessions.findActive()?.toSummary() ?? null;
   }
 
   @Get(':id')

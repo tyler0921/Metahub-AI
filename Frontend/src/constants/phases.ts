@@ -24,8 +24,20 @@ export const PHASE_SEQUENCE: readonly PhaseDescriptor[] = [
 ];
 
 /** 표시줄에서 이 단계가 차지하는 칸 */
-export const displayPhase = (key: PhaseKey): PhaseKey =>
-  key === 'build' ? 'integrate' : key;
+export const displayPhase = (key: PhaseKey): PhaseKey => {
+  if (key === 'build') return 'integrate';
+  // 회고는 저장 직전 부가 단계 — 별도 칸을 두지 않고 저장 칸에 묶습니다
+  if (key === 'reflect') return 'save';
+  return key;
+};
+
+/** 단계 키 → 짧은 라벨 (사용량·타임라인 등 표시줄 밖에서도 씀) */
+export const phaseLabelOf = (key: PhaseKey | null | undefined): string => {
+  if (!key) return '기타';
+  if (key === 'reflect') return '회고';
+  if (key === 'build') return '구현';
+  return PHASE_SEQUENCE.find((p) => p.key === displayPhase(key))?.label ?? '기타';
+};
 
 export const phaseIndexOf = (key: PhaseKey): number =>
   PHASE_SEQUENCE.findIndex((p) => p.key === displayPhase(key));

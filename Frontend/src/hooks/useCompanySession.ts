@@ -112,11 +112,8 @@ export function useCompanySession(): CompanySession {
       const state = useSessionStore.getState();
       if (!state.isRunning && !activeSession.load()) {
         try {
-          const sessions = await companyService.listSessions();
+          const active = await companyService.getActiveSession();
           if (!stopped && !useSessionStore.getState().isRunning) {
-            const active = sessions.find(
-              (session) => session.status === 'running' || session.status === 'pending',
-            );
             if (active) {
               resumeSession(active.id, active.brief);
               activeSession.save(active.id);
@@ -139,6 +136,11 @@ export function useCompanySession(): CompanySession {
 
   const submit = useCallback(
     async (brief: string, parentSessionId?: string): Promise<void> => {
+      if (useSessionStore.getState().isRunning) {
+        failSession('이미 진행 중인 업무가 있습니다. 끝난 뒤 다시 지시해 주세요.');
+        return;
+      }
+
       detach();
 
       try {
@@ -159,7 +161,8 @@ export function useCompanySession(): CompanySession {
   );
 
   const cancel = useCallback(async (): Promise<void> => {
-    const { sessionId, isRunning: running } = useSessionStore.getState();
+    const { sessionId, isRunning: running, appendSystemLog } =
+      useSessionStore.getState();
     if (!sessionId || !running) return;
 
     markCancelling();
@@ -168,6 +171,12 @@ export function useCompanySession(): CompanySession {
       // 실제 상태 전환은 서버가 보내는 'cancelled' 이벤트가 처리합니다
       activeSession.clear();
     } catch (err) {
+      // 저장 구간(409)에서는 세션이 계속 돌아가므로 구독·실행 상태를 유지합니다
+      useSessionStore.setState({ isCancelling: false });
+      if (err instanceof ApiError && err.status === 409) {
+        appendSystemLog(err.message, 'warn');
+        return;
+      }
       failSession(
         err instanceof ApiError ? err.message : '중단 요청에 실패했습니다.',
       );

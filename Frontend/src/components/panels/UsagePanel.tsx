@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
+import { phaseIndexOf, phaseLabelOf } from '@/constants/phases';
 import { formatElapsed } from '@/lib/format-elapsed';
 import { estimateCost, formatUsd } from '@/lib/llm-cost';
 import { useSessionStore } from '@/store/session.store';
@@ -52,8 +52,7 @@ export function UsagePanel(): React.JSX.Element | null {
     for (const slice of usageSlices) {
       const key = slice.phase ?? 'other';
       const order = slice.phase ? phaseIndexOf(slice.phase) : 99;
-      const label =
-        PHASE_SEQUENCE.find((p) => p.key === slice.phase)?.label ?? '기타';
+      const label = phaseLabelOf(slice.phase);
       const prev = map.get(key) ?? { label, calls: 0, tokens: 0, order };
       prev.calls += slice.calls;
       prev.tokens += slice.inputTokens + slice.outputTokens;

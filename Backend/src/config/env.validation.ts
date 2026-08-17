@@ -53,6 +53,9 @@ const envSchema = z.object({
 
   WORKSPACE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
 
+  // 'false' 를 명시할 때만 회고를 끕니다
+  WORKFLOW_REFLECT: z.preprocess(emptyToUndefined, z.string().optional()),
+
   FEEDBACK_ROUNDS: z.coerce.number().int().min(0).max(3).default(1),
   MAX_REWORK: z.coerce.number().int().min(0).max(3).default(1),
   SESSION_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
@@ -69,6 +72,11 @@ const envSchema = z.object({
     emptyToUndefined,
     z.coerce.number().int().min(1).max(24).optional(),
   ),
+  AUTONOMOUS_WORK_MAX_SESSION_MS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(60_000).optional(),
+  ),
+  AUTONOMOUS_WORK_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

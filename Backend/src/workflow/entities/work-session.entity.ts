@@ -29,6 +29,13 @@ export class WorkSessionEntity {
   private _review: ReviewResult | null = null;
   private _result: Deliverable | null = null;
   private startedAt = 0;
+  /** 이벤트 스트림이 이미 닫혔는가 — complete 후 next 를 막아 예외를 피합니다 */
+  private streamClosed = false;
+  /**
+   * 보존(회고·볼트 저장) 구간에 들어왔는가.
+   * 여기까지 왔으면 산출물을 남기는 게 우선이라 중단 요청을 무시합니다.
+   */
+  private preserving = false;
 
   /** 부서별 최신 원고 */
   readonly drafts = new Map<AgentId, string>();
@@ -66,6 +73,11 @@ export class WorkSessionEntity {
     return this._status === 'cancelled';
   }
 
+  /** 회고·볼트 저장 중인가 — 이 구간에서는 중단이 거부됩니다 */
+  get isPreserving(): boolean {
+    return this.preserving;
+  }
+
   get isFollowUp(): boolean {
     return this.parentResult !== null;
   }
@@ -73,13 +85,19 @@ export class WorkSessionEntity {
   /**
    * 대표가 중단을 눌렀을 때.
    * 진행 중인 LLM 호출을 즉시 끊고 스트림을 닫습니다.
+   * 보존 구간에서는 무시합니다 — 이미 만든 결과를 볼트에 남기는 게 우선입니다.
    */
   cancel(): void {
+    if (this.preserving) return;
     if (this._status !== 'running' && this._status !== 'pending') return;
     this._status = 'cancelled';
     this.aborter.abort();
-    this.events$.next({ type: 'cancelled', reason: '대표 지시로 중단되었습니다.' });
-    this.events$.complete();
+    this.emitClosed({ type: 'cancelled', reason: '대표 지시로 중단되었습니다.' });
+  }
+
+  /** 회고·볼트 저장에 들어갑니다. 이후 중단 요청은 무시됩니다. */
+  beginPreserve(): void {
+    this.preserving = true;
   }
 
   /* ── 상태 ─────────────────────────────────────── */
@@ -126,23 +144,33 @@ export class WorkSessionEntity {
   }
 
   complete(result: Deliverable): void {
+    if (this.streamClosed) return;
     this._status = 'completed';
     this._result = result;
-    this.events$.next({ type: 'done', result });
-    this.events$.complete();
+    this.emitClosed({ type: 'done', result });
   }
 
   fail(message: string): void {
+    if (this.streamClosed) return;
+    if (this._status === 'cancelled') return;
     this._status = 'failed';
-    this.events$.next({ type: 'error', message });
-    this.events$.complete();
+    this.emitClosed({ type: 'error', message });
   }
 
   /* ── 이벤트 ───────────────────────────────────── */
 
   emit(event: SessionEvent): void {
+    if (this.streamClosed) return;
     if (event.type === 'speech') this.transcript.push(event);
     this.events$.next(event);
+  }
+
+  /** 마지막 이벤트를 보내고 스트림을 닫습니다 */
+  private emitClosed(event: SessionEvent): void {
+    if (this.streamClosed) return;
+    this.events$.next(event);
+    this.streamClosed = true;
+    this.events$.complete();
   }
 
   asObservable(): Observable<SessionEvent> {

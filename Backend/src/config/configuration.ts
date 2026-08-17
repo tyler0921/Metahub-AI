@@ -45,6 +45,13 @@ export interface WorkflowConfig {
   feedbackRounds: number;
   maxRework: number;
   sessionTtlMs: number;
+  /**
+   * 세션 끝에 부서별 회고를 돌릴지.
+   *
+   * 부서 수만큼 LLM 호출이 추가됩니다. 로컬 모델에서 세션이 이미 길다면
+   * 꺼도 됩니다 — 대신 볼트에 지식이 쌓이지 않습니다.
+   */
+  reflect: boolean;
 }
 
 export interface AutonomousWorkConfig {
@@ -52,6 +59,8 @@ export interface AutonomousWorkConfig {
   startupDelayMs: number;
   intervalMs: number;
   dailyLimit: number;
+  maxSessionMs: number;
+  statePath: string;
 }
 
 const toInt = (value: string | undefined, fallback: number): number => {
@@ -199,6 +208,7 @@ export const workflowConfig = registerAs(
     feedbackRounds: Math.max(0, toInt(process.env.FEEDBACK_ROUNDS, 1)),
     maxRework: Math.max(0, toInt(process.env.MAX_REWORK, 1)),
     sessionTtlMs: toInt(process.env.SESSION_TTL_MS, 60 * 60 * 1000),
+    reflect: process.env.WORKFLOW_REFLECT?.trim().toLowerCase() !== 'false',
   }),
 );
 
@@ -209,6 +219,13 @@ export const autonomousWorkConfig = registerAs(
     startupDelayMs: Math.max(1_000, toInt(process.env.AUTONOMOUS_WORK_STARTUP_DELAY_MS, 8_000)),
     intervalMs: Math.max(60_000, toInt(process.env.AUTONOMOUS_WORK_INTERVAL_MS, 30 * 60 * 1000)),
     dailyLimit: Math.max(1, toInt(process.env.AUTONOMOUS_WORK_DAILY_LIMIT, 3)),
+    maxSessionMs: Math.max(
+      60_000,
+      toInt(process.env.AUTONOMOUS_WORK_MAX_SESSION_MS, 20 * 60 * 1000),
+    ),
+    statePath:
+      process.env.AUTONOMOUS_WORK_STATE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'autonomous-work.json'),
   }),
 );
 

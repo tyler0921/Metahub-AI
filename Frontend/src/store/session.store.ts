@@ -17,7 +17,8 @@ import { create } from 'zustand';
 /**
  * 시스템 로그의 성격.
  *
- * 스토어는 **의미만** 담고, 색·아이콘 같은 표현은 `ConversationLog` 가 정합니다.
+ * 스토어는 **의미만** 담고, 색·아이콘 같은 표현은 `WorkTimeline` /
+ * `AgentDetailPanel` 이 정합니다.
  * 예전에는 이모지가 문자열에 박혀 있어서 UI 에서 걷어낼 방법이 없었습니다.
  */
 export type LogLevel = 'info' | 'ok' | 'warn' | 'error';

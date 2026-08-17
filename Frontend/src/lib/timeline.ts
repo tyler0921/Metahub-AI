@@ -10,7 +10,7 @@ import type {
  * 업무 타임라인 한 칸.
  *
  * SSE 이벤트를 그대로 쌓되, UI 가 카드로 읽기 쉽게 좁힌 형태입니다.
- * ConversationLog 의 평문 시스템 로그와 달리 kind 로 레이아웃이 갈립니다.
+ * 평문 시스템 로그와 달리 kind 로 레이아웃이 갈립니다.
  */
 export type TimelineEntry =
   | { id: number; at: number; kind: 'brief'; text: string }

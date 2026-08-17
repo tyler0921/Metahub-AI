@@ -12,7 +12,10 @@ dist/
 !.env.example
 
 # AI 직원들이 만든 산출물 (기본 볼트 경로)
-vault/
+# 앞의 / 가 없으면 Backend/src/vault, Backend/src/agents/data 같은
+# **소스 폴더까지** 무시됩니다. 저장소 루트에만 걸어야 합니다.
+/vault/
+/data/
 
 .DS_Store
 Thumbs.db

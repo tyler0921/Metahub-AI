@@ -1,6 +1,7 @@
 import type {
   AgentsResponse,
   AppConfigResponse,
+  AutonomousWorkStatusResponse,
   CreateSessionResponse,
   HealthResponse,
   SessionDetailResponse,
@@ -29,7 +30,19 @@ export const companyService = {
   getSession: (id: string): Promise<SessionDetailResponse> =>
     http.get(`/sessions/${id}`),
 
-  listSessions: (): Promise<SessionSummary[]> => http.get('/sessions'),
+  getActiveSession: (): Promise<SessionSummary | null> => http.get('/sessions/active'),
+
+  getAutonomousWorkStatus: (): Promise<AutonomousWorkStatusResponse> =>
+    http.get('/autonomous-work/status'),
+
+  pauseAutonomousWork: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/pause', {}),
+
+  resumeAutonomousWork: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/resume', {}),
+
+  runAutonomousWorkNow: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/run-now', {}),
 
   /** 진행 중인 세션 중단 — 돌고 있는 LLM 호출까지 끊습니다 */
   cancelSession: (id: string): Promise<SessionDetailResponse> =>

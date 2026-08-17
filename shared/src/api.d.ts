@@ -27,6 +27,19 @@ export interface AppConfigResponse {
   };
 }
 
+export interface AutonomousWorkStatusResponse {
+  configured: boolean;
+  enabled: boolean;
+  paused: boolean;
+  runsToday: number;
+  dailyLimit: number;
+  consecutiveFailures: number;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastSessionId: string | null;
+  activeSession: SessionSummary | null;
+}
+
 /** POST /api/sessions 요청 본문 */
 export interface CreateSessionRequest {
   brief: string;
