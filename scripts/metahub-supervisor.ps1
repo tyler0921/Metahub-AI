@@ -16,7 +16,6 @@ $backendEntry = Join-Path $repoRoot 'Backend\dist\main.js'
 $frontendEntry = Join-Path $repoRoot 'node_modules\vite\bin\vite.js'
 $logDir = Join-Path $repoRoot 'data\logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-$launchSequence = 0
 $supervisorLog = Join-Path $logDir 'supervisor.log'
 
 $mutex = [System.Threading.Mutex]::new($false, 'Local\MetaHubAISupervisor')
@@ -33,15 +32,24 @@ function Start-MetaHubProcess {
     [string[]]$Arguments = @()
   )
 
-  $script:launchSequence++
-  $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $logPrefix = "$Name.$stamp.$($script:launchSequence)"
-  $stdout = Join-Path $logDir "$logPrefix.out.log"
-  $stderr = Join-Path $logDir "$logPrefix.error.log"
-  $quotedEntryPoint = '"' + $EntryPoint + '"'
-  $nodeArguments = @($quotedEntryPoint) + $Arguments
-  return Start-Process -FilePath $node -ArgumentList $nodeArguments -WorkingDirectory $WorkingDirectory `
-    -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+  $quote = {
+    param([string]$Value)
+    if ($Value -notmatch '[\s"]') { return $Value }
+    return '"' + $Value.Replace('"', '\"') + '"'
+  }
+  $nodeArguments = @($EntryPoint) + $Arguments
+  $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $startInfo.FileName = $node
+  $startInfo.Arguments = ($nodeArguments | ForEach-Object { & $quote $_ }) -join ' '
+  $startInfo.WorkingDirectory = $WorkingDirectory
+  $startInfo.UseShellExecute = $false
+  $startInfo.CreateNoWindow = $true
+  $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $startInfo
+  if (-not $process.Start()) { throw "Failed to start MetaHub $Name process." }
+  Add-Content -LiteralPath $supervisorLog -Value "$(Get-Date -Format o) started $Name pid=$($process.Id)"
+  return $process
 }
 
 function Stop-MetaHubProcess {

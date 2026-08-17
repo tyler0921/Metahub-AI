@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spriteDir = join(here, '..', 'public', 'sprites');
-const sourcePath = join(here, '..', '..', 'docs', 'design', 'character-cutouts-v2.png');
+const sourcePath = join(here, '..', '..', 'docs', 'design', 'character-directions-v3.png');
 const outputPath = join(spriteDir, 'characters.png');
 const manifestPath = join(spriteDir, 'manifest.json');
 
@@ -32,8 +32,8 @@ function alphaAt(x, y) {
 function contentBounds(column, row) {
   const x0 = Math.floor(column * source.width / 4);
   const x1 = Math.floor((column + 1) * source.width / 4) - 1;
-  const y0 = Math.floor(row * source.height / 2);
-  const y1 = Math.floor((row + 1) * source.height / 2) - 1;
+  const y0 = Math.floor(row * source.height / ROLES.length);
+  const y1 = Math.floor((row + 1) * source.height / ROLES.length) - 1;
   let left = x1;
   let right = x0;
   let top = y1;
@@ -57,12 +57,19 @@ const ctx = atlas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 for (let roleIndex = 0; roleIndex < ROLES.length; roleIndex += 1) {
-  const bounds = contentBounds(roleIndex % 4, Math.floor(roleIndex / 4));
-  const scale = Math.min((FRAME_W - 4) / bounds.w, (FRAME_H - 4) / bounds.h);
-  const width = Math.max(1, Math.round(bounds.w * scale));
-  const height = Math.max(1, Math.round(bounds.h * scale));
+  const directionBounds = Array.from({ length: DIRECTIONS }, (_, direction) =>
+    contentBounds(direction, roleIndex),
+  );
+  const scale = Math.min(
+    ...directionBounds.map((bounds) =>
+      Math.min((FRAME_W - 4) / bounds.w, (FRAME_H - 4) / bounds.h),
+    ),
+  );
 
   for (let direction = 0; direction < DIRECTIONS; direction += 1) {
+    const bounds = directionBounds[direction];
+    const width = Math.max(1, Math.round(bounds.w * scale));
+    const height = Math.max(1, Math.round(bounds.h * scale));
     for (let frame = 0; frame < FRAMES; frame += 1) {
       const cellX = (direction * FRAMES + frame) * FRAME_W;
       const dx = cellX + Math.floor((FRAME_W - width) / 2) + FRAME_X[frame];
@@ -89,7 +96,7 @@ manifest.characters.frameWidth = FRAME_W;
 manifest.characters.frameHeight = FRAME_H;
 manifest.characters.frames = FRAMES;
 manifest.characters.rows = Object.fromEntries(ROLES.map((role, index) => [role, index]));
-manifest.characters.source = 'docs/design/character-cutouts-v2.png';
+manifest.characters.source = 'docs/design/character-directions-v3.png';
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log(`Wrote ${outputPath}`);

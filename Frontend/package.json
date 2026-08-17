@@ -7,11 +7,13 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "node tools/validate_office_map.mjs && node tools/validate_character_atlas.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "sprites": "node tools/generate_sprites.mjs && node tools/build_reference_characters.mjs",
-    "sprites:characters": "node tools/build_reference_characters.mjs"
+    "sprites:characters": "node tools/build_reference_characters.mjs",
+    "map:validate": "node tools/validate_office_map.mjs",
+    "sprites:validate": "node tools/validate_character_atlas.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
