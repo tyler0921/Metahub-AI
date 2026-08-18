@@ -35,6 +35,7 @@ interface OfficeMapData {
   cols: number;
   rows: number;
   spawn: Point;
+  ceoSeat: Point;
   zones: Zone[];
   meetingSeats: Point[];
   collisionBlockers: CollisionRect[];
@@ -51,6 +52,7 @@ export const MAP_H = MAP_ROWS * TILE;
 export const ZONES: readonly Zone[] = MAP.zones;
 export const DEPARTMENT_ZONES = ZONES.filter((zone) => zone.agent);
 export const SPAWN: Readonly<Point> = MAP.spawn;
+export const CEO_SEAT: Readonly<Point> = MAP.ceoSeat;
 export const MEETING_SEATS: ReadonlyArray<Point> = MAP.meetingSeats;
 
 export type CellKind = 'wall' | 'floor' | 'glass';
@@ -94,6 +96,7 @@ export function buildGrid(): MapGrid {
     ...DEPARTMENT_ZONES.flatMap((zone) => zone.seat ? [zone.seat] : []),
     ...MEETING_SEATS,
     ...STAFF_SEAT_POINTS,
+    CEO_SEAT,
     SPAWN,
   ]) {
     if (blocked[seat.y]?.[seat.x] !== undefined) blocked[seat.y]![seat.x] = false;

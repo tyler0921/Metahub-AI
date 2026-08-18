@@ -26,6 +26,7 @@ for (const zone of map.zones) {
 
 for (const [label, points] of [
   ['spawn', [map.spawn]],
+  ['CEO seat', [map.ceoSeat]],
   ['meeting seat', map.meetingSeats],
 ]) {
   for (const point of points) {
@@ -33,6 +34,15 @@ for (const [label, points] of [
       throw new Error(`${label} is outside map bounds: ${point.x},${point.y}`);
     }
   }
+}
+
+const ceoOffice = map.zones.find((zone) => zone.id === 'ceo-office');
+if (!ceoOffice) throw new Error('office-map.json must define a ceo-office zone.');
+if (
+  map.ceoSeat.x < ceoOffice.x || map.ceoSeat.x >= ceoOffice.x + ceoOffice.w ||
+  map.ceoSeat.y < ceoOffice.y || map.ceoSeat.y >= ceoOffice.y + ceoOffice.h
+) {
+  throw new Error('CEO seat must be inside the ceo-office zone.');
 }
 
 for (const blocker of map.collisionBlockers) {

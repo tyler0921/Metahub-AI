@@ -30,8 +30,8 @@ const BY_ID: Record<string, ZoneAction> = {
   // 대표 집무실 = CEO 책상. 여기서는 지시를 내립니다.
   reception: {
     type: 'console',
-    label: '대표 집무실',
-    hint: '새 업무 지시하기',
+    label: '대표 비서실',
+    hint: '비서진에게 업무 요청',
   },
   // 회의 테이블 — 지금 무엇이 오갔고 어떻게 검토됐는지
   boardroom: {
@@ -62,11 +62,10 @@ const BY_ID: Record<string, ZoneAction> = {
     tab: 'result',
   },
   // 조용히 읽는 공간 — 볼트에 쌓인 과거 문서
-  'focus-lounge': {
-    type: 'panel',
-    label: '포커스 라운지',
-    hint: '볼트 문서 열기',
-    tab: 'vault',
+  'ceo-office': {
+    type: 'console',
+    label: '대표실',
+    hint: '대표 자리에서 업무 지시',
   },
   // 커피 한 잔 하며 진행 상황 듣기
   cafe: {
@@ -93,7 +92,7 @@ const SPOTS: readonly InteractionSpot[] = [
   { x: 32, y: 17, radius: 3.2, action: BY_ID['project-studio'] },
   { x: 18, y: 25, radius: 3.8, action: BY_ID.showcase },
   { x: 45, y: 25, radius: 4.0, action: BY_ID.cafe },
-  { x: 34, y: 25, radius: 4.0, action: BY_ID['focus-lounge'] },
+  { x: 34, y: 25, radius: 3.4, action: BY_ID['ceo-office'] },
   { x: 26, y: 28, radius: 3.2, action: BY_ID.entrance },
 ];
 

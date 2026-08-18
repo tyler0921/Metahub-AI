@@ -236,7 +236,7 @@ export function OfficeCanvas({
         <section className={styles.guide} aria-label="오피스 이동 안내">
           <div>
             <strong>MetaHub 오피스에 오신 것을 환영합니다</strong>
-            <p><kbd>WASD</kbd> 또는 클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
+            <p><kbd>WASD</kbd> 또는 바닥 더블클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
           </div>
           <button type="button" onClick={dismissGuide} aria-label="안내 닫기">
             <span aria-hidden="true">×</span>
@@ -357,7 +357,7 @@ export function OfficeCanvas({
       </div>
 
       <div className={styles.helpChip} aria-hidden="true">
-        <kbd>WASD</kbd><span>이동</span><kbd>F</kbd><span>상호작용</span>
+        <kbd>WASD</kbd><span>이동</span><kbd>더블클릭</kbd><span>목적지 이동</span><kbd>F</kbd><span>상호작용</span>
       </div>
     </div>
   );

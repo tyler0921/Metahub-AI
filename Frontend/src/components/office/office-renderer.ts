@@ -2,6 +2,7 @@ import type { Agent, AgentId, AgentStatus, SpeechEvent, ToolKind } from '@shared
 import {
   MAP_H,
   MAP_W,
+  CEO_SEAT,
   SPAWN,
   TILE,
   ZONES,
@@ -40,14 +41,12 @@ const SEATED_TRANSITION_SPEED = TILE * 3.4;
  */
 const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 42, y: 26 }, { x: 47, y: 26 }, // 카페
-  { x: 32, y: 26 }, { x: 36, y: 26 }, // 포커스 라운지
   { x: 25, y: 12 }, { x: 28, y: 12 }, // 중앙 라운지
 ];
 
 /** 배회 결정 간격 (ms) — 너무 잦으면 오피스가 산만해집니다 */
 const CHAT_SPOTS = [
   [{ x: 42, y: 26 }, { x: 44, y: 26 }],
-  [{ x: 32, y: 26 }, { x: 34, y: 26 }],
   [{ x: 25, y: 12 }, { x: 27, y: 12 }],
 ] as const;
 
@@ -230,6 +229,7 @@ export class OfficeRenderer {
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.clearKeys);
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('dblclick', this.onDoubleClick);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame(this.loop);
@@ -241,6 +241,7 @@ export class OfficeRenderer {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.clearKeys);
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.canvas.removeEventListener('dblclick', this.onDoubleClick);
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 
@@ -434,8 +435,7 @@ export class OfficeRenderer {
   };
 
   private onPointerDown = (e: PointerEvent): void => {
-    const player = this.actors.get('ceo');
-    if (!player || this.needsSize) return;
+    if (this.needsSize) return;
 
     const rect = this.canvas.getBoundingClientRect();
     const tile = this.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
@@ -448,6 +448,15 @@ export class OfficeRenderer {
       return;
     }
     this.callbacks.onActorSelect?.(null);
+  };
+
+  private onDoubleClick = (e: MouseEvent): void => {
+    const player = this.actors.get('ceo');
+    if (!player || this.needsSize || this.isTyping(e.target)) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const tile = this.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+    if (this.actorAt(tile.x, tile.y)) return;
 
     const tx = Math.round(tile.x);
     const ty = Math.round(tile.y);
@@ -917,6 +926,7 @@ export class OfficeRenderer {
     this.drawFloor();
     this.drawIdleZoneShade();
     this.drawZoneLabels();
+    this.drawCeoSeatMarker();
 
     const drawables: Drawable[] = [];
 
@@ -1025,6 +1035,27 @@ export class OfficeRenderer {
     ctx.beginPath();
     ctx.ellipse(px, py, 6 + age * 12, 4 + age * 8, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  private drawCeoSeatMarker(): void {
+    const { ctx } = this;
+    const cx = CEO_SEAT.x * TILE + TILE / 2;
+    const cy = CEO_SEAT.y * TILE + TILE - 3;
+
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = 'rgba(108, 99, 255, 0.18)';
+    ctx.strokeStyle = 'rgba(211, 208, 255, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 15, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '800 7px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CEO', cx, cy + 2.5);
     ctx.restore();
   }
 
