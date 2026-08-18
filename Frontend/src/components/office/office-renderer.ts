@@ -926,8 +926,8 @@ export class OfficeRenderer {
 
     this.drawFloor();
     this.drawIdleZoneShade();
+    this.drawDoors();
     this.drawZoneLabels();
-    this.drawDoorMarkers();
     this.drawCeoSeatMarker();
 
     const drawables: Drawable[] = [];
@@ -1061,18 +1061,68 @@ export class OfficeRenderer {
     ctx.restore();
   }
 
-  private drawDoorMarkers(): void {
+  /** 벽 방향에 맞춰 열린 통로·문틀·열린 문짝을 픽셀 스타일로 그립니다. */
+  private drawDoors(): void {
     const { ctx } = this;
     ctx.save();
     for (const door of DOORS) {
+      const zone = ZONES.find((candidate) => candidate.id === door.zoneId);
+      if (!zone) continue;
       const x = door.x * TILE;
       const y = door.y * TILE;
-      ctx.fillStyle = 'rgba(218, 187, 113, 0.32)';
-      ctx.strokeStyle = 'rgba(255, 231, 166, 0.82)';
-      ctx.lineWidth = 1.5;
-      roundRect(ctx, x + 4, y + 11, TILE - 8, 10, 3);
-      ctx.fill();
-      ctx.stroke();
+      const right = zone.x + zone.w - 1;
+      const bottom = zone.y + zone.h - 1;
+      const vertical = door.x === zone.x || door.x === right;
+      const side = door.y === zone.y
+        ? 'top'
+        : door.y === bottom
+          ? 'bottom'
+          : door.x === zone.x
+            ? 'left'
+            : 'right';
+
+      ctx.fillStyle = '#18202a';
+      ctx.strokeStyle = '#d3a15f';
+      ctx.lineWidth = 2;
+
+      if (vertical) {
+        // 세로 벽의 문: 벽을 어두운 통로로 덮고 위·아래에 문틀을 둡니다.
+        ctx.fillRect(x + 7, y + 2, 18, TILE - 4);
+        ctx.fillStyle = '#b57d43';
+        ctx.fillRect(x + 5, y + 1, 4, TILE - 2);
+        ctx.fillRect(x + 23, y + 1, 4, TILE - 2);
+        ctx.fillStyle = '#e1b66f';
+        ctx.fillRect(x + 7, y + 2, 18, 3);
+        ctx.fillRect(x + 7, y + TILE - 5, 18, 3);
+        ctx.strokeStyle = '#d3a15f';
+        ctx.beginPath();
+        const hingeX = side === 'left' ? x + 24 : x + 8;
+        const leafX = side === 'left' ? x + 15 : x + 17;
+        ctx.moveTo(hingeX, y + 5);
+        ctx.lineTo(leafX, y + 16);
+        ctx.stroke();
+      } else {
+        // 가로 벽의 문: 좌·우 문설주와 열린 문짝이 통행 방향을 보여줍니다.
+        ctx.fillRect(x + 2, y + 7, TILE - 4, 18);
+        ctx.fillStyle = '#b57d43';
+        ctx.fillRect(x + 1, y + 5, TILE - 2, 4);
+        ctx.fillRect(x + 1, y + 23, TILE - 2, 4);
+        ctx.fillStyle = '#e1b66f';
+        ctx.fillRect(x + 2, y + 7, 3, 18);
+        ctx.fillRect(x + TILE - 5, y + 7, 3, 18);
+        ctx.strokeStyle = '#d3a15f';
+        ctx.beginPath();
+        const hingeY = side === 'top' ? y + 24 : y + 8;
+        const leafY = side === 'top' ? y + 15 : y + 17;
+        ctx.moveTo(x + 5, hingeY);
+        ctx.lineTo(x + 16, leafY);
+        ctx.stroke();
+      }
+
+      // 문 중앙의 밝은 문턱은 실제 통과 가능한 타일이라는 신호입니다.
+      ctx.fillStyle = 'rgba(255, 231, 166, 0.68)';
+      if (vertical) ctx.fillRect(x + 13, y + 5, 6, TILE - 10);
+      else ctx.fillRect(x + 5, y + 13, TILE - 10, 6);
     }
     ctx.restore();
   }
