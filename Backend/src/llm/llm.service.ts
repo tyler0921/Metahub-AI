@@ -139,10 +139,11 @@ export class LlmService {
         if (error instanceof LlmTransientError) {
           lastError = error;
           if (attempt === this.config.maxRetries) break;
+          const waitMs = error.retryAfterMs ?? this.backoffMs(attempt);
           this.logger.warn(
-            `일시 오류 — ${attempt + 1}회차 재시도 (${this.config.maxRetries}회 중)`,
+            `일시 오류 — ${attempt + 1}회차 재시도 (${this.config.maxRetries}회 중, ${Math.ceil(waitMs / 1000)}초 후)`,
           );
-          await this.sleep(this.backoffMs(attempt), signal);
+          await this.sleep(waitMs, signal);
           continue;
         }
 

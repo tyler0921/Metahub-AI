@@ -29,20 +29,9 @@ export function UsagePanel(): React.JSX.Element | null {
 
   const totals = result?.usage ?? usage;
   const hasActivity = totals.calls > 0 || isRunning || Boolean(result);
-  if (!hasActivity) return null;
 
-  const elapsedSeconds =
-    isRunning && startedAt
-      ? Math.floor((now - startedAt) / 1_000)
-      : (result?.elapsedSeconds ?? 0);
-
-  const cost = estimateCost(
-    provider || 'mock',
-    model || 'mock',
-    totals.inputTokens,
-    totals.outputTokens,
-  );
-
+  // 훅은 early return 보다 앞에 둬야 합니다. 대기 → 제출 때 훅 개수가
+  // 바뀌면 React 가 트리를 통째로 내리고, 오피스가 --frame 색만 남습니다.
   const phaseRows = useMemo(() => {
     const map = new Map<
       string,
@@ -61,6 +50,20 @@ export function UsagePanel(): React.JSX.Element | null {
 
     return [...map.values()].sort((a, b) => a.order - b.order);
   }, [usageSlices]);
+
+  if (!hasActivity) return null;
+
+  const elapsedSeconds =
+    isRunning && startedAt
+      ? Math.floor((now - startedAt) / 1_000)
+      : (result?.elapsedSeconds ?? 0);
+
+  const cost = estimateCost(
+    provider || 'mock',
+    model || 'mock',
+    totals.inputTokens,
+    totals.outputTokens,
+  );
 
   const costLabel = cost.free
     ? '무료'

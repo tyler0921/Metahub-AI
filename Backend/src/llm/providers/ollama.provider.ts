@@ -113,17 +113,27 @@ export class OllamaProvider implements LlmProvider {
   }
 
   private async send(body: unknown, signal?: AbortSignal): Promise<OllamaResponse> {
+    const payload = JSON.stringify(body);
     let response: Response;
     try {
-      response = await fetch(this.chatUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-        // 로컬 모델은 느릴 수 있으므로 넉넉하게 잡습니다
-        signal: mergeSignals(AbortSignal.timeout(this.config.timeoutMs), signal),
-      });
+      response = await this.postChat(payload, signal);
     } catch (cause) {
-      throw this.explainConnectionError(cause);
+      if (signal?.aborted) throw this.explainConnectionError(cause);
+      if (this.isAbortLike(cause)) throw this.explainConnectionError(cause);
+
+      // 장시간 세션 중 Ollama 가 재시작되거나 keep-alive 소켓이 죽으면
+      // `TypeError: fetch failed` 가 납니다. 영구 오류가 아니라 복구를 기다립니다.
+      this.logger.warn(
+        `Ollama 연결이 끊겼습니다. 서버 복구를 기다립니다 — ${this.describeCause(cause)}`,
+      );
+      const recovered = await this.waitUntilReady(signal, 12_000);
+      if (!recovered) throw this.explainConnectionError(cause);
+
+      try {
+        response = await this.postChat(payload, signal);
+      } catch (retryCause) {
+        throw this.explainConnectionError(retryCause);
+      }
     }
 
     if (response.ok) return (await response.json()) as OllamaResponse;
@@ -139,11 +149,69 @@ export class OllamaProvider implements LlmProvider {
     throw new LlmRequestError(`Ollama ${response.status}: ${raw}`, response.status);
   }
 
+  private postChat(payload: string, signal?: AbortSignal): Promise<Response> {
+    return fetch(this.chatUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        // 죽은 keep-alive 소켓을 재사용하지 않게 합니다
+        connection: 'close',
+      },
+      body: payload,
+      cache: 'no-store',
+      signal: mergeSignals(AbortSignal.timeout(this.config.timeoutMs), signal),
+    });
+  }
+
+  /**
+   * Ollama 가 다시 응답할 때까지 짧게 폴링합니다.
+   * 로컬 서버는 OOM 후 수 초 안에 살아나는 경우가 많습니다.
+   */
+  private async waitUntilReady(signal: AbortSignal | undefined, budgetMs: number): Promise<boolean> {
+    const deadline = Date.now() + budgetMs;
+    const root = this.config.baseUrl.replace(/\/$/, '');
+
+    while (Date.now() < deadline) {
+      if (signal?.aborted) return false;
+      try {
+        const response = await fetch(root, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { connection: 'close' },
+          signal: mergeSignals(AbortSignal.timeout(2_000), signal),
+        });
+        if (response.ok) return true;
+      } catch {
+        // 아직 안 떠 있음
+      }
+      await this.sleep(1_500, signal);
+    }
+    return false;
+  }
+
+  private sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve) => {
+      if (signal?.aborted) {
+        resolve();
+        return;
+      }
+      const timer = setTimeout(resolve, ms);
+      signal?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true },
+      );
+    });
+  }
+
   /** 서버가 안 떠 있거나 응답이 너무 느릴 때 무엇을 해야 하는지 알려줍니다 */
   private explainConnectionError(cause: unknown): Error {
-    const text = String(cause);
+    const text = this.describeCause(cause);
 
-    if (/TimeoutError|aborted|AbortError/i.test(text)) {
+    if (this.isAbortLike(cause)) {
       return new LlmTransientError(
         [
           `Ollama 응답이 ${Math.round(this.config.timeoutMs / 1000)}초 안에 오지 않았습니다.`,
@@ -153,7 +221,9 @@ export class OllamaProvider implements LlmProvider {
       );
     }
 
-    return new LlmRequestError(
+    // 설치가 안 된 경우와, 작업 중 서버가 잠깐 죽은 경우를 같은 메시지로 안내합니다.
+    // LlmTransientError 로 던져야 세션 전체가 한 번에 죽지 않습니다.
+    return new LlmTransientError(
       [
         `Ollama 서버에 연결하지 못했습니다 (${this.config.baseUrl}).`,
         '',
@@ -164,8 +234,25 @@ export class OllamaProvider implements LlmProvider {
         '',
         `원인: ${redactSecrets(text)}`,
       ].join('\n'),
-      503,
+      8_000,
     );
+  }
+
+  private isAbortLike(cause: unknown): boolean {
+    return /TimeoutError|aborted|AbortError/i.test(this.describeCause(cause));
+  }
+
+  /** Node fetch 는 `TypeError: fetch failed` 뒤에 실제 원인을 cause 로 숨깁니다 */
+  private describeCause(cause: unknown): string {
+    if (!(cause instanceof Error)) return String(cause);
+    const nested = cause.cause instanceof Error ? cause.cause : null;
+    const code =
+      (cause as NodeJS.ErrnoException).code ??
+      (nested as NodeJS.ErrnoException | null)?.code;
+    const parts = [`${cause.name}: ${cause.message}`];
+    if (nested) parts.push(nested.message);
+    if (code) parts.push(String(code));
+    return parts.join(' — ');
   }
 
   /** 모델을 아직 내려받지 않은 경우 */
