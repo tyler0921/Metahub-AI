@@ -29,6 +29,10 @@ interface CollisionRect extends Point {
   h: number;
 }
 
+export interface Door extends Point {
+  zoneId: string;
+}
+
 interface OfficeMapData {
   version: 1;
   tileSize: number;
@@ -37,6 +41,7 @@ interface OfficeMapData {
   spawn: Point;
   ceoSeat: Point;
   zones: Zone[];
+  doors: Door[];
   meetingSeats: Point[];
   collisionBlockers: CollisionRect[];
 }
@@ -50,6 +55,7 @@ export const MAP_ROWS = MAP.rows;
 export const MAP_W = MAP_COLS * TILE;
 export const MAP_H = MAP_ROWS * TILE;
 export const ZONES: readonly Zone[] = MAP.zones;
+export const DOORS: ReadonlyArray<Door> = MAP.doors;
 export const DEPARTMENT_ZONES = ZONES.filter((zone) => zone.agent);
 export const SPAWN: Readonly<Point> = MAP.spawn;
 export const CEO_SEAT: Readonly<Point> = MAP.ceoSeat;
@@ -80,16 +86,36 @@ export function buildGrid(): MapGrid {
 
   for (const zone of ZONES) {
     for (let y = zone.y; y < zone.y + zone.h; y++) {
-      for (let x = zone.x; x < zone.x + zone.w; x++) zoneAt[y]![x] = zone;
+      for (let x = zone.x; x < zone.x + zone.w; x++) {
+        zoneAt[y]![x] = zone;
+      }
     }
   }
 
   const blocked = cells.map((row) => row.map((cell) => cell !== 'floor'));
+
+  // 정적 배경에 그려진 각 방의 둘레를 실제 충돌 벽으로 만듭니다.
+  for (const zone of ZONES) {
+    const right = zone.x + zone.w - 1;
+    const bottom = zone.y + zone.h - 1;
+    for (let x = zone.x; x <= right; x++) {
+      blocked[zone.y]![x] = true;
+      blocked[bottom]![x] = true;
+    }
+    for (let y = zone.y; y <= bottom; y++) {
+      blocked[y]![zone.x] = true;
+      blocked[y]![right] = true;
+    }
+  }
+
   for (const rect of MAP.collisionBlockers) {
     for (let y = rect.y; y < rect.y + rect.h; y++) {
       for (let x = rect.x; x < rect.x + rect.w; x++) blocked[y]![x] = true;
     }
   }
+
+  // 벽을 만든 뒤 선언된 출입문 타일만 다시 엽니다.
+  for (const door of DOORS) blocked[door.y]![door.x] = false;
 
   // 좌석과 입구는 배경 가구 충돌 영역과 겹치더라도 도착 가능한 지점이어야 합니다.
   for (const seat of [

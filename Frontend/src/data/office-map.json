@@ -19,10 +19,25 @@
     { "id": "ceo-office", "label": "대표실", "kind": "reception", "x": 29, "y": 21, "w": 10, "h": 8, "color": "#657b91", "rug": false },
     { "id": "cafe", "label": "오피스 카페", "kind": "cafe", "x": 39, "y": 21, "w": 12, "h": 8, "color": "#70866d", "rug": false }
   ],
+  "doors": [
+    { "zoneId": "researcher", "x": 17, "y": 9 },
+    { "zoneId": "reception", "x": 27, "y": 9 },
+    { "zoneId": "boardroom", "x": 42, "y": 9 },
+    { "zoneId": "dev", "x": 14, "y": 15 },
+    { "zoneId": "finance", "x": 19, "y": 14 },
+    { "zoneId": "writer", "x": 32, "y": 14 },
+    { "zoneId": "marketer", "x": 37, "y": 15 },
+    { "zoneId": "planner", "x": 7, "y": 21 },
+    { "zoneId": "showcase", "x": 18, "y": 21 },
+    { "zoneId": "entrance", "x": 26, "y": 21 },
+    { "zoneId": "entrance", "x": 26, "y": 28 },
+    { "zoneId": "ceo-office", "x": 34, "y": 21 },
+    { "zoneId": "cafe", "x": 45, "y": 21 }
+  ],
   "meetingSeats": [
     { "x": 37, "y": 5 }, { "x": 40, "y": 4 }, { "x": 43, "y": 4 },
-    { "x": 46, "y": 5 }, { "x": 47, "y": 8 }, { "x": 44, "y": 9 },
-    { "x": 41, "y": 9 }, { "x": 38, "y": 9 }, { "x": 36, "y": 8 }
+    { "x": 46, "y": 5 }, { "x": 47, "y": 8 }, { "x": 44, "y": 8 },
+    { "x": 41, "y": 8 }, { "x": 38, "y": 8 }, { "x": 36, "y": 8 }
   ],
   "collisionBlockers": [
     { "x": 3, "y": 5, "w": 11, "h": 2 },

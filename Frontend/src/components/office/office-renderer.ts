@@ -3,6 +3,7 @@ import {
   MAP_H,
   MAP_W,
   CEO_SEAT,
+  DOORS,
   SPAWN,
   TILE,
   ZONES,
@@ -926,6 +927,7 @@ export class OfficeRenderer {
     this.drawFloor();
     this.drawIdleZoneShade();
     this.drawZoneLabels();
+    this.drawDoorMarkers();
     this.drawCeoSeatMarker();
 
     const drawables: Drawable[] = [];
@@ -1056,6 +1058,22 @@ export class OfficeRenderer {
     ctx.font = '800 7px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('CEO', cx, cy + 2.5);
+    ctx.restore();
+  }
+
+  private drawDoorMarkers(): void {
+    const { ctx } = this;
+    ctx.save();
+    for (const door of DOORS) {
+      const x = door.x * TILE;
+      const y = door.y * TILE;
+      ctx.fillStyle = 'rgba(218, 187, 113, 0.32)';
+      ctx.strokeStyle = 'rgba(255, 231, 166, 0.82)';
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, x + 4, y + 11, TILE - 8, 10, 3);
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
