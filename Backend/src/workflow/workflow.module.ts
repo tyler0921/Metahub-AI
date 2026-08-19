@@ -15,6 +15,7 @@ import { SessionRepository } from './repositories/session.repository';
 import { WorkflowController } from './workflow.controller';
 import { WorkflowService } from './workflow.service';
 import { AutonomousWorkService } from './autonomous-work.service';
+import { AutonomousBriefPlannerService } from './autonomous-brief-planner.service';
 import { AutonomousStateStore } from './autonomous-state.store';
 import { AutonomousWorkController } from './autonomous-work.controller';
 import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
@@ -27,6 +28,7 @@ import { AutonomousInboxStore } from './autonomous-inbox.store';
     SessionRepository,
     WorkflowService,
     AutonomousWorkService,
+    AutonomousBriefPlannerService,
     AutonomousStateStore,
     AutonomousInboxStore,
     AdminMutationGuard,

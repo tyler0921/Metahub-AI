@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { AutonomousWorkStatusResponse, SessionEvent } from '@shared';
 import type { Subscription } from 'rxjs';
 import type { AutonomousWorkConfig } from '../config/configuration';
+import { AutonomousBriefPlannerService } from './autonomous-brief-planner.service';
 import { AutonomousStateStore } from './autonomous-state.store';
 import { AutonomousInboxStore } from './autonomous-inbox.store';
 import { SessionRepository } from './repositories/session.repository';
@@ -25,6 +26,11 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private sessionTimeout: NodeJS.Timeout | null = null;
   private sessionSubscription: Subscription | null = null;
+  /**
+   * 다음 과제를 고르는 중(LLM 호출)엔 세션이 아직 등록되지 않아 findActive() 가
+   * 비어 있는 창이 생깁니다. 그 틈에 tick 이나 run-now 가 겹쳐 들어오지 않도록 막습니다.
+   */
+  private starting = false;
 
   constructor(
     config: ConfigService,
@@ -32,6 +38,7 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
     private readonly inbox: AutonomousInboxStore,
     private readonly sessions: SessionRepository,
     private readonly workflow: WorkflowService,
+    private readonly briefPlanner: AutonomousBriefPlannerService,
   ) {
     this.config = config.getOrThrow<AutonomousWorkConfig>('autonomousWork');
   }
@@ -95,10 +102,15 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
 
   runNow(): AutonomousWorkStatusResponse {
     const state = this.stateStore.reload();
-    if (!this.config.enabled || state.paused || this.sessions.findActive()) return this.getStatus();
+    if (!this.config.enabled || state.paused || this.starting || this.sessions.findActive()) {
+      return this.getStatus();
+    }
     if (state.runsToday >= this.config.dailyLimit) return this.getStatus();
     this.clearTimer();
-    this.startAutonomousSession();
+    // 과제 선정(LLM 호출)을 기다리지 않고 즉시 상태를 돌려줍니다 — 프론트는 폴링으로
+    // 활성 세션을 따라잡으므로, 여기서 기다리면 로컬 모델 기준 버튼이 수 초~수십 초
+    // 멈춘 것처럼 보입니다.
+    void this.startAutonomousSession();
     return this.getStatus();
   }
 
@@ -107,55 +119,72 @@ export class AutonomousWorkService implements OnModuleInit, OnModuleDestroy {
     this.clearTimer();
     const delay = Math.max(1_000, delayMs);
     this.stateStore.setNextRunAt(new Date(Date.now() + delay));
-    this.timer = setTimeout(() => this.tick(), delay);
+    this.timer = setTimeout(() => {
+      void this.tick();
+    }, delay);
     this.timer.unref?.();
   }
 
-  private tick(): void {
+  private async tick(): Promise<void> {
     this.timer = null;
     const state = this.stateStore.reload();
     if (state.paused) return;
-    if (this.sessions.findActive() || state.runsToday >= this.config.dailyLimit) {
+    if (this.starting || this.sessions.findActive() || state.runsToday >= this.config.dailyLimit) {
       this.schedule(this.config.intervalMs);
       return;
     }
-    this.startAutonomousSession();
+    await this.startAutonomousSession();
   }
 
-  private startAutonomousSession(): void {
-    const state = this.stateStore.snapshot();
-    const backlogItem = this.inbox.nextQueued();
-    const brief = backlogItem?.brief ?? chooseAutonomousBrief(state.recentBriefs);
-    const session = this.workflow.createSession(brief);
-    if (backlogItem) this.inbox.markStarted(backlogItem.id, session.id);
-    this.stateStore.recordRun(brief, session.id);
-    this.stateStore.setNextRunAt(null);
-    this.logger.log(`자율 업무를 시작했습니다: ${session.id}`);
+  private async startAutonomousSession(): Promise<void> {
+    this.starting = true;
+    try {
+      const state = this.stateStore.snapshot();
+      const backlogItem = this.inbox.nextQueued();
+      // 백로그 항목은 이미 사람이 쓴 브리프이므로 플래너를 타지 않습니다
+      const brief = backlogItem
+        ? backlogItem.brief
+        : await this.briefPlanner.plan(state.recentBriefs);
 
-    let finished = false;
-    const finish = (event: SessionEvent): void => {
-      if (finished) return;
-      if (event.type !== 'done' && event.type !== 'error' && event.type !== 'cancelled') return;
-      finished = true;
-      if (event.type === 'done') {
-        this.stateStore.recordSuccess();
-        this.inbox.requestApproval(session.id, brief);
-      } else {
-        this.stateStore.recordFailure();
-      }
-      if (backlogItem) this.inbox.markFinished(backlogItem.id, event.type === 'done');
-      this.clearSessionWatch();
-      const failures = this.stateStore.snapshot().consecutiveFailures;
-      const backoff = Math.min(this.config.intervalMs * 2 ** failures, 6 * 60 * 60 * 1000);
-      this.schedule(backoff);
-    };
+      const session = this.workflow.createSession(brief);
+      // 세션이 등록된 순간부터는 findActive() 가 중복 시작을 막아줍니다
+      this.starting = false;
 
-    this.sessionSubscription = session.asObservable().subscribe({ next: finish });
-    this.sessionTimeout = setTimeout(() => {
-      this.logger.warn(`자율 업무 최대 실행 시간을 초과해 중단합니다: ${session.id}`);
-      this.workflow.cancelSession(session.id);
-    }, this.config.maxSessionMs);
-    this.sessionTimeout.unref?.();
+      if (backlogItem) this.inbox.markStarted(backlogItem.id, session.id);
+      this.stateStore.recordRun(brief, session.id);
+      this.stateStore.setNextRunAt(null);
+      this.logger.log(`자율 업무를 시작했습니다: ${session.id}`);
+
+      let finished = false;
+      const finish = (event: SessionEvent): void => {
+        if (finished) return;
+        if (event.type !== 'done' && event.type !== 'error' && event.type !== 'cancelled') return;
+        finished = true;
+        if (event.type === 'done') {
+          this.stateStore.recordSuccess();
+          this.inbox.requestApproval(session.id, brief);
+        } else {
+          this.stateStore.recordFailure();
+        }
+        if (backlogItem) this.inbox.markFinished(backlogItem.id, event.type === 'done');
+        this.clearSessionWatch();
+        const failures = this.stateStore.snapshot().consecutiveFailures;
+        const backoff = Math.min(this.config.intervalMs * 2 ** failures, 6 * 60 * 60 * 1000);
+        this.schedule(backoff);
+      };
+
+      this.sessionSubscription = session.asObservable().subscribe({ next: finish });
+      this.sessionTimeout = setTimeout(() => {
+        this.logger.warn(`자율 업무 최대 실행 시간을 초과해 중단합니다: ${session.id}`);
+        this.workflow.cancelSession(session.id);
+      }, this.config.maxSessionMs);
+      this.sessionTimeout.unref?.();
+    } catch (error) {
+      this.starting = false;
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`자율 업무를 시작하지 못해 이번 주기를 건너뜁니다: ${message}`);
+      this.schedule(this.config.intervalMs);
+    }
   }
 
   private clearTimer(): void {

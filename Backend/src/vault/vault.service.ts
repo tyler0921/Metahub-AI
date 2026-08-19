@@ -9,6 +9,7 @@ import type {
 } from '@shared';
 import { AgentsService } from '../agents/agents.service';
 import type { AgentEntity } from '../agents/entities/agent.entity';
+import { VaultEmbeddingStore } from './embedding/vault-embedding.store';
 import { VaultNoteEntity } from './entities/vault-note.entity';
 import type { VaultProjectEntity } from './entities/vault-project.entity';
 import { NoteFormatter, type ProjectStatus } from './formatters/note.formatter';
@@ -29,6 +30,15 @@ interface ScoredNote {
  */
 const MIN_COVERAGE = 0.3;
 const MIN_SCORE = 2;
+
+/**
+ * 임베딩만으로 후보에 오를 수 있는 최소 유사도(0~1 정규화 코사인).
+ *
+ * 키워드가 하나도 안 겹쳐도 이 이상이면 동의어·문맥 일치로 보고 살립니다.
+ * `nomic-embed-text` 기준 무관한 문서끼리도 0.4~0.5대는 흔히 나오므로
+ * 여유를 두고 0.62로 잡았습니다.
+ */
+const SEMANTIC_MIN = 0.62;
 
 /** 검색 정확도를 떨어뜨리는 흔한 어미·조사 */
 const STOP_WORDS = new Set([
@@ -51,6 +61,7 @@ export class VaultService implements OnModuleInit {
     private readonly repository: VaultRepository,
     private readonly formatter: NoteFormatter,
     private readonly agents: AgentsService,
+    private readonly embeddings: VaultEmbeddingStore,
   ) {}
 
   onModuleInit(): void {
@@ -84,11 +95,17 @@ export class VaultService implements OnModuleInit {
     if (terms.length === 0) return [];
 
     const notes = await this.repository.loadAllNotes();
+    const candidates = notes.filter((note) => !note.excludedFromRecall);
+
+    // 임베딩이 꺼져 있거나 서버에 닿지 못하면 null — 이 경우 아래 루프는
+    // 원래의 키워드 전용 로직과 완전히 동일하게 동작합니다 (하위 호환 폴백)
+    const semanticMap = await this.embeddings.similarities(query, candidates, (note) =>
+      `${note.title}\n${this.excerpt(note.body, 2000)}`,
+    );
+
     const scored: ScoredNote[] = [];
 
-    for (const note of notes) {
-      if (note.excludedFromRecall) continue;
-
+    for (const note of candidates) {
       const haystack = `${note.title}\n${note.body}`.toLowerCase();
       const title = note.title.toLowerCase();
       let raw = 0;
@@ -104,17 +121,28 @@ export class VaultService implements OnModuleInit {
         if (title.includes(term)) raw += 4;
       }
 
-      if (matchedTerms === 0) continue;
-
       // 검색어를 골고루 맞힌 노트에 가산점 (1개만 반복된 노트를 눌러줍니다)
       const coverage = matchedTerms / terms.length;
-      // 검색어를 거의 못 맞힌 노트는 점수가 높아도 주제가 다릅니다
-      if (coverage < MIN_COVERAGE) continue;
-
       const lengthPenalty = Math.sqrt(Math.max(note.bodyLength, 400) / 400);
-      const score = (raw * (0.5 + coverage)) / lengthPenalty;
-      if (score < MIN_SCORE) continue;
+      const keywordScore = matchedTerms > 0 ? (raw * (0.5 + coverage)) / lengthPenalty : 0;
+      // 검색어를 거의 못 맞혔거나 점수가 낮으면 키워드만으로는 관련 없다고 봅니다
+      const keywordQualifies =
+        matchedTerms > 0 && coverage >= MIN_COVERAGE && keywordScore >= MIN_SCORE;
 
+      if (semanticMap === null) {
+        if (!keywordQualifies) continue;
+        scored.push({ note, score: keywordScore });
+        continue;
+      }
+
+      // 동의어·문맥 일치는 키워드가 하나도 안 겹쳐도 의미 유사도로 살립니다
+      const semanticScore = semanticMap.get(note.relativePath) ?? 0;
+      if (!keywordQualifies && semanticScore < SEMANTIC_MIN) continue;
+
+      const score =
+        matchedTerms > 0
+          ? 0.45 * this.normalizeKeywordScore(keywordScore) + 0.55 * semanticScore
+          : semanticScore;
       scored.push({ note, score });
     }
 
@@ -126,6 +154,11 @@ export class VaultService implements OnModuleInit {
       )
       .slice(0, limit)
       .map((s) => s.note);
+  }
+
+  /** 키워드 원점수를 시맨틱 점수와 같은 0~1 스케일로 눌러줍니다 (score=4 → 0.5) */
+  private normalizeKeywordScore(score: number): number {
+    return score / (score + 4);
   }
 
   /** 회상 결과를 각 부서 프롬프트에 끼워 넣을 텍스트로 변환 */

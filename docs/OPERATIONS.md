@@ -31,6 +31,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-startup-ta
 | `data/autonomous-work.json` | 자율 실행 횟수, 일시정지, 다음 실행 시각 |
 | `data/autonomous-inbox.json` | 우선순위 백로그와 승인/반려 기록 |
 | `data/llm-budget.json` | 일일 LLM 호출·토큰 사용량 |
+| `data/vault-embeddings.json` | 볼트 시맨틱 회상용 노트 임베딩 캐시 (mtime 기준 증분 갱신) |
 | `data/logs/supervisor.log` | 감독기 시작·복구 기록 |
 
 서버 재시작 시 완료 세션은 SQLite에서 다시 조회됩니다. 실행 중이던 세션은 안전하게 `failed`로 정리되고 중단 이벤트가 기록됩니다.
@@ -53,6 +54,33 @@ LLM_DAILY_TOKEN_LIMIT=500000
 ```
 
 `0`은 무제한입니다. 호출 한도 또는 누적 토큰 한도에 도달하면 다음 LLM 요청부터 HTTP 429로 차단됩니다. 상태는 `GET /api/config`의 `llmBudget`에서 확인할 수 있습니다.
+
+## 볼트 시맨틱 회상
+
+키워드 매칭에 코사인 유사도를 더한 하이브리드 회상입니다. 채팅 프로바이더가 무엇이든
+(ollama/gemini/groq/claude) 임베딩은 항상 로컬 Ollama 를 씁니다.
+
+```powershell
+ollama pull nomic-embed-text
+```
+
+`Backend/.env`에서 끄고 켤 수 있습니다.
+
+```dotenv
+VAULT_EMBEDDINGS_ENABLED=true
+VAULT_EMBEDDING_MODEL=nomic-embed-text
+```
+
+임베딩 서버가 안 떠 있거나 모델이 없으면 에러 없이 키워드 전용 회상으로 자동
+전환됩니다(로그는 프로세스당 한 번만 남습니다). 노트 임베딩은 `data/vault-embeddings.json`에
+캐시되어 다시 시작해도 재계산하지 않고, mtime 이 바뀐 노트만 증분 갱신됩니다.
+
+## 자율 업무가 스스로 과제를 고르는 방식
+
+백로그가 비어 있으면 고정 문장을 순환하는 대신, 비서실장 페르소나가 최근 세션 이력
+(성공/실패, 점수, 검수 지적)과 최근에 낸 과제 목록을 보고 다음 자율 업무를 즉석에서
+짓습니다(`AutonomousBriefPlannerService`). LLM 호출이 실패하거나 이상한 응답이면
+자동으로 기존 고정 3문장 순환으로 되돌아가므로 자율 스케줄은 절대 멈추지 않습니다.
 
 ## 자율 업무 백로그와 승인함
 

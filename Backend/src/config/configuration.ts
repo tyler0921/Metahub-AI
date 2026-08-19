@@ -49,6 +49,14 @@ export interface SecurityConfig {
 export interface VaultConfig {
   path: string;
   rootFolder: string;
+  /** 회상을 키워드 매칭 + 임베딩 하이브리드로 돌릴지. 꺼두면 항상 키워드만 씁니다. */
+  embeddingsEnabled: boolean;
+  /** Ollama 임베딩 모델 (채팅 프로바이더와 무관하게 항상 Ollama 를 씁니다) */
+  embeddingModel: string;
+  /** 임베딩 서버 주소 — 보통 채팅용 Ollama 와 같은 인스턴스 */
+  embeddingBaseUrl: string;
+  /** 노트 임베딩 캐시 (mtime 이 바뀐 노트만 다시 계산) */
+  embeddingCachePath: string;
 }
 
 export interface WorkflowConfig {
@@ -224,6 +232,12 @@ export const vaultConfig = registerAs(
   (): VaultConfig => ({
     path: process.env.OBSIDIAN_VAULT?.trim() || path.join(PROJECT_ROOT, 'vault'),
     rootFolder: process.env.OBSIDIAN_ROOT?.trim() || 'AI Company',
+    embeddingsEnabled: toBool(process.env.VAULT_EMBEDDINGS_ENABLED, true),
+    embeddingModel: process.env.VAULT_EMBEDDING_MODEL?.trim() || 'nomic-embed-text',
+    embeddingBaseUrl: process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434',
+    embeddingCachePath:
+      process.env.VAULT_EMBEDDING_CACHE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'vault-embeddings.json'),
   }),
 );
 

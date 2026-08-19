@@ -10,6 +10,15 @@ import {
   AutonomousStateStore,
   localDayKey,
 } from '../dist/workflow/autonomous-state.store.js';
+import { AutonomousBriefPlannerService } from '../dist/workflow/autonomous-brief-planner.service.js';
+
+function createPlanner(completeJson) {
+  return new AutonomousBriefPlannerService(
+    { completeJson },
+    { findRecentSummaries: () => [] },
+    { chief: { systemPrompt: '테스트용 비서실장 페르소나' } },
+  );
+}
 
 function createStore(statePath) {
   return new AutonomousStateStore({
@@ -75,4 +84,31 @@ test('최근에 수행하지 않은 자율 과제를 우선 선택한다', () =>
     chooseAutonomousBrief([AUTONOMOUS_BRIEFS[0], AUTONOMOUS_BRIEFS[1]]),
     AUTONOMOUS_BRIEFS[2],
   );
+});
+
+test('브리프 플래너는 LLM 호출이 실패하면 고정 순환으로 대체한다', async () => {
+  const planner = createPlanner(async () => {
+    throw new Error('llm down');
+  });
+
+  assert.equal(await planner.plan([]), AUTONOMOUS_BRIEFS[0]);
+});
+
+test('브리프 플래너는 이상한 응답(빈 문자열)도 고정 순환으로 대체한다', async () => {
+  const planner = createPlanner(async () => ({ brief: '   ' }));
+
+  assert.equal(await planner.plan([]), AUTONOMOUS_BRIEFS[0]);
+});
+
+test('브리프 플래너는 유효한 LLM 제안을 그대로 쓴다', async () => {
+  const proposed = '[자율 업무] 최근 실패한 랜딩페이지 빌드를 재검토하고 원인을 고쳐줘.';
+  const planner = createPlanner(async () => ({ brief: proposed }));
+
+  assert.equal(await planner.plan([]), proposed);
+});
+
+test('브리프 플래너는 최근에 낸 과제를 그대로 반복하면 고정 순환으로 대체한다', async () => {
+  const planner = createPlanner(async () => ({ brief: AUTONOMOUS_BRIEFS[0] }));
+
+  assert.equal(await planner.plan([AUTONOMOUS_BRIEFS[0]]), AUTONOMOUS_BRIEFS[1]);
 });
