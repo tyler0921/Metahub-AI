@@ -2,13 +2,13 @@
   padding: 16px;
   border: 1px solid rgb(239 68 68 / 35%);
   border-radius: 10px;
-  background: var(--panel-2);
+  background: var(--accent-soft);
   font-size: 12.5px;
   line-height: 1.6;
 }
 
 .title {
-  color: var(--warn);
+  color: var(--danger);
   font-size: 13.5px;
 }
 
@@ -20,7 +20,7 @@
 .notice code {
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--panel-2);
+  background: var(--accent-soft);
 }
 
 .code {
@@ -28,8 +28,8 @@
   padding: 9px 11px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--panel-2);
-  color: var(--ok);
+  background: var(--accent-soft);
+  color: var(--st-done);
   font-size: 12px;
   overflow-x: auto;
 }
@@ -44,7 +44,7 @@
   border: 0;
   border-radius: 6px;
   background: var(--accent);
-  color: var(--accent-ink);
+  color: var(--accent-strong);
   font: inherit;
   font-size: 12.5px;
   font-weight: 700;

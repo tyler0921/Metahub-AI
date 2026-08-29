@@ -25,6 +25,11 @@ const envSchema = z.object({
     emptyToUndefined,
     z.coerce.number().int().min(10_000).max(1_800_000).optional(),
   ),
+  // 너무 작으면 프롬프트가 잘리고, 너무 크면 VRAM 이 터집니다
+  OLLAMA_NUM_CTX: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(2_048).max(131_072).optional(),
+  ),
   GEMINI_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   GEMINI_MODEL: z.preprocess(emptyToUndefined, z.string().optional()),
   GROQ_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -42,13 +47,48 @@ const envSchema = z.object({
     z.coerce.number().int().min(0).max(1000).optional(),
   ),
   LLM_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(3),
+  LLM_DAILY_CALL_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(0).max(100_000).optional(),
+  ),
+  LLM_DAILY_TOKEN_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  ),
+  LLM_BUDGET_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+  ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
 
   OBSIDIAN_VAULT: z.preprocess(emptyToUndefined, z.string().optional()),
   OBSIDIAN_ROOT: z.string().default('AI Company'),
 
+  WORKSPACE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+
+  // 'false' 를 명시할 때만 회고를 끕니다
+  WORKFLOW_REFLECT: z.preprocess(emptyToUndefined, z.string().optional()),
+
   FEEDBACK_ROUNDS: z.coerce.number().int().min(0).max(3).default(1),
   MAX_REWORK: z.coerce.number().int().min(0).max(3).default(1),
   SESSION_TTL_MS: z.coerce.number().int().positive().default(3_600_000),
+  SESSION_DATABASE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+  AUTONOMOUS_WORK_ENABLED: z.preprocess(emptyToUndefined, z.string().optional()),
+  AUTONOMOUS_WORK_STARTUP_DELAY_MS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(1_000).optional(),
+  ),
+  AUTONOMOUS_WORK_INTERVAL_MS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(60_000).optional(),
+  ),
+  AUTONOMOUS_WORK_DAILY_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(1).max(24).optional(),
+  ),
+  AUTONOMOUS_WORK_MAX_SESSION_MS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(60_000).optional(),
+  ),
+  AUTONOMOUS_WORK_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+  AUTONOMOUS_WORK_INBOX_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

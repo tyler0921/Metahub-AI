@@ -20,7 +20,11 @@ export class LlmRateLimitError extends Error {
 
 /** 5xx / 네트워크 오류 — 잠시 뒤 재시도하면 될 수 있음 */
 export class LlmTransientError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** 알려준 대기 시간. 모르면 null 이고 기본 backoff 을 씁니다 */
+    readonly retryAfterMs: number | null = null,
+  ) {
     super(message);
     this.name = 'LlmTransientError';
   }

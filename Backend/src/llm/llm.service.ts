@@ -22,6 +22,7 @@ import {
 } from './interfaces/llm-provider.interface';
 import { RateLimiter } from './rate-limiter';
 import type { UsageTracker } from './usage.tracker';
+import { LlmBudgetService } from './llm-budget.service';
 
 /**
  * LLM 파사드.
@@ -43,6 +44,7 @@ export class LlmService {
   constructor(
     @Inject(LLM_PROVIDER) private readonly provider: LlmProvider,
     configService: ConfigService,
+    private readonly budget: LlmBudgetService,
   ) {
     this.config = configService.getOrThrow<LlmConfig>('llm');
     this.limiter = new RateLimiter({
@@ -66,6 +68,7 @@ export class LlmService {
     options: CompletionOptions = {},
     tracker?: UsageTracker,
   ): Promise<string> {
+    this.budget.reserveCall();
     const result = await this.callWithRetry(
       () =>
         this.provider.complete({
@@ -76,6 +79,7 @@ export class LlmService {
       options.signal,
     );
     tracker?.add(result.usage);
+    this.budget.recordUsage(result.usage);
     return result.text;
   }
 
@@ -135,10 +139,11 @@ export class LlmService {
         if (error instanceof LlmTransientError) {
           lastError = error;
           if (attempt === this.config.maxRetries) break;
+          const waitMs = error.retryAfterMs ?? this.backoffMs(attempt);
           this.logger.warn(
-            `일시 오류 — ${attempt + 1}회차 재시도 (${this.config.maxRetries}회 중)`,
+            `일시 오류 — ${attempt + 1}회차 재시도 (${this.config.maxRetries}회 중, ${Math.ceil(waitMs / 1000)}초 후)`,
           );
-          await this.sleep(this.backoffMs(attempt), signal);
+          await this.sleep(waitMs, signal);
           continue;
         }
 

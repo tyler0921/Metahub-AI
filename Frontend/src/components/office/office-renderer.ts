@@ -1,22 +1,23 @@
-import type { Agent, AgentId, AgentStatus } from '@shared';
+import type { Agent, AgentId, AgentStatus, SpeechEvent, ToolKind } from '@shared';
 import {
-  GRID,
-  MAP_COLS,
   MAP_H,
-  MAP_ROWS,
   MAP_W,
-  PROPS,
+  CEO_SEAT,
+  DOORS,
   SPAWN,
   TILE,
   ZONES,
   MEETING_SEATS,
   findPath,
   isBlocked,
+  nearestWalkable,
   zoneAt,
-  type PropInstance,
 } from './office-map';
-import { characterFrame, getTintedCarpet, type SpriteAssets } from './sprites';
+import { characterFrame, type SpriteAssets } from './sprites';
 import { SPRITE_OF, STAFF_SEAT_MAP } from './office-staff';
+// 상태색의 출처는 한 곳입니다 — 예전에는 이 파일이 복사본을 들고 있어서
+// 팔레트를 바꿀 때마다 두 군데를 따로 고쳐야 했습니다.
+import { STATUS_COLOR } from '@/lib/agent-status';
 
 /** 타일/초 이동 속도 */
 const WALK_SPEED = 4.2;
@@ -31,6 +32,40 @@ const ZOOM_STEP_PERCENT = 5;
  * 걷기 프레임(1, 3)을 번갈아 쓰면 팔이 미세하게 움직여 보입니다.
  */
 const TYPING_FRAMES = [0, 1, 0, 3] as const;
+/** 좌석 좌표는 이동용 발 위치이므로, 착석 렌더링은 의자 안쪽으로 올립니다. */
+const SEATED_FOOT_LIFT = TILE * 0.58;
+/** 착석·기립 전환 속도. 순간 이동하면 벽에 하체가 잘린 것처럼 보입니다. */
+const SEATED_TRANSITION_SPEED = TILE * 3.4;
+
+/**
+ * 대기 직원이 잠깐 다녀오는 휴게 지점 (타일 좌표).
+ * 카페·포커스 라운지·프로젝트 스튜디오 언저리의 빈 바닥입니다.
+ */
+const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 42, y: 26 }, { x: 47, y: 26 }, // 카페
+  { x: 25, y: 12 }, { x: 28, y: 12 }, // 중앙 라운지
+];
+
+/** 배회 결정 간격 (ms) — 너무 잦으면 오피스가 산만해집니다 */
+const CHAT_SPOTS = [
+  [{ x: 42, y: 26 }, { x: 44, y: 26 }],
+  [{ x: 25, y: 12 }, { x: 27, y: 12 }],
+] as const;
+
+const SMALL_TALK = [
+  ['오늘 점심은 뭐 드실래요?', '저는 김치찌개 생각 중이에요. 같이 가실래요?'],
+  ['커피 한 잔 하실래요?', '좋아요. 잠깐 쉬었다가 다시 집중하죠.'],
+  ['주말 잘 보내셨어요?', '네, 푹 쉬고 왔어요. 오늘 컨디션 좋네요!'],
+  ['요즘 출근길은 괜찮으셨어요?', '오늘은 생각보다 한산해서 일찍 왔어요.'],
+  ['여기 음악 분위기 좋지 않아요?', '맞아요. 조용해서 집중하기 딱 좋아요.'],
+] as const;
+
+const AMBIENT_CHAT_MIN_MS = 12_000;
+const AMBIENT_CHAT_MAX_MS = 24_000;
+const AMBIENT_CHAT_DURATION_MS = 11_000;
+
+const WANDER_MIN_MS = 28_000;
+const WANDER_MAX_MS = 55_000;
 
 type Facing = 'down' | 'left' | 'right' | 'up';
 
@@ -52,6 +87,25 @@ interface Actor {
   homeX?: number;
   homeY?: number;
   path: Array<{ x: number; y: number }>;
+  /** 지금 쓰고 있는 도구 — 머리 위 아이콘 */
+  tool: ToolKind | null;
+  toolLabel: string;
+  /** 다음 배회 결정 시각 (대기 중일 때만 씀) */
+  wanderAt?: number;
+  /** 지금 휴게 공간에 나와 있는가 */
+  atLeisure?: boolean;
+  ambientPartner?: AgentId;
+  /** 이동 좌표와 별개인 착석 표시 높이 */
+  seatedLift: number;
+}
+
+interface AmbientConversation {
+  a: AgentId;
+  b: AgentId;
+  firstLine: string;
+  secondLine: string;
+  startedAt: number | null;
+  replied: boolean;
 }
 
 interface Drawable {
@@ -75,6 +129,17 @@ export interface RendererCallbacks {
   onNearbyChange: (nearby: NearbyInfo | null) => void;
   onZoneChange?: (zone: ZoneInfo | null) => void;
   onZoomChange?: (zoom: number, baseZoom: number) => void;
+  onActorPositions?: (
+    positions: ReadonlyMap<string, { x: number; y: number; isPlayer: boolean }>,
+  ) => void;
+  /**
+   * 직원을 클릭했다. 빈 바닥을 클릭하면 null 이 옵니다.
+   * 근접(`onNearbyChange`)과 달리 **대표가 의도적으로 지목한** 신호입니다.
+   */
+  onActorSelect?: (agentId: AgentId | null) => void;
+  onAmbientSpeech?: (event: SpeechEvent) => void;
+  /** 카메라가 특정 직원을 따라가기 시작·중단할 때. null 이면 대표를 다시 비춥니다. */
+  onFollowChange?: (agentId: AgentId | null) => void;
 }
 
 /**
@@ -91,11 +156,20 @@ export class OfficeRenderer {
   private rafId = 0;
   private lastTime = 0;
   private nearbyId: AgentId | null = null;
+  /** 카메라가 지금 따라가는 직원 — 클릭-추적(Follow) 모드 */
+  private followId: AgentId | null = null;
   private currentZoneId: string | null = null;
   private meetingMode = false;
+  /** 이번 업무에 투입된 부서 — 비면 조명을 나누지 않습니다 */
+  private activeTeams = new Set<string>();
   private anchorTargets = new Set<string>();
   private publishedAnchors = new Map<string, { left: number; top: number }>();
+  private positionTick = 0;
   private marker: { x: number; y: number; at: number } | null = null;
+  /** 세션 오류 — 투입 직원 머리 위에 경고를 띄웁니다 */
+  private sessionAlert = false;
+  private ambientConversation: AmbientConversation | null = null;
+  private ambientConversationAt = performance.now() + 5_000;
 
   private camX = 0;
   private camY = 0;
@@ -120,6 +194,8 @@ export class OfficeRenderer {
       x: SPAWN.x, y: SPAWN.y, homeX: SPAWN.x, homeY: SPAWN.y,
       facing: 'up', distance: 0, moving: false,
       status: 'idle', isPlayer: true, path: [],
+      tool: null, toolLabel: '',
+      seatedLift: 0,
     });
 
     for (const agent of agents) {
@@ -144,6 +220,9 @@ export class OfficeRenderer {
         status: 'idle',
         isPlayer: false,
         path: [],
+        tool: null,
+        toolLabel: '',
+        seatedLift: SEATED_FOOT_LIFT,
       });
     }
   }
@@ -156,6 +235,7 @@ export class OfficeRenderer {
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.clearKeys);
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('dblclick', this.onDoubleClick);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame(this.loop);
@@ -167,6 +247,7 @@ export class OfficeRenderer {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.clearKeys);
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.canvas.removeEventListener('dblclick', this.onDoubleClick);
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 
@@ -185,6 +266,18 @@ export class OfficeRenderer {
 
   resetZoom(): void {
     this.setZoom(this.baseZoom);
+  }
+
+  /** 터치 컨트롤도 키보드와 같은 이동 상태를 사용합니다. */
+  setMoveKey(key: string, pressed: boolean): void {
+    if (!MOVE_KEYS.has(key)) return;
+    if (pressed) {
+      this.keys.add(key);
+      const player = this.actors.get('ceo');
+      if (player) player.path = [];
+      return;
+    }
+    this.keys.delete(key);
   }
 
   /** 표시 배율(%) 기준으로 확대/축소 */
@@ -215,7 +308,41 @@ export class OfficeRenderer {
     const actor = this.actors.get(id);
     if (!actor) return;
     actor.status = status;
+    // 업무가 잡히면 휴게 배회를 중단합니다
+    if (status !== 'idle') {
+      actor.atLeisure = false;
+      actor.wanderAt = undefined;
+    }
+    // 완료·유휴는 자리로 돌아가고, 발언 중에는 그 자리에 섭니다
     if (status !== 'talking' && !this.meetingMode) this.walkTo(actor, seatX, seatY);
+  }
+
+  /** 머리 위 도구 아이콘 — null 이면 지웁니다 */
+  setTool(id: AgentId, tool: ToolKind | null, label = ''): void {
+    const actor = this.actors.get(id);
+    if (!actor) return;
+    actor.tool = tool;
+    actor.toolLabel = label;
+  }
+
+  /** 세션 오류 시 투입 직원 머리 위에 경고를 띄웁니다 */
+  setSessionAlert(on: boolean): void {
+    this.sessionAlert = on;
+  }
+
+  /**
+   * 투입된 부서만 밝게 둡니다.
+   *
+   * 밝히는 게 아니라 **나머지를 눌러서** 만듭니다. 조명을 더하면 픽셀
+   * 팔레트가 날아가지만, 어둡게 덮으면 톤이 유지된 채 시선만 모입니다.
+   * 목록이 비면(대기 중) 아무 데도 누르지 않습니다.
+   */
+  setActiveTeams(teams: AgentId[]): void {
+    this.activeTeams = new Set(teams.map((id) => {
+      // 팀원 id 는 `dev-senior` 처럼 팀장 id 를 접두사로 씁니다
+      const dash = id.indexOf('-');
+      return dash === -1 ? id : id.slice(0, dash);
+    }));
   }
 
   setMeetingMode(
@@ -223,13 +350,18 @@ export class OfficeRenderer {
     team: AgentId[],
     seats: Map<AgentId, { x: number; y: number }>,
   ): void {
+    if (active && this.ambientConversation) this.finishAmbientConversation();
     this.meetingMode = active;
 
     if (active) {
       team.forEach((id, index) => {
         const actor = this.actors.get(id);
         const seat = MEETING_SEATS[index % MEETING_SEATS.length];
-        if (actor && seat) this.walkTo(actor, seat.x, seat.y);
+        if (actor && seat) {
+          actor.atLeisure = false;
+          actor.wanderAt = undefined;
+          this.walkTo(actor, seat.x, seat.y);
+        }
       });
       return;
     }
@@ -249,11 +381,17 @@ export class OfficeRenderer {
   }
 
   resetAll(seats: Map<AgentId, { x: number; y: number }>): void {
+    this.finishAmbientConversation();
     this.meetingMode = false;
+    this.sessionAlert = false;
     for (const [id, seat] of seats) {
       const actor = this.actors.get(id);
       if (actor) {
         actor.status = 'idle';
+        actor.tool = null;
+        actor.toolLabel = '';
+        actor.atLeisure = false;
+        actor.wanderAt = undefined;
         this.walkTo(actor, seat.x, seat.y);
       }
     }
@@ -275,8 +413,12 @@ export class OfficeRenderer {
       this.keys.add(e.key);
       const player = this.actors.get('ceo');
       if (player) player.path = [];
+      this.setFollow(null);
       e.preventDefault();
       return;
+    }
+    if (e.key === 'Escape') {
+      this.setFollow(null);
     }
     if (e.key === '+' || e.key === '=') {
       this.zoomIn();
@@ -303,11 +445,43 @@ export class OfficeRenderer {
   };
 
   private onPointerDown = (e: PointerEvent): void => {
-    const player = this.actors.get('ceo');
-    if (!player || this.needsSize) return;
+    if (this.needsSize) return;
 
     const rect = this.canvas.getBoundingClientRect();
     const tile = this.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+
+    // 직원을 먼저 판정합니다. 직원 위를 눌렀는데 대표가 걸어가 버리면
+    // "누른 것"과 "일어난 일"이 어긋나 보입니다.
+    const hit = this.actorAt(tile.x, tile.y);
+    if (hit) {
+      this.setFollow(this.followId === hit ? null : hit);
+      this.callbacks.onActorSelect?.(hit);
+      return;
+    }
+    this.setFollow(null);
+    this.callbacks.onActorSelect?.(null);
+  };
+
+  /** 클릭-추적 카메라 모드를 켜거나 끕니다 */
+  private setFollow(id: AgentId | null): void {
+    if (this.followId === id) return;
+    this.followId = id;
+    this.callbacks.onFollowChange?.(id);
+  }
+
+  /** 바깥(React)에서 "그만 보기"를 눌렀을 때 */
+  stopFollow(): void {
+    this.setFollow(null);
+  }
+
+  private onDoubleClick = (e: MouseEvent): void => {
+    const player = this.actors.get('ceo');
+    if (!player || this.needsSize || this.isTyping(e.target)) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const tile = this.screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+    if (this.actorAt(tile.x, tile.y)) return;
+
     const tx = Math.round(tile.x);
     const ty = Math.round(tile.y);
 
@@ -318,7 +492,33 @@ export class OfficeRenderer {
 
     player.path = path;
     this.marker = { x: tx, y: ty, at: performance.now() };
+    this.setFollow(null);
   };
+
+  /**
+   * 이 타일 좌표(소수) 위에 서 있는 직원.
+   *
+   * 스프라이트 픽셀 대신 타일 기준으로 봅니다. 캐릭터는 발밑 타일에서
+   * 위로 한 칸 반 정도를 차지하므로 그 상자와 겹치면 맞은 것으로 칩니다.
+   * 겹치는 직원이 여럿이면 가로로 가장 가까운 쪽을 고릅니다.
+   */
+  private actorAt(tileX: number, tileY: number): AgentId | null {
+    let best: { id: AgentId; dx: number } | null = null;
+
+    for (const actor of this.actors.values()) {
+      if (actor.isPlayer) continue;
+
+      const centerX = actor.x + 0.5;
+      const footY = actor.y + 1;
+      const dx = Math.abs(tileX - centerX);
+      const above = footY - tileY;
+
+      if (dx > 0.6 || above < -0.15 || above > 1.6) continue;
+      if (!best || dx < best.dx) best = { id: actor.id as AgentId, dx };
+    }
+
+    return best?.id ?? null;
+  }
 
   /** 커서 위치를 기준으로 휠 줌 */
   private onWheel = (e: WheelEvent): void => {
@@ -341,8 +541,22 @@ export class OfficeRenderer {
       actor.path = [];
       return;
     }
-    const path = findPath(actor, { x, y });
-    actor.path = path.length > 0 ? path : [{ x, y }];
+
+    // 목적지 타일 자체가 막혀 있으면(좌석이 가구 충돌 박스와 겹치는 경우)
+    // 벽을 뚫는 직선 대신 가장 가까운 걸을 수 있는 타일로 목적지를 옮깁니다.
+    let goal = { x, y };
+    if (isBlocked(x, y)) {
+      const alt = nearestWalkable(x, y);
+      if (!alt) {
+        actor.path = [];
+        return;
+      }
+      goal = alt;
+    }
+
+    // 경로를 못 찾으면(진짜로 막혀 있으면) 제자리에 둡니다 — 벽을 통과하는
+    // 직선 이동으로 대신하지 않습니다.
+    actor.path = findPath(actor, goal);
   }
 
   private canStand(x: number, y: number): boolean {
@@ -410,24 +624,191 @@ export class OfficeRenderer {
     this.update(dt);
     this.draw();
     this.reportAnchors();
+    this.reportPositions();
     this.rafId = requestAnimationFrame(this.loop);
   };
 
   private update(dt: number): void {
+    this.updateAmbientConversation();
     for (const actor of this.actors.values()) {
       if (actor.isPlayer) this.movePlayer(actor, dt);
-      else this.followPath(actor, dt, WALK_SPEED);
+      else {
+        this.followPath(actor, dt, WALK_SPEED);
+        this.updateWander(actor);
+      }
+      this.updateSeatedLift(actor, dt);
     }
     this.updateCamera();
     this.updateNearby();
     if (this.marker && performance.now() - this.marker.at > 900) this.marker = null;
   }
 
-  private updateCamera(): void {
-    const player = this.actors.get('ceo');
-    if (!player || this.viewportW < 1) return;
+  private updateAmbientConversation(): void {
+    const now = performance.now();
+    const conversation = this.ambientConversation;
 
-    const foot = this.footPx(player);
+    if (conversation) {
+      const a = this.actors.get(conversation.a);
+      const b = this.actors.get(conversation.b);
+      if (!a || !b || a.status !== 'idle' || b.status !== 'idle' || this.meetingMode) {
+        this.finishAmbientConversation();
+        return;
+      }
+
+      if (conversation.startedAt === null) {
+        if (a.path.length > 0 || b.path.length > 0 || a.moving || b.moving) return;
+        this.faceToward(conversation.a, conversation.b);
+        this.faceToward(conversation.b, conversation.a);
+        conversation.startedAt = now;
+        this.emitAmbientSpeech(conversation.a, conversation.b, conversation.firstLine);
+        return;
+      }
+
+      this.faceToward(conversation.a, conversation.b);
+      this.faceToward(conversation.b, conversation.a);
+      if (!conversation.replied && now - conversation.startedAt >= 3_200) {
+        conversation.replied = true;
+        this.emitAmbientSpeech(conversation.b, conversation.a, conversation.secondLine);
+      }
+      if (now - conversation.startedAt >= AMBIENT_CHAT_DURATION_MS) {
+        this.finishAmbientConversation();
+      }
+      return;
+    }
+
+    if (this.meetingMode || now < this.ambientConversationAt) return;
+    const candidates = [...this.actors.values()].filter((actor) =>
+      !actor.isPlayer &&
+      actor.status === 'idle' &&
+      !actor.atLeisure &&
+      !actor.ambientPartner &&
+      actor.path.length === 0,
+    );
+    if (candidates.length < 2) {
+      this.scheduleNextAmbientConversation(now);
+      return;
+    }
+
+    const firstIndex = Math.floor(Math.random() * candidates.length);
+    const a = candidates[firstIndex];
+    candidates.splice(firstIndex, 1);
+    const b = candidates[Math.floor(Math.random() * candidates.length)];
+    const spot = CHAT_SPOTS[Math.floor(Math.random() * CHAT_SPOTS.length)];
+    const lines = SMALL_TALK[Math.floor(Math.random() * SMALL_TALK.length)];
+    if (!a || !b || !spot || !lines) return;
+
+    a.atLeisure = true;
+    b.atLeisure = true;
+    a.ambientPartner = b.id as AgentId;
+    b.ambientPartner = a.id as AgentId;
+    a.wanderAt = undefined;
+    b.wanderAt = undefined;
+    this.walkTo(a, spot[0].x, spot[0].y);
+    this.walkTo(b, spot[1].x, spot[1].y);
+    this.ambientConversation = {
+      a: a.id as AgentId,
+      b: b.id as AgentId,
+      firstLine: lines[0],
+      secondLine: lines[1],
+      startedAt: null,
+      replied: false,
+    };
+  }
+
+  private emitAmbientSpeech(agent: AgentId, to: AgentId, text: string): void {
+    this.callbacks.onAmbientSpeech?.({
+      type: 'speech',
+      agent,
+      to,
+      phase: 'ambient',
+      text,
+      at: Date.now(),
+    });
+  }
+
+  private finishAmbientConversation(): void {
+    const conversation = this.ambientConversation;
+    if (!conversation) return;
+    for (const id of [conversation.a, conversation.b]) {
+      const actor = this.actors.get(id);
+      if (!actor) continue;
+      actor.ambientPartner = undefined;
+      actor.atLeisure = false;
+      if (actor.status === 'idle' && actor.homeX !== undefined && actor.homeY !== undefined) {
+        this.walkTo(actor, actor.homeX, actor.homeY);
+      }
+    }
+    this.ambientConversation = null;
+    this.scheduleNextAmbientConversation(performance.now());
+  }
+
+  private scheduleNextAmbientConversation(now: number): void {
+    this.ambientConversationAt = now + AMBIENT_CHAT_MIN_MS +
+      Math.random() * (AMBIENT_CHAT_MAX_MS - AMBIENT_CHAT_MIN_MS);
+  }
+
+  /**
+   * 대기 직원의 휴게 이동.
+   *
+   * 회의 중이거나 업무 중(thinking/talking)인 직원은 건드리지 않습니다.
+   * 자리에 앉아 있는 idle 직원만 이따금 카페·라운지로 다녀옵니다 —
+   * "대기 직원의 커피머신 이동" 을 가볍게 흉내 내는 정도입니다.
+   */
+  private updateWander(actor: Actor): void {
+    if (
+      this.meetingMode ||
+      actor.status !== 'idle' ||
+      actor.path.length > 0 ||
+      actor.ambientPartner
+    ) return;
+
+    const now = performance.now();
+    if (actor.wanderAt === undefined) {
+      actor.wanderAt = now + this.wanderDelay();
+      return;
+    }
+    if (now < actor.wanderAt) return;
+
+    if (actor.atLeisure) {
+      // 자리로 복귀
+      actor.atLeisure = false;
+      if (actor.homeX !== undefined && actor.homeY !== undefined) {
+        this.walkTo(actor, actor.homeX, actor.homeY);
+      }
+    } else {
+      const spot = this.pickLeisure();
+      if (spot) {
+        actor.atLeisure = true;
+        this.walkTo(actor, spot.x, spot.y);
+      }
+    }
+    actor.wanderAt = now + this.wanderDelay();
+  }
+
+  private wanderDelay(): number {
+    return WANDER_MIN_MS + Math.random() * (WANDER_MAX_MS - WANDER_MIN_MS);
+  }
+
+  private pickLeisure(): { x: number; y: number } | null {
+    const start = Math.floor(Math.random() * LEISURE_POINTS.length);
+    for (let i = 0; i < LEISURE_POINTS.length; i++) {
+      const spot = LEISURE_POINTS[(start + i) % LEISURE_POINTS.length];
+      if (spot && this.canStand(spot.x, spot.y)) return spot;
+    }
+    return null;
+  }
+
+  private updateCamera(): void {
+    if (this.viewportW < 1) return;
+
+    // Follow 모드면 지목한 직원을, 아니면 대표를 비춥니다.
+    // 그 직원이 화면에서 사라지면(세션 종료 등) 자동으로 대표에게 돌아갑니다.
+    let focus = this.followId ? this.actors.get(this.followId) : undefined;
+    if (this.followId && !focus) this.setFollow(null);
+    focus ??= this.actors.get('ceo');
+    if (!focus) return;
+
+    const foot = this.footPx(focus);
     this.clampCamera(foot.x - this.viewW / 2, foot.y - this.viewH / 2);
   }
 
@@ -542,6 +923,29 @@ export class OfficeRenderer {
     };
   }
 
+  /**
+   * 맵의 좌석 좌표는 길찾기 도착점이라 앞쪽 벽 가까이에 있습니다.
+   * 그대로 전신을 그리면 직원의 다리가 벽 위로 튀어나오므로,
+   * 자기 자리에 멈춰 있는 동안에만 표시 기준점을 의자 쪽으로 올립니다.
+   */
+  private visualFootPx(actor: Actor): { x: number; y: number } {
+    const foot = this.footPx(actor);
+    return actor.seatedLift > 0 ? { x: foot.x, y: foot.y - actor.seatedLift } : foot;
+  }
+
+  private updateSeatedLift(actor: Actor, dt: number): void {
+    const atHome = actor.homeX !== undefined && actor.homeY !== undefined &&
+      Math.hypot(actor.x - actor.homeX, actor.y - actor.homeY) < 0.35;
+    const shouldSit = !actor.isPlayer && actor.path.length === 0 && !actor.moving &&
+      !actor.atLeisure && !actor.ambientPartner && atHome;
+    const target = shouldSit ? SEATED_FOOT_LIFT : 0;
+    const maxStep = (SEATED_TRANSITION_SPEED * dt) / 1000;
+    const delta = target - actor.seatedLift;
+    actor.seatedLift = Math.abs(delta) <= maxStep
+      ? target
+      : actor.seatedLift + Math.sign(delta) * maxStep;
+  }
+
   private screenToTile(sx: number, sy: number): { x: number; y: number } {
     const worldX = sx / this.zoom + this.camX;
     const worldY = sy / this.zoom + this.camY;
@@ -557,7 +961,7 @@ export class OfficeRenderer {
     const dpr = this.dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#2a2118';
+    ctx.fillStyle = '#151923';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -565,17 +969,12 @@ export class OfficeRenderer {
     ctx.translate(-this.camX, -this.camY);
 
     this.drawFloor();
-    this.drawZoneRugs();
+    this.drawIdleZoneShade();
+    this.drawDoors();
     this.drawZoneLabels();
+    this.drawCeoSeatMarker();
 
     const drawables: Drawable[] = [];
-
-    for (const prop of PROPS) {
-      drawables.push({
-        sortY: (prop.y + 1) * TILE,
-        draw: () => this.drawProp(prop),
-      });
-    }
 
     for (const actor of this.actors.values()) {
       const foot = this.footPx(actor);
@@ -593,94 +992,79 @@ export class OfficeRenderer {
   }
 
   private drawFloor(): void {
-    const { ctx, assets } = this;
-    const tiles = assets.manifest.tiles;
-    const wood = tiles['floor_wood'];
-    const tile = tiles['floor_tile'];
-    const wallFace = tiles['wall_face'];
-
-    const tx0 = Math.max(0, Math.floor(this.camX / TILE) - 1);
-    const ty0 = Math.max(0, Math.floor(this.camY / TILE) - 1);
-    const tx1 = Math.min(MAP_COLS, Math.ceil((this.camX + this.viewW) / TILE) + 1);
-    const ty1 = Math.min(MAP_ROWS, Math.ceil((this.camY + this.viewH) / TILE) + 1);
-
-    for (let ty = ty0; ty < ty1; ty++) {
-      for (let tx = tx0; tx < tx1; tx++) {
-        const px = tx * TILE;
-        const py = ty * TILE;
-        const cell = GRID.cells[ty]?.[tx];
-        if (cell === 'floor') {
-          const kind = GRID.floor[ty]?.[tx] === 'wood' ? wood : tile;
-          if (kind) {
-            ctx.drawImage(assets.tiles, kind.x, kind.y, kind.w, kind.h, px, py, TILE, TILE);
-          }
-        } else if (cell === 'wall' && wallFace) {
-          ctx.drawImage(assets.tiles, wallFace.x, wallFace.y, wallFace.w, wallFace.h, px, py, TILE, TILE);
-        } else {
-          ctx.fillStyle = '#0d1118';
-          ctx.fillRect(px, py, TILE, TILE);
-        }
-      }
-    }
+    this.ctx.drawImage(this.assets.officeMap, 0, 0, MAP_W, MAP_H);
   }
 
-  private drawZoneRugs(): void {
+  /**
+   * 이번 업무에 참여하지 않는 부서를 은은하게 눌러 둡니다.
+   *
+   * 캐릭터보다 **아래**에 그립니다. 사람 위를 덮으면 쉬는 직원이
+   * 회색으로 죽어 보여서, 공간이 조용한 게 아니라 고장 난 것처럼 읽힙니다.
+   */
+  private drawIdleZoneShade(): void {
+    if (this.activeTeams.size === 0) return;
+
     const { ctx } = this;
-    const carpetRect = this.assets.manifest.tiles['carpet'];
-    if (!carpetRect) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(12, 16, 24, 0.28)';
 
     for (const zone of ZONES) {
-      if (zone.rug === false || (zone.rug === undefined && (zone.kind === 'lounge' || zone.kind === 'entrance'))) continue;
-      const tinted = getTintedCarpet(this.assets, zone.color);
-      if (!tinted) continue;
-
-      for (let ty = zone.y + 1; ty < zone.y + zone.h - 1; ty++) {
-        for (let tx = zone.x + 1; tx < zone.x + zone.w - 1; tx++) {
-          if (GRID.cells[ty]?.[tx] !== 'floor') continue;
-          if (GRID.blocked[ty]?.[tx]) continue;
-          ctx.drawImage(tinted, tx * TILE, ty * TILE, TILE, TILE);
-        }
-      }
+      if (zone.kind !== 'department') continue;
+      if (zone.agent && this.activeTeams.has(zone.agent)) continue;
+      ctx.fillRect(zone.x * TILE, zone.y * TILE, zone.w * TILE, zone.h * TILE);
     }
+
+    ctx.restore();
   }
 
   private drawZoneLabels(): void {
     const { ctx } = this;
     ctx.save();
-    ctx.font = 'bold 11px "Pretendard", system-ui, sans-serif';
+    // letterSpacing 은 lib.dom 타입에 없는 브라우저가 있어 쓰지 않습니다
+    ctx.font = '600 10px "Pretendard Variable", Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
+
+    // 조명을 나누는 중이면(투입 부서가 정해짐) 비활성 라벨을 눌러 시선을 모읍니다
+    const lighting = this.activeTeams.size > 0;
 
     for (const zone of ZONES) {
       if (zone.showLabel === false) continue;
+
+      const isDept = Boolean(zone.agent);
+      const active = isDept && zone.agent ? this.activeTeams.has(zone.agent) : false;
+
       const cx = (zone.x + zone.w / 2) * TILE;
       const cy = (zone.y + 0.65) * TILE;
       const label = zone.label;
 
       const textW = ctx.measureText(label).width;
-      const boxW = textW + 14;
+      // 부서 플로어 라벨은 상태 점을 위해 왼쪽에 여백을 둡니다
+      const dotSpace = isDept ? 12 : 0;
+      const boxW = textW + 14 + dotSpace;
       const boxH = 16;
 
-      ctx.fillStyle = 'rgba(14,18,26,0.72)';
-      roundRect(ctx, cx - boxW / 2, cy - boxH / 2, boxW, boxH, 8);
+      // 조명이 켜졌고 이 부서가 비활성이면 라벨도 함께 가라앉힙니다
+      const dimmed = lighting && isDept && !active;
+      ctx.globalAlpha = dimmed ? 0.4 : 1;
+
+      // 형광 배지가 아니라 사무실 사인처럼 — 테두리도 색도 쓰지 않습니다
+      ctx.fillStyle = active ? 'rgba(20,26,36,0.82)' : 'rgba(24,31,42,0.62)';
+      roundRect(ctx, cx - boxW / 2, cy - boxH / 2, boxW, boxH, 5);
       ctx.fill();
-      ctx.strokeStyle = hexToRgba(zone.color, 0.45);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = zone.color;
-      ctx.fillText(label, cx, cy + 4);
+
+      if (isDept) {
+        // 활성 부서는 액센트 점, 대기 부서는 은은한 회색 점
+        ctx.fillStyle = active ? '#8b83ff' : 'rgba(154,160,168,0.7)';
+        ctx.beginPath();
+        ctx.arc(cx - boxW / 2 + 9, cy, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(241,244,248,0.92)';
+      ctx.fillText(label, cx + dotSpace / 2, cy + 4);
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
-  }
-
-  private drawProp(prop: PropInstance): void {
-    const rect = this.assets.manifest.props[prop.kind];
-    if (!rect) return;
-
-    const { ctx, assets } = this;
-    const bottom = (prop.y + 1) * TILE;
-    const left = prop.x * TILE + TILE / 2 - rect.w / 2;
-
-    ctx.drawImage(assets.props, rect.x, rect.y, rect.w, rect.h, left, bottom - rect.h, rect.w, rect.h);
   }
 
   private drawMarker(): void {
@@ -692,7 +1076,7 @@ export class OfficeRenderer {
 
     ctx.save();
     ctx.globalAlpha = 1 - age;
-    ctx.strokeStyle = '#8ab4ff';
+    ctx.strokeStyle = 'rgba(252,253,254,0.85)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.ellipse(px, py, 6 + age * 12, 4 + age * 8, 0, 0, Math.PI * 2);
@@ -700,13 +1084,109 @@ export class OfficeRenderer {
     ctx.restore();
   }
 
+  private drawCeoSeatMarker(): void {
+    const { ctx } = this;
+    const cx = CEO_SEAT.x * TILE + TILE / 2;
+    const cy = CEO_SEAT.y * TILE + TILE - 3;
+
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = 'rgba(108, 99, 255, 0.18)';
+    ctx.strokeStyle = 'rgba(211, 208, 255, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 15, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '800 7px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CEO', cx, cy + 2.5);
+    ctx.restore();
+  }
+
+  /** 벽 방향에 맞춰 열린 통로·문틀·열린 문짝을 픽셀 스타일로 그립니다. */
+  private drawDoors(): void {
+    const { ctx } = this;
+    ctx.save();
+    for (const door of DOORS) {
+      const zone = ZONES.find((candidate) => candidate.id === door.zoneId);
+      if (!zone) continue;
+      const x = door.x * TILE;
+      const y = door.y * TILE;
+      const right = zone.x + zone.w - 1;
+      const bottom = zone.y + zone.h - 1;
+      const vertical = door.x === zone.x || door.x === right;
+      const side = door.y === zone.y
+        ? 'top'
+        : door.y === bottom
+          ? 'bottom'
+          : door.x === zone.x
+            ? 'left'
+            : 'right';
+
+      ctx.fillStyle = '#18202a';
+      ctx.strokeStyle = '#d3a15f';
+      ctx.lineWidth = 2;
+
+      if (vertical) {
+        // 세로 벽의 문: 벽을 어두운 통로로 덮고 위·아래에 문틀을 둡니다.
+        ctx.fillRect(x + 7, y + 2, 18, TILE - 4);
+        ctx.fillStyle = '#b57d43';
+        ctx.fillRect(x + 5, y + 1, 4, TILE - 2);
+        ctx.fillRect(x + 23, y + 1, 4, TILE - 2);
+        ctx.fillStyle = '#e1b66f';
+        ctx.fillRect(x + 7, y + 2, 18, 3);
+        ctx.fillRect(x + 7, y + TILE - 5, 18, 3);
+        ctx.strokeStyle = '#d3a15f';
+        ctx.beginPath();
+        const hingeX = side === 'left' ? x + 24 : x + 8;
+        const leafX = side === 'left' ? x + 15 : x + 17;
+        ctx.moveTo(hingeX, y + 5);
+        ctx.lineTo(leafX, y + 16);
+        ctx.stroke();
+      } else {
+        // 가로 벽의 문: 좌·우 문설주와 열린 문짝이 통행 방향을 보여줍니다.
+        ctx.fillRect(x + 2, y + 7, TILE - 4, 18);
+        ctx.fillStyle = '#b57d43';
+        ctx.fillRect(x + 1, y + 5, TILE - 2, 4);
+        ctx.fillRect(x + 1, y + 23, TILE - 2, 4);
+        ctx.fillStyle = '#e1b66f';
+        ctx.fillRect(x + 2, y + 7, 3, 18);
+        ctx.fillRect(x + TILE - 5, y + 7, 3, 18);
+        ctx.strokeStyle = '#d3a15f';
+        ctx.beginPath();
+        const hingeY = side === 'top' ? y + 24 : y + 8;
+        const leafY = side === 'top' ? y + 15 : y + 17;
+        ctx.moveTo(x + 5, hingeY);
+        ctx.lineTo(x + 16, leafY);
+        ctx.stroke();
+      }
+
+      // 문 중앙의 밝은 문턱은 실제 통과 가능한 타일이라는 신호입니다.
+      ctx.fillStyle = 'rgba(255, 231, 166, 0.68)';
+      if (vertical) ctx.fillRect(x + 13, y + 5, 6, TILE - 10);
+      else ctx.fillRect(x + 5, y + 13, TILE - 10, 6);
+    }
+    ctx.restore();
+  }
+
   private drawActor(actor: Actor): void {
     const { ctx, assets } = this;
     const { frameWidth, frameHeight } = assets.manifest.characters;
-    const foot = this.footPx(actor);
+    const foot = this.visualFootPx(actor);
 
     // 자리에 앉아 일하는 중이면 책상 쪽(위)을 보고 타자 치듯 미세하게 움직입니다
-    const working = !actor.moving && !actor.isPlayer && actor.status === 'thinking';
+    const atDesk = actor.homeX !== undefined && actor.homeY !== undefined &&
+      Math.hypot(actor.x - actor.homeX, actor.y - actor.homeY) < 0.35;
+    const ambientWorking = actor.status === 'idle' && !actor.atLeisure && atDesk;
+    const working = !actor.moving && !actor.isPlayer &&
+      (actor.status === 'thinking' || ambientWorking);
+    const talking = !actor.moving && !actor.isPlayer &&
+      (actor.status === 'talking' || Boolean(actor.ambientPartner));
+    const done = !actor.moving && !actor.isPlayer && actor.status === 'done';
+    const idleSit = !actor.moving && !actor.isPlayer && actor.status === 'idle' &&
+      !ambientWorking && !actor.ambientPartner;
     const facing = working ? 'up' : actor.facing;
 
     const frame = actor.moving
@@ -721,8 +1201,13 @@ export class OfficeRenderer {
     const w = frameWidth;
     const h = frameHeight;
     const drawX = Math.round(foot.x - w / 2);
-    // 타자 칠 때 어깨가 아주 살짝 들썩입니다
-    const bob = working ? Math.round(Math.sin(performance.now() / 150 + foot.x) * 0.6) : 0;
+    // 타자 칠 때 어깨가 들썩이고, 대기 중엔 숨 쉬듯 미세하게 흔들립니다
+    const t = performance.now();
+    const bob = working
+      ? Math.round(Math.sin(t / 150 + foot.x) * 0.6)
+      : idleSit
+        ? Math.round(Math.sin(t / 900 + foot.x) * 0.4)
+        : 0;
     const drawY = Math.round(foot.y - h) + bob;
 
     ctx.save();
@@ -734,7 +1219,16 @@ export class OfficeRenderer {
     ctx.restore();
 
     ctx.drawImage(assets.characters, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
+
     if (working) this.drawWorkingEffect(foot.x, drawY);
+    if (talking) this.drawTalkingEffect(foot.x, drawY);
+    if (done) this.drawDoneEffect(foot.x, drawY);
+    if (idleSit) this.drawIdleEffect(foot.x, drawY, Boolean(actor.atLeisure));
+    if (actor.tool) this.drawToolBadge(foot.x, drawY, actor.tool);
+    if (this.sessionAlert && !actor.isPlayer && actor.status !== 'idle') {
+      this.drawAlertEffect(foot.x, drawY);
+    }
+
     this.drawNameTag(actor, foot.x, drawY - 4);
   }
 
@@ -751,7 +1245,7 @@ export class OfficeRenderer {
       const phase = t * 3 - i * 0.5;
       const lift = Math.max(0, Math.sin(phase)) * 3;
       ctx.globalAlpha = 0.35 + Math.max(0, Math.sin(phase)) * 0.55;
-      ctx.fillStyle = '#4f8ef7';
+      ctx.fillStyle = STATUS_COLOR.thinking;
       ctx.beginPath();
       ctx.arc(cx - 6 + i * 6, topY - 16 - lift, 1.8, 0, Math.PI * 2);
       ctx.fill();
@@ -759,34 +1253,154 @@ export class OfficeRenderer {
     ctx.restore();
   }
 
-  private drawNameTag(actor: Actor, cx: number, cy: number): void {
+  /** 발언 중 — 입 앞에서 퍼지는 파동 */
+  private drawTalkingEffect(cx: number, topY: number): void {
     const { ctx } = this;
-    const label = actor.isPlayer ? actor.name : `${actor.name} ${actor.title}`;
+    const t = performance.now() / 1000;
 
     ctx.save();
-    ctx.font = 'bold 11px "Pretendard", system-ui, sans-serif';
+    for (let i = 0; i < 2; i++) {
+      const age = (t * 1.6 + i * 0.5) % 1;
+      ctx.globalAlpha = (1 - age) * 0.7;
+      ctx.strokeStyle = STATUS_COLOR.talking;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx + 8, topY + 10, 3 + age * 7, -0.6, 0.6);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** 완료 — 머리 위 작은 체크 */
+  private drawDoneEffect(cx: number, topY: number): void {
+    const { ctx } = this;
+    const y = topY - 14;
+
+    ctx.save();
+    ctx.fillStyle = STATUS_COLOR.done;
+    ctx.beginPath();
+    ctx.arc(cx, y, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 2.5, y);
+    ctx.lineTo(cx - 0.5, y + 2);
+    ctx.lineTo(cx + 2.8, y - 2.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * 진짜 유휴 — 자리를 비웠을 때만 위트 있게 보여줍니다.
+   * 일하는 중(ambientWorking)에는 뜨지 않습니다 — 작업·발언·완료처럼
+   * "지금 상태"를 알리는 용도지, 캐릭터마다 붙는 장식이 아닙니다.
+   */
+  private drawIdleEffect(cx: number, topY: number, atLeisure: boolean): void {
+    const { ctx } = this;
+    const y = topY - 14;
+    const icon = atLeisure ? '☕' : '💤';
+
+    ctx.save();
+    ctx.fillStyle = '#fcfdfe';
+    ctx.strokeStyle = 'rgba(20,30,40,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = '11px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, cx, y + 1);
+    ctx.restore();
+  }
+
+  /** 도구 사용 — 이름표 위에 작은 뱃지 */
+  private drawToolBadge(cx: number, topY: number, tool: ToolKind): void {
+    const { ctx } = this;
+    const y = topY - 28;
+    const label = tool === 'vault' ? 'V' : 'F';
+    const color = tool === 'vault' ? '#8b7355' : '#3f857d';
+
+    ctx.save();
+    ctx.fillStyle = color;
+    roundRect(ctx, cx - 8, y - 8, 16, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 9px "Pretendard Variable", Pretendard, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, y + 2);
+    ctx.restore();
+  }
+
+  /** 세션 오류 — 빨간 느낌표 */
+  private drawAlertEffect(cx: number, topY: number): void {
+    const { ctx } = this;
+    const pulse = 0.65 + Math.sin(performance.now() / 220) * 0.35;
+    const y = topY - 30;
+
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#d95c5c';
+    ctx.beginPath();
+    ctx.moveTo(cx, y - 8);
+    ctx.lineTo(cx + 6, y + 4);
+    ctx.lineTo(cx - 6, y + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 8px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', cx, y + 2);
+    ctx.restore();
+  }
+
+  /**
+   * 이름표.
+   *
+   * 부서 색을 **쓰지 않습니다.** 이름표 테두리·글자에 부서 색을 넣으면
+   * 7가지 색이 화면에 동시에 떠서 게임 화면처럼 보입니다. 흰색 알약 +
+   * 검정 글자 + 상태 점 하나로 통일하고, 색은 상태(작업/발언/완료)를
+   * 알리는 데만 씁니다. 직책은 근접 카드가 보여주므로 여기선 생략합니다.
+   */
+  private drawNameTag(actor: Actor, cx: number, cy: number): void {
+    const { ctx } = this;
+    const label = actor.name;
+
+    ctx.save();
+    ctx.font = '600 11px "Pretendard Variable", Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
 
     const textW = ctx.measureText(label).width;
-    const dotW = actor.status === 'idle' ? 0 : 10;
-    const boxW = textW + 14 + dotW;
+    const dotW = actor.status === 'idle' ? 0 : 11;
+    const boxW = textW + 16 + dotW;
 
-    ctx.fillStyle = 'rgba(14,18,26,0.86)';
-    roundRect(ctx, cx - boxW / 2, cy - 15, boxW, 17, 8);
+    // 그림자를 먼저 깔고 같은 자리를 다시 칠해 알약 경계를 또렷하게
+    ctx.fillStyle = actor.isPlayer
+      ? 'rgba(44,91,134,0.94)'
+      : 'rgba(252,253,254,0.94)';
+    ctx.shadowColor = 'rgba(10,16,24,0.28)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 1;
+    roundRect(ctx, cx - boxW / 2, cy - 15, boxW, 17, 8.5);
     ctx.fill();
-    ctx.strokeStyle = hexToRgba(actor.color, 0.55);
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fill();
 
     if (dotW > 0) {
       ctx.fillStyle = STATUS_COLOR[actor.status];
       ctx.beginPath();
-      ctx.arc(cx - boxW / 2 + 9, cy - 6.5, 3, 0, Math.PI * 2);
+      ctx.arc(cx - boxW / 2 + 10, cy - 6.5, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.fillStyle = actor.isPlayer ? '#ffffff' : actor.color;
-    ctx.fillText(label, cx + dotW / 2, cy - 2);
+    ctx.fillStyle = actor.isPlayer ? '#ffffff' : '#1d2735';
+    ctx.fillText(label, cx + dotW / 2, cy - 2.5);
     ctx.restore();
   }
 
@@ -796,13 +1410,19 @@ export class OfficeRenderer {
     const next = new Map<string, { left: number; top: number }>();
     let changed = this.publishedAnchors.size !== this.anchorTargets.size;
 
+    // 말풍선은 코너에 고정된 UI(미니맵·단축키 안내·사이드바)와 겹치지 않도록
+    // 화면 가장자리에서 일정 여백 안쪽으로만 표시합니다.
+    const marginX = 170;
+    const topMargin = 90;
+    const bottomMargin = 170;
+
     for (const id of this.anchorTargets) {
       const actor = this.actors.get(id);
       if (!actor) continue;
-      const foot = this.footPx(actor);
+      const foot = this.visualFootPx(actor);
       const point = {
-        left: (foot.x - this.camX) * this.zoom,
-        top: (foot.y - this.camY) * this.zoom - 58,
+        left: clamp((foot.x - this.camX) * this.zoom, marginX, Math.max(marginX, this.viewportW - marginX)),
+        top: clamp((foot.y - this.camY) * this.zoom - 58, topMargin, Math.max(topMargin, this.viewportH - bottomMargin)),
       };
       next.set(id, point);
       const prev = this.publishedAnchors.get(id);
@@ -815,24 +1435,26 @@ export class OfficeRenderer {
     this.publishedAnchors = next;
     this.callbacks.onBubbleAnchors(next);
   }
-}
 
-const STATUS_COLOR: Record<AgentStatus, string> = {
-  idle: '#9ca3af',
-  thinking: '#60a5fa',
-  talking: '#fbbf24',
-  done: '#34d399',
-};
+  /** 미니맵용 — 매 15프레임마다 타일 좌표를 넘깁니다. */
+  private reportPositions(): void {
+    if (!this.callbacks.onActorPositions) return;
+
+    this.positionTick += 1;
+    if (this.positionTick % 15 !== 0) return;
+
+    const next = new Map<string, { x: number; y: number; isPlayer: boolean }>();
+    for (const [id, actor] of this.actors) {
+      next.set(id, { x: actor.x, y: actor.y, isPlayer: actor.isPlayer });
+    }
+    this.callbacks.onActorPositions(next);
+  }
+}
 
 const MOVE_KEYS = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'w', 'a', 's', 'd', 'W', 'A', 'S', 'D',
 ]);
-
-function hexToRgba(hex: string, alpha: number): string {
-  const n = Number.parseInt(hex.replace('#', ''), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
 
 function roundRect(
   ctx: CanvasRenderingContext2D,

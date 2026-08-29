@@ -1,4 +1,5 @@
 import type { Agent, SpeechEvent } from '@shared';
+import { STATUS_COLOR } from '@/lib/agent-status';
 import styles from './ConversationFlow.module.css';
 
 interface Point {
@@ -15,14 +16,13 @@ interface ConversationFlowProps {
 interface ConversationLink {
   key: string;
   path: string;
-  speakerColor: string;
-  listenerColor: string;
   from: Point;
   to: Point;
   delay: string;
 }
 
 const ACTOR_CENTER_OFFSET = 34;
+const FLOW_STROKE = STATUS_COLOR.talking;
 
 function makePath(from: Point, to: Point, index: number): string {
   const x1 = from.left;
@@ -49,15 +49,11 @@ export function ConversationFlow({
     if (!speech.to) return;
     const from = anchors.get(speech.agent);
     const to = anchors.get(speech.to);
-    const speaker = agents.get(speech.agent);
-    const listener = agents.get(speech.to);
-    if (!from || !to || !speaker || !listener) return;
+    if (!from || !to || !agents.has(speech.agent) || !agents.has(speech.to)) return;
 
     links.push({
       key: `${speech.agent}-${speech.to}-${speech.at}`,
       path: makePath(from, to, index),
-      speakerColor: speaker.color,
-      listenerColor: listener.color,
       from,
       to,
       delay: `${(index * 0.23).toFixed(2)}s`,
@@ -71,26 +67,22 @@ export function ConversationFlow({
       {links.map((link) => (
         <g key={link.key}>
           <path className={styles.shadow} d={link.path} />
-          <path
-            className={styles.flow}
-            d={link.path}
-            stroke={link.speakerColor}
-          />
+          <path className={styles.flow} d={link.path} stroke={FLOW_STROKE} />
           <circle
             className={styles.speakerPulse}
             cx={link.from.left}
             cy={link.from.top + ACTOR_CENTER_OFFSET}
             r="13"
-            stroke={link.speakerColor}
+            stroke={FLOW_STROKE}
           />
           <circle
             className={styles.listenerPulse}
             cx={link.to.left}
             cy={link.to.top + ACTOR_CENTER_OFFSET}
             r="13"
-            stroke={link.listenerColor}
+            stroke={FLOW_STROKE}
           />
-          <circle r="3.5" fill={link.listenerColor} className={styles.messageDot}>
+          <circle r="3.5" fill={FLOW_STROKE} className={styles.messageDot}>
             <animateMotion
               dur="1.35s"
               begin={link.delay}

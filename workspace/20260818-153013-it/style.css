@@ -1,0 +1,123 @@
+:root {
+    --primary-color: #003366;
+    --secondary-color: #ffffff;
+    --text-color: #333333;
+    --background-color: #f4f4f4;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-size-base: 16px;
+    --line-height-base: 1.5;
+    --spacing-base: 1rem;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-base);
+}
+
+header {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    padding: 2rem 0;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 1rem 0;
+    font-size: 2rem;
+}
+
+header p {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: #e0e0e0;
+}
+
+.section {
+    padding: 2rem 0;
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+.section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+#contact {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+}
+
+#contact h2 {
+    color: var(--secondary-color);
+}
+
+#contact p {
+    margin-bottom: 1rem;
+}
+
+#contact ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#contact li {
+    margin-bottom: 0.5rem;
+}
+
+footer {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    text-align: center;
+    padding: 1rem 0;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    header p {
+        font-size: 1rem;
+    }
+
+    .section h2 {
+        font-size: 1.2rem;
+    }
+
+    .cta-button {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+}

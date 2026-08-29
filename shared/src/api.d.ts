@@ -20,6 +20,67 @@ export interface AppConfigResponse {
   vaultRoot: string;
   feedbackRounds: number;
   maxRework: number;
+  adminAuthRequired: boolean;
+  llmBudget: {
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    dailyCallLimit: number;
+    dailyTokenLimit: number;
+  };
+  autonomousWork: {
+    enabled: boolean;
+    intervalMinutes: number;
+    dailyLimit: number;
+  };
+}
+
+export interface AutonomousWorkStatusResponse {
+  configured: boolean;
+  enabled: boolean;
+  paused: boolean;
+  runsToday: number;
+  dailyLimit: number;
+  consecutiveFailures: number;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastSessionId: string | null;
+  activeSession: SessionSummary | null;
+  queuedCount: number;
+  pendingApprovalCount: number;
+}
+
+export type AutonomousBacklogStatus =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface AutonomousBacklogItem {
+  id: string;
+  brief: string;
+  priority: number;
+  status: AutonomousBacklogStatus;
+  createdAt: string;
+  sessionId: string | null;
+}
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AutonomousApprovalItem {
+  id: string;
+  sessionId: string;
+  brief: string;
+  status: ApprovalStatus;
+  createdAt: string;
+  decidedAt: string | null;
+  note: string | null;
+}
+
+export interface AutonomousInboxResponse {
+  backlog: AutonomousBacklogItem[];
+  approvals: AutonomousApprovalItem[];
 }
 
 /** POST /api/sessions 요청 본문 */

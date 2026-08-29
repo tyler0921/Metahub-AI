@@ -1,4 +1,4 @@
-import type { AgentId, AgentStatus, PhaseKey } from '@shared';
+import type { AgentId, AgentStatus, PhaseKey, ToolKind, ToolStatus } from '@shared';
 import type { AgentsService } from '../../agents/agents.service';
 import type { WorkSessionEntity } from '../entities/work-session.entity';
 
@@ -48,5 +48,15 @@ export class PhaseNarrator {
       text,
       at: Date.now(),
     });
+  }
+
+  /** Vault·파일 쓰기 같은 도구 사용 — 머리 위 아이콘용 */
+  tool(
+    agent: AgentId,
+    tool: ToolKind,
+    status: ToolStatus,
+    label?: string,
+  ): void {
+    this.session.emit({ type: 'tool', agent, tool, status, label });
   }
 }

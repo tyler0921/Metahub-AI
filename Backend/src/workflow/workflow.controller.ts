@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Sse } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Sse, UseGuards } from '@nestjs/common';
 import type {
   CreateSessionResponse,
   SessionDetailResponse,
@@ -10,6 +10,7 @@ import { CreateSessionDto } from './dto/create-session.dto';
 import { SessionIdParamDto } from './dto/session-id.param.dto';
 import { SessionRepository } from './repositories/session.repository';
 import { WorkflowService } from './workflow.service';
+import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 
 /** Nest 의 @Sse() 가 요구하는 봉투 형식 */
 interface SseEnvelope {
@@ -17,6 +18,7 @@ interface SseEnvelope {
 }
 
 @Controller('sessions')
+@UseGuards(AdminMutationGuard)
 export class WorkflowController {
   constructor(
     private readonly workflow: WorkflowService,
@@ -25,6 +27,7 @@ export class WorkflowController {
 
   /**
    * 대표 지시를 접수한다. 실제 작업은 백그라운드로 돌고 즉시 응답합니다.
+   * 이미 진행 중인 세션이 있으면 409 Conflict.
    * 진행 상황은 응답의 `streamUrl` 을 EventSource 로 구독해서 받습니다.
    */
   @Post()
@@ -49,13 +52,17 @@ export class WorkflowController {
 
   @Get()
   findRecent(): SessionSummary[] {
-    return this.sessions.findRecent().map((s) => s.toSummary());
+    return this.sessions.findRecentSummaries();
+  }
+
+  @Get('active')
+  findActive(): SessionSummary | null {
+    return this.sessions.findActive()?.toSummary() ?? null;
   }
 
   @Get(':id')
   findOne(@Param() params: SessionIdParamDto): SessionDetailResponse {
-    const session = this.sessions.findById(params.id);
-    return { session: session.toSummary(), result: session.result };
+    return this.sessions.findDetail(params.id);
   }
 
   /**
@@ -65,8 +72,7 @@ export class WorkflowController {
   @Sse(':id/events')
   stream(@Param() params: SessionIdParamDto): Observable<SseEnvelope> {
     return this.sessions
-      .findById(params.id)
-      .asObservable()
+      .findEvents(params.id)
       .pipe(map((event) => ({ data: event })));
   }
 }

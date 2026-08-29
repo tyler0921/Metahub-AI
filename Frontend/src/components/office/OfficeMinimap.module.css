@@ -1,0 +1,36 @@
+.wrap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 8px 8px;
+  border: 1px solid var(--line-dark);
+  border-radius: 12px;
+  background: var(--panel-dark);
+  box-shadow: var(--shadow);
+}
+
+.label {
+  color: var(--dim-on-dark);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-align: center;
+}
+
+.canvas {
+  display: block;
+  width: 148px;
+  height: 96px;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+@media (width <= 900px) {
+  .wrap {
+    display: none;
+  }
+}

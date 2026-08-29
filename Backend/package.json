@@ -12,7 +12,7 @@
     "start:prod": "node dist/main",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "jest"
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

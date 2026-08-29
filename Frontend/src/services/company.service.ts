@@ -1,9 +1,14 @@
 import type {
   AgentsResponse,
   AppConfigResponse,
+  AutonomousWorkStatusResponse,
+  AutonomousInboxResponse,
+  AutonomousBacklogItem,
+  AutonomousApprovalItem,
   CreateSessionResponse,
   HealthResponse,
   SessionDetailResponse,
+  SessionSummary,
 } from '@shared';
 import { http } from './http.client';
 
@@ -27,6 +32,39 @@ export const companyService = {
 
   getSession: (id: string): Promise<SessionDetailResponse> =>
     http.get(`/sessions/${id}`),
+
+  getActiveSession: (): Promise<SessionSummary | null> => http.get('/sessions/active'),
+
+  getAutonomousWorkStatus: (): Promise<AutonomousWorkStatusResponse> =>
+    http.get('/autonomous-work/status'),
+
+  pauseAutonomousWork: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/pause', {}),
+
+  resumeAutonomousWork: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/resume', {}),
+
+  runAutonomousWorkNow: (): Promise<AutonomousWorkStatusResponse> =>
+    http.post('/autonomous-work/run-now', {}),
+
+  getAutonomousInbox: (): Promise<AutonomousInboxResponse> =>
+    http.get('/autonomous-work/inbox'),
+
+  addAutonomousBacklog: (brief: string, priority: number): Promise<AutonomousBacklogItem> =>
+    http.post('/autonomous-work/backlog', { brief, priority }),
+
+  cancelAutonomousBacklog: (id: string): Promise<AutonomousBacklogItem> =>
+    http.post(`/autonomous-work/backlog/${id}/cancel`, {}),
+
+  decideAutonomousApproval: (
+    id: string,
+    approved: boolean,
+    note?: string,
+  ): Promise<AutonomousApprovalItem> =>
+    http.post(
+      `/autonomous-work/approvals/${id}/${approved ? 'approve' : 'reject'}`,
+      note ? { note } : {},
+    ),
 
   /** 진행 중인 세션 중단 — 돌고 있는 LLM 호출까지 끊습니다 */
   cancelSession: (id: string): Promise<SessionDetailResponse> =>

@@ -54,12 +54,37 @@ class HttpClient {
     return this.request<T>(path, { method: 'GET', ...init });
   }
 
-  post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>(path, {
+  async post<T>(path: string, body: unknown): Promise<T> {
+    const createInit = (): RequestInit => {
+      const headers = new Headers({ 'content-type': 'application/json' });
+      const token = this.readAdminToken();
+      if (token) headers.set('authorization', `Bearer ${token}`);
+      return {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
-    });
+      };
+    };
+
+    try {
+      return await this.request<T>(path, createInit());
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      const token = window.prompt(
+        '관리자 작업입니다. Backend/.env에 설정한 ADMIN_TOKEN을 입력하세요.',
+      );
+      if (!token?.trim()) throw error;
+      window.localStorage.setItem('metahub.adminToken', token.trim());
+      return this.request<T>(path, createInit());
+    }
+  }
+
+  private readAdminToken(): string {
+    try {
+      return window.localStorage.getItem('metahub.adminToken')?.trim() ?? '';
+    } catch {
+      return '';
+    }
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {

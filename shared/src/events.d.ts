@@ -5,13 +5,20 @@
  */
 import type {
   AgentId,
-  AgentStatus,
+  ArtifactSummary,
   Deliverable,
+  AgentStatus,
   PhaseKey,
   RecalledNote,
   ReviewResult,
+  TokenUsage,
   WorkPlan,
 } from './domain';
+
+/** 직원이 실제로 만진 도구 — 머리 위 아이콘·타임라인에 씁니다 */
+export type ToolKind = 'vault' | 'file-write';
+
+export type ToolStatus = 'started' | 'completed' | 'failed';
 
 /** 세션 시작 — 실행 환경 정보 */
 export interface BootEvent {
@@ -60,6 +67,17 @@ export interface PlanEvent {
   team: AgentId[];
 }
 
+/**
+ * 파일 하나가 완성됐다 — 코드형 산출물에서만 발생합니다.
+ * 내용은 싣지 않습니다. 프론트는 previewUrl 로 실물을 봅니다.
+ */
+export interface ArtifactEvent {
+  type: 'artifact';
+  file: ArtifactSummary;
+  /** 지금까지 만들어진 것을 브라우저로 열어볼 주소 */
+  previewUrl: string;
+}
+
 /** 검수 결과 */
 export interface ReviewEvent {
   type: 'review';
@@ -85,6 +103,30 @@ export interface ErrorEvent {
   message: string;
 }
 
+/**
+ * LLM 호출이 끝날 때마다 누적 사용량을 보냅니다.
+ * 최종 Deliverable.usage 만으로는 진행 중 비용을 못 보여주므로 따로 흘립니다.
+ */
+export interface UsageEvent {
+  type: 'usage';
+  usage: TokenUsage;
+  /** 방금 한 호출분 */
+  delta: TokenUsage;
+}
+
+/**
+ * 도구 사용 — Vault 조회·파일 쓰기처럼 캐릭터가 "손으로" 하는 일.
+ * status 애니메이션(thinking)과 겹치지 않게 머리 위 아이콘으로 구분합니다.
+ */
+export interface ToolEvent {
+  type: 'tool';
+  agent: AgentId;
+  tool: ToolKind;
+  status: ToolStatus;
+  /** 짧은 설명 (파일명, "과거 기록 검색" 등) */
+  label?: string;
+}
+
 export type SessionEvent =
   | BootEvent
   | PhaseEvent
@@ -92,7 +134,10 @@ export type SessionEvent =
   | SpeechEvent
   | RecallEvent
   | PlanEvent
+  | ArtifactEvent
   | ReviewEvent
+  | UsageEvent
+  | ToolEvent
   | DoneEvent
   | CancelledEvent
   | ErrorEvent;

@@ -2,7 +2,7 @@
 /**
  * 메타버스 오피스 스프라이트 생성기 (Node.js / @napi-rs/canvas).
  *
- * Python 버전(Frontend/tools/generate_sprites.py)과 동일한 픽셀아트를 생성합니다.
+ * 캐릭터·타일·가구 PNG 3장과 manifest.json 을 생성합니다.
  *
  * 실행:
  *   node Frontend/tools/generate_sprites.mjs
@@ -127,14 +127,14 @@ function point(ctx, x, y, fill) {
 
 // ── 캐릭터 정의 ─────────────────────────────────────────
 const CHARACTERS = [
-  ['ceo', '#e8e8ef', '#3a2c1f', '#f2cba3'],
-  ['chief', '#f2c14e', '#2a2118', '#f0c9a0'],
-  ['planner', '#5aa9e6', '#1f1a14', '#e8bd94'],
-  ['researcher', '#9b5de5', '#4a2f1c', '#f3d0ab'],
-  ['marketer', '#ef476f', '#5c3317', '#f0c9a0'],
-  ['dev', '#06d6a0', '#232323', '#e0b088'],
-  ['finance', '#118ab2', '#33241a', '#f2cba3'],
-  ['writer', '#ff9f1c', '#6b4423', '#f5d5b0'],
+  ['ceo', '#26354a', '#252a35', '#f2cba3'],
+  ['chief', '#d99b2b', '#6f4128', '#f0c9a0'],
+  ['planner', '#367cae', '#252a35', '#e8bd94'],
+  ['researcher', '#8056a8', '#35283d', '#f3d0ab'],
+  ['marketer', '#d66767', '#7b3f32', '#f0c9a0'],
+  ['dev', '#178f88', '#242936', '#e0b088'],
+  ['finance', '#31577f', '#273247', '#f2cba3'],
+  ['writer', '#d8802f', '#6d4329', '#f5d5b0'],
 ];
 
 const TROUSERS = hexRgb('#39404f');
@@ -153,7 +153,7 @@ const OUTLINE = hexRgb('#1a1d24');
  * @param {string} direction
  * @param {number} frame
  */
-function drawCharacter(ctx, ox, oy, shirt, hair, skin, direction, frame) {
+function drawCharacter(ctx, ox, oy, shirt, hair, skin, direction, frame, role) {
   const swing = { 0: 0, 1: 2, 2: 0, 3: -2 }[frame];
   const sideView = direction === 'left' || direction === 'right';
   const facing = direction === 'left' ? -1 : 1;
@@ -248,6 +248,39 @@ function drawCharacter(ctx, ox, oy, shirt, hair, skin, direction, frame) {
     rect(ctx, cx + 3, oy + 15, cx + 4, oy + 17, OUTLINE);
     rect(ctx, cx - 1, oy + 18, cx, oy + 18, shade(skin, -40));
   }
+
+  // 색만으로 직원을 구분하지 않습니다. 작은 화면에서도 역할이 읽히도록
+  // 안경·헤드셋·후드·넥타이처럼 실루엣이 다른 1~2px 표식을 둡니다.
+  if (direction === 'down') {
+    if (role === 'ceo') {
+      line(ctx, cx - 5, bodyTop + 2, cx - 1, bodyTop + 7, [232, 228, 216]);
+      line(ctx, cx + 4, bodyTop + 2, cx, bodyTop + 7, [232, 228, 216]);
+    }
+    if (role === 'researcher' || role === 'dev') {
+      const glass = role === 'researcher' ? [119, 76, 163] : [23, 143, 136];
+      ctx.strokeStyle = toFill(glass);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx - 6.5, oy + 14.5, 5, 4);
+      ctx.strokeRect(cx + 1.5, oy + 14.5, 5, 4);
+      line(ctx, cx - 1, oy + 16, cx + 1, oy + 16, glass);
+    }
+    if (role === 'marketer') {
+      line(ctx, cx - 8, oy + 11, cx - 8, oy + 20, OUTLINE, 2);
+      line(ctx, cx + 7, oy + 11, cx + 7, oy + 20, OUTLINE, 2);
+      line(ctx, cx + 7, oy + 19, cx + 4, oy + 22, OUTLINE);
+    }
+    if (role === 'dev') {
+      line(ctx, cx - 5, bodyTop + 1, cx, bodyTop + 5, shade(shirt, 26));
+      line(ctx, cx + 4, bodyTop + 1, cx, bodyTop + 5, shade(shirt, 26));
+    }
+    if (role === 'finance') {
+      polygon(ctx, [[cx - 1, bodyTop + 2], [cx + 1, bodyTop + 2], [cx + 2, bodyTop + 9], [cx, bodyTop + 11], [cx - 2, bodyTop + 9]], [215, 157, 63]);
+    }
+    if (role === 'writer') {
+      ellipse(ctx, cx + 2, headTop - 5, cx + 8, headTop + 1, hair);
+      rect(ctx, cx + 4, headTop - 6, cx + 6, headTop - 4, [217, 155, 43]);
+    }
+  }
 }
 
 function buildCharacters() {
@@ -270,7 +303,7 @@ function buildCharacters() {
       const direction = DIRECTIONS[d];
       for (let frame = 0; frame < FRAMES; frame++) {
         const col = d * FRAMES + frame;
-        drawCharacter(ctx, col * CHAR_W, row * CHAR_H, shirt, hair, skin, direction, frame);
+        drawCharacter(ctx, col * CHAR_W, row * CHAR_H, shirt, hair, skin, direction, frame, charId);
       }
     }
   }
@@ -298,7 +331,7 @@ const TILE_NAMES = [
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawFloorWood(d, ox, oy) {
-  const base = hexRgb('#efe0c6');
+  const base = hexRgb('#c99a69');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   for (const y of [0, 16]) {
     line(d, ox, oy + y, ox + TILE - 1, oy + y, shade(base, -13));
@@ -317,7 +350,7 @@ function drawFloorWood(d, ox, oy) {
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawFloorTile(d, ox, oy) {
-  const base = hexRgb('#eef1f5');
+  const base = hexRgb('#c9d1dc');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   const grain = shade(base, -8);
   for (let i = 0; i < TILE; i += 8) {
@@ -333,7 +366,7 @@ function drawFloorTile(d, ox, oy) {
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawCarpet(d, ox, oy) {
-  const base = [255, 255, 255];
+  const base = [224, 218, 205];
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   for (let y = 0; y < TILE; y += 4) {
     for (let x = 0; x < TILE; x += 4) {
@@ -346,24 +379,24 @@ function drawCarpet(d, ox, oy) {
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawRugEdge(d, ox, oy) {
-  rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, [255, 255, 255]);
-  d.strokeStyle = toFill([228, 228, 228]);
+  rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, [224, 218, 205]);
+  d.strokeStyle = toFill([184, 171, 151]);
   d.lineWidth = 1;
   d.strokeRect(ox, oy, TILE, TILE);
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawWallFace(d, ox, oy) {
-  const base = hexRgb('#f4f6f9');
+  const base = hexRgb('#303a4c');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   rect(d, ox, oy, ox + TILE - 1, oy + 2, shade(base, -18));
-  rect(d, ox, oy + TILE - 5, ox + TILE - 1, oy + TILE - 1, hexRgb('#d4dae3'));
-  rect(d, ox, oy + TILE - 2, ox + TILE - 1, oy + TILE - 1, hexRgb('#b9c2ce'));
+  rect(d, ox, oy + TILE - 5, ox + TILE - 1, oy + TILE - 1, hexRgb('#202837'));
+  rect(d, ox, oy + TILE - 2, ox + TILE - 1, oy + TILE - 1, hexRgb('#151b26'));
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawWallTop(d, ox, oy) {
-  const base = hexRgb('#cfd7e1');
+  const base = hexRgb('#465166');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   rect(d, ox, oy, ox + TILE - 1, oy + 1, shade(base, 16));
   rect(d, ox, oy + TILE - 2, ox + TILE - 1, oy + TILE - 1, shade(base, -20));
@@ -428,17 +461,17 @@ const PROPS = [
   ['partition', 64, 28],
 ];
 
-const WOOD = hexRgb('#d9b98c');
-const WOOD_DARK = hexRgb('#b08a5c');
-const TOP_WHITE = hexRgb('#fbfcfd');
-const TOP_EDGE = hexRgb('#dfe5ec');
-const METAL = hexRgb('#8b96a6');
-const METAL_LIGHT = hexRgb('#b7c0cc');
-const SCREEN = hexRgb('#37455c');
-const SCREEN_GLOW = hexRgb('#7fa6d6');
-const MINT = hexRgb('#a8dcc4');
-const MINT_DARK = hexRgb('#7cbfa4');
-const LEAF = hexRgb('#5cb677');
+const WOOD = hexRgb('#b77a48');
+const WOOD_DARK = hexRgb('#754b32');
+const TOP_WHITE = hexRgb('#f2eadb');
+const TOP_EDGE = hexRgb('#cdbfa9');
+const METAL = hexRgb('#657185');
+const METAL_LIGHT = hexRgb('#98a3b2');
+const SCREEN = hexRgb('#26354a');
+const SCREEN_GLOW = hexRgb('#79b9dc');
+const MINT = hexRgb('#8fc5aa');
+const MINT_DARK = hexRgb('#55977b');
+const LEAF = hexRgb('#4f9b60');
 const SHADOW = [140, 150, 165, 55];
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d */

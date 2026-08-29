@@ -24,24 +24,74 @@ export interface LlmConfig {
   maxRetries: number;
   /** 로컬 서버 주소 (Ollama 전용) */
   baseUrl: string;
+  /**
+   * 컨텍스트 창 크기 (Ollama 전용, num_ctx).
+   *
+   * Ollama 는 지정하지 않으면 4096 으로 잘라버립니다. 이 앱은 교차검토 단계에서
+   * 동료 부서 원고를 전부 붙이므로 기본값으로는 프롬프트 앞부분이 조용히
+   * 날아갑니다. 대신 크게 잡을수록 VRAM 을 더 씁니다.
+   */
+  contextWindow: number;
   /** 한 번의 호출을 기다려주는 시간 (ms) — 로컬 모델은 느릴 수 있습니다 */
   timeoutMs: number;
+  /** 하루 논리 호출 한도. 0이면 제한하지 않습니다. */
+  dailyCallLimit: number;
+  /** 하루 입력+출력 토큰 한도. 0이면 제한하지 않습니다. */
+  dailyTokenLimit: number;
+  budgetStatePath: string;
+}
+
+export interface SecurityConfig {
+  /** 설정된 경우 변경 API에 Bearer 또는 x-admin-token 헤더가 필요합니다. */
+  adminToken: string;
 }
 
 export interface VaultConfig {
   path: string;
   rootFolder: string;
+  /** 회상을 키워드 매칭 + 임베딩 하이브리드로 돌릴지. 꺼두면 항상 키워드만 씁니다. */
+  embeddingsEnabled: boolean;
+  /** Ollama 임베딩 모델 (채팅 프로바이더와 무관하게 항상 Ollama 를 씁니다) */
+  embeddingModel: string;
+  /** 임베딩 서버 주소 — 보통 채팅용 Ollama 와 같은 인스턴스 */
+  embeddingBaseUrl: string;
+  /** 노트 임베딩 캐시 (mtime 이 바뀐 노트만 다시 계산) */
+  embeddingCachePath: string;
 }
 
 export interface WorkflowConfig {
   feedbackRounds: number;
   maxRework: number;
   sessionTtlMs: number;
+  /** 서버 재시작 후에도 세션 기록을 유지하는 SQLite 파일 */
+  sessionDatabasePath: string;
+  /**
+   * 세션 끝에 부서별 회고를 돌릴지.
+   *
+   * 부서 수만큼 LLM 호출이 추가됩니다. 로컬 모델에서 세션이 이미 길다면
+   * 꺼도 됩니다 — 대신 볼트에 지식이 쌓이지 않습니다.
+   */
+  reflect: boolean;
+}
+
+export interface AutonomousWorkConfig {
+  enabled: boolean;
+  startupDelayMs: number;
+  intervalMs: number;
+  dailyLimit: number;
+  maxSessionMs: number;
+  statePath: string;
+  inboxPath: string;
 }
 
 const toInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number.parseInt(value ?? '', 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toBool = (value: string | undefined, fallback: boolean): boolean => {
+  if (value === undefined) return fallback;
+  return !['0', 'false', 'off', 'no'].includes(value.trim().toLowerCase());
 };
 
 /** 프로바이더별 기본값 — 무료 등급에서 429 를 맞지 않는 선으로 잡았습니다 */
@@ -137,16 +187,57 @@ export const llmConfig = registerAs('llm', (): LlmConfig => {
     ),
     maxRetries: toInt(process.env.LLM_MAX_RETRIES, 3),
     baseUrl: process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434',
+    contextWindow: toInt(process.env.OLLAMA_NUM_CTX, 16_384),
     // 로컬 모델은 첫 호출에 모델을 올리느라 오래 걸립니다
     timeoutMs: toInt(process.env.OLLAMA_TIMEOUT_MS, 300_000),
+    dailyCallLimit: Math.max(0, toInt(process.env.LLM_DAILY_CALL_LIMIT, 200)),
+    dailyTokenLimit: Math.max(0, toInt(process.env.LLM_DAILY_TOKEN_LIMIT, 500_000)),
+    budgetStatePath:
+      process.env.LLM_BUDGET_STATE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'llm-budget.json'),
   };
 });
+
+export const securityConfig = registerAs(
+  'security',
+  (): SecurityConfig => ({
+    adminToken: process.env.ADMIN_TOKEN?.trim() ?? '',
+  }),
+);
+
+/**
+ * 코드형 산출물이 저장되는 곳.
+ *
+ * 볼트(Obsidian)는 "읽는 문서"를 위한 곳이라 html/css/js 를 섞지 않습니다.
+ * 실행 가능한 파일은 저장소 루트의 `workspace/` 에 따로 쌓고, 서버가
+ * 그 폴더를 정적으로 서빙해 프론트가 iframe 으로 바로 열어볼 수 있게 합니다.
+ */
+export interface WorkspaceConfig {
+  path: string;
+  /** 정적 서빙 경로 접두사 — 프론트가 만드는 미리보기 주소의 앞부분 */
+  urlPrefix: string;
+}
+
+export const workspaceConfig = registerAs(
+  'workspace',
+  (): WorkspaceConfig => ({
+    path:
+      process.env.WORKSPACE_PATH?.trim() || path.join(PROJECT_ROOT, 'workspace'),
+    urlPrefix: '/workspace',
+  }),
+);
 
 export const vaultConfig = registerAs(
   'vault',
   (): VaultConfig => ({
     path: process.env.OBSIDIAN_VAULT?.trim() || path.join(PROJECT_ROOT, 'vault'),
     rootFolder: process.env.OBSIDIAN_ROOT?.trim() || 'AI Company',
+    embeddingsEnabled: toBool(process.env.VAULT_EMBEDDINGS_ENABLED, true),
+    embeddingModel: process.env.VAULT_EMBEDDING_MODEL?.trim() || 'nomic-embed-text',
+    embeddingBaseUrl: process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434',
+    embeddingCachePath:
+      process.env.VAULT_EMBEDDING_CACHE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'vault-embeddings.json'),
   }),
 );
 
@@ -156,7 +247,39 @@ export const workflowConfig = registerAs(
     feedbackRounds: Math.max(0, toInt(process.env.FEEDBACK_ROUNDS, 1)),
     maxRework: Math.max(0, toInt(process.env.MAX_REWORK, 1)),
     sessionTtlMs: toInt(process.env.SESSION_TTL_MS, 60 * 60 * 1000),
+    sessionDatabasePath:
+      process.env.SESSION_DATABASE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'sessions.sqlite'),
+    reflect: process.env.WORKFLOW_REFLECT?.trim().toLowerCase() !== 'false',
   }),
 );
 
-export const configurations = [appConfig, llmConfig, vaultConfig, workflowConfig];
+export const autonomousWorkConfig = registerAs(
+  'autonomousWork',
+  (): AutonomousWorkConfig => ({
+    enabled: toBool(process.env.AUTONOMOUS_WORK_ENABLED, true),
+    startupDelayMs: Math.max(1_000, toInt(process.env.AUTONOMOUS_WORK_STARTUP_DELAY_MS, 8_000)),
+    intervalMs: Math.max(60_000, toInt(process.env.AUTONOMOUS_WORK_INTERVAL_MS, 30 * 60 * 1000)),
+    dailyLimit: Math.max(1, toInt(process.env.AUTONOMOUS_WORK_DAILY_LIMIT, 3)),
+    maxSessionMs: Math.max(
+      60_000,
+      toInt(process.env.AUTONOMOUS_WORK_MAX_SESSION_MS, 20 * 60 * 1000),
+    ),
+    statePath:
+      process.env.AUTONOMOUS_WORK_STATE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'autonomous-work.json'),
+    inboxPath:
+      process.env.AUTONOMOUS_WORK_INBOX_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'autonomous-inbox.json'),
+  }),
+);
+
+export const configurations = [
+  appConfig,
+  llmConfig,
+  vaultConfig,
+  workspaceConfig,
+  workflowConfig,
+  autonomousWorkConfig,
+  securityConfig,
+];

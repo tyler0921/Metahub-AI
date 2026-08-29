@@ -1,0 +1,167 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.back {
+  align-self: flex-start;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+.head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--status-color);
+  border-radius: 9px;
+  color: var(--status-color);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  font-size: 13.5px;
+}
+
+.meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 3px;
+  color: var(--dim);
+  font-size: 11.5px;
+}
+
+.meta i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.chipOn,
+.chipOff {
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.chipOn {
+  background: rgb(79 168 120 / 14%);
+  color: var(--st-done);
+}
+
+.chipOff {
+  background: var(--accent-soft);
+  color: var(--dim);
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.block p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.aside {
+  color: var(--dim);
+  font-size: 11.5px !important;
+}
+
+.block p + .aside {
+  margin-top: 6px !important;
+}
+
+.speeches {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.speeches li {
+  padding: 9px 11px;
+  border-left: 2px solid var(--line);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-soft);
+}
+
+.speechPhase {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.speeches p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.6;
+  /* 발언 하나가 초안 전문일 수 있어 목록에서는 잘라 둡니다 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.actions {
+  display: flex;
+  gap: 7px;
+}
+
+.actions button {
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
