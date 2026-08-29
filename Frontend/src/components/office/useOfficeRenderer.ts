@@ -18,6 +18,9 @@ interface OfficeBinding {
   isLoading: boolean;
   error: string | null;
   zoomPercent: number;
+  /** 클릭-추적 카메라가 지금 따라가는 직원 (없으면 null) */
+  followId: AgentId | null;
+  stopFollow: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
@@ -54,6 +57,7 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState({ current: ZOOM_DEFAULT, base: ZOOM_DEFAULT });
+  const [followId, setFollowId] = useState<AgentId | null>(null);
 
   const agents = useSessionStore((s) => s.agents);
 
@@ -85,6 +89,7 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
           },
           // 클릭은 스토어로 바로 보냅니다 — 사이드바가 그 값을 보고 상세로 전환합니다
           onActorSelect: (agentId) => useSessionStore.getState().selectAgent(agentId),
+          onFollowChange: setFollowId,
         });
         rendererRef.current = renderer;
 
@@ -186,6 +191,7 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
       observer?.disconnect();
       renderer?.destroy();
       rendererRef.current = null;
+      setFollowId(null);
     };
   }, [agents]);
 
@@ -209,6 +215,8 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     isLoading,
     error,
     zoomPercent: Math.round((zoom.current / zoom.base) * 100 / 5) * 5,
+    followId,
+    stopFollow: () => rendererRef.current?.stopFollow(),
     zoomIn: () => rendererRef.current?.zoomIn(),
     zoomOut: () => rendererRef.current?.zoomOut(),
     resetZoom: () => rendererRef.current?.resetZoom(),

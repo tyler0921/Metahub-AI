@@ -10,6 +10,7 @@ import {
   MEETING_SEATS,
   findPath,
   isBlocked,
+  nearestWalkable,
   zoneAt,
 } from './office-map';
 import { characterFrame, type SpriteAssets } from './sprites';
@@ -137,6 +138,8 @@ export interface RendererCallbacks {
    */
   onActorSelect?: (agentId: AgentId | null) => void;
   onAmbientSpeech?: (event: SpeechEvent) => void;
+  /** 카메라가 특정 직원을 따라가기 시작·중단할 때. null 이면 대표를 다시 비춥니다. */
+  onFollowChange?: (agentId: AgentId | null) => void;
 }
 
 /**
@@ -153,6 +156,8 @@ export class OfficeRenderer {
   private rafId = 0;
   private lastTime = 0;
   private nearbyId: AgentId | null = null;
+  /** 카메라가 지금 따라가는 직원 — 클릭-추적(Follow) 모드 */
+  private followId: AgentId | null = null;
   private currentZoneId: string | null = null;
   private meetingMode = false;
   /** 이번 업무에 투입된 부서 — 비면 조명을 나누지 않습니다 */
@@ -408,8 +413,12 @@ export class OfficeRenderer {
       this.keys.add(e.key);
       const player = this.actors.get('ceo');
       if (player) player.path = [];
+      this.setFollow(null);
       e.preventDefault();
       return;
+    }
+    if (e.key === 'Escape') {
+      this.setFollow(null);
     }
     if (e.key === '+' || e.key === '=') {
       this.zoomIn();
@@ -445,11 +454,25 @@ export class OfficeRenderer {
     // "누른 것"과 "일어난 일"이 어긋나 보입니다.
     const hit = this.actorAt(tile.x, tile.y);
     if (hit) {
+      this.setFollow(this.followId === hit ? null : hit);
       this.callbacks.onActorSelect?.(hit);
       return;
     }
+    this.setFollow(null);
     this.callbacks.onActorSelect?.(null);
   };
+
+  /** 클릭-추적 카메라 모드를 켜거나 끕니다 */
+  private setFollow(id: AgentId | null): void {
+    if (this.followId === id) return;
+    this.followId = id;
+    this.callbacks.onFollowChange?.(id);
+  }
+
+  /** 바깥(React)에서 "그만 보기"를 눌렀을 때 */
+  stopFollow(): void {
+    this.setFollow(null);
+  }
 
   private onDoubleClick = (e: MouseEvent): void => {
     const player = this.actors.get('ceo');
@@ -469,6 +492,7 @@ export class OfficeRenderer {
 
     player.path = path;
     this.marker = { x: tx, y: ty, at: performance.now() };
+    this.setFollow(null);
   };
 
   /**
@@ -517,8 +541,22 @@ export class OfficeRenderer {
       actor.path = [];
       return;
     }
-    const path = findPath(actor, { x, y });
-    actor.path = path.length > 0 ? path : [{ x, y }];
+
+    // 목적지 타일 자체가 막혀 있으면(좌석이 가구 충돌 박스와 겹치는 경우)
+    // 벽을 뚫는 직선 대신 가장 가까운 걸을 수 있는 타일로 목적지를 옮깁니다.
+    let goal = { x, y };
+    if (isBlocked(x, y)) {
+      const alt = nearestWalkable(x, y);
+      if (!alt) {
+        actor.path = [];
+        return;
+      }
+      goal = alt;
+    }
+
+    // 경로를 못 찾으면(진짜로 막혀 있으면) 제자리에 둡니다 — 벽을 통과하는
+    // 직선 이동으로 대신하지 않습니다.
+    actor.path = findPath(actor, goal);
   }
 
   private canStand(x: number, y: number): boolean {
@@ -761,10 +799,16 @@ export class OfficeRenderer {
   }
 
   private updateCamera(): void {
-    const player = this.actors.get('ceo');
-    if (!player || this.viewportW < 1) return;
+    if (this.viewportW < 1) return;
 
-    const foot = this.footPx(player);
+    // Follow 모드면 지목한 직원을, 아니면 대표를 비춥니다.
+    // 그 직원이 화면에서 사라지면(세션 종료 등) 자동으로 대표에게 돌아갑니다.
+    let focus = this.followId ? this.actors.get(this.followId) : undefined;
+    if (this.followId && !focus) this.setFollow(null);
+    focus ??= this.actors.get('ceo');
+    if (!focus) return;
+
+    const foot = this.footPx(focus);
     this.clampCamera(foot.x - this.viewW / 2, foot.y - this.viewH / 2);
   }
 
@@ -1179,6 +1223,7 @@ export class OfficeRenderer {
     if (working) this.drawWorkingEffect(foot.x, drawY);
     if (talking) this.drawTalkingEffect(foot.x, drawY);
     if (done) this.drawDoneEffect(foot.x, drawY);
+    if (idleSit) this.drawIdleEffect(foot.x, drawY, Boolean(actor.atLeisure));
     if (actor.tool) this.drawToolBadge(foot.x, drawY, actor.tool);
     if (this.sessionAlert && !actor.isPlayer && actor.status !== 'idle') {
       this.drawAlertEffect(foot.x, drawY);
@@ -1245,6 +1290,31 @@ export class OfficeRenderer {
     ctx.lineTo(cx - 0.5, y + 2);
     ctx.lineTo(cx + 2.8, y - 2.2);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * 진짜 유휴 — 자리를 비웠을 때만 위트 있게 보여줍니다.
+   * 일하는 중(ambientWorking)에는 뜨지 않습니다 — 작업·발언·완료처럼
+   * "지금 상태"를 알리는 용도지, 캐릭터마다 붙는 장식이 아닙니다.
+   */
+  private drawIdleEffect(cx: number, topY: number, atLeisure: boolean): void {
+    const { ctx } = this;
+    const y = topY - 14;
+    const icon = atLeisure ? '☕' : '💤';
+
+    ctx.save();
+    ctx.fillStyle = '#fcfdfe';
+    ctx.strokeStyle = 'rgba(20,30,40,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = '11px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, cx, y + 1);
     ctx.restore();
   }
 
@@ -1340,13 +1410,19 @@ export class OfficeRenderer {
     const next = new Map<string, { left: number; top: number }>();
     let changed = this.publishedAnchors.size !== this.anchorTargets.size;
 
+    // 말풍선은 코너에 고정된 UI(미니맵·단축키 안내·사이드바)와 겹치지 않도록
+    // 화면 가장자리에서 일정 여백 안쪽으로만 표시합니다.
+    const marginX = 170;
+    const topMargin = 90;
+    const bottomMargin = 170;
+
     for (const id of this.anchorTargets) {
       const actor = this.actors.get(id);
       if (!actor) continue;
       const foot = this.visualFootPx(actor);
       const point = {
-        left: (foot.x - this.camX) * this.zoom,
-        top: (foot.y - this.camY) * this.zoom - 58,
+        left: clamp((foot.x - this.camX) * this.zoom, marginX, Math.max(marginX, this.viewportW - marginX)),
+        top: clamp((foot.y - this.camY) * this.zoom - 58, topMargin, Math.max(topMargin, this.viewportH - bottomMargin)),
       };
       next.set(id, point);
       const prev = this.publishedAnchors.get(id);

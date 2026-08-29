@@ -25,12 +25,15 @@ interface OfficeCanvasProps {
    * 다시 부르면 부팅 때 같은 요청이 두 번 나갑니다.
    */
   config: AppConfigResponse | null;
+  /** 하단 지시 콘솔이 펼쳐졌는지 — 공간 메뉴 알약을 그만큼 밀어 올립니다 */
+  consoleExpanded?: boolean;
 }
 
 export function OfficeCanvas({
   onSelectBrief,
   onOpenConsole,
   config,
+  consoleExpanded = false,
 }: OfficeCanvasProps): React.JSX.Element {
   const logs = useSessionStore((s) => s.logs);
   const agentMap = useSessionStore((s) => s.agentMap);
@@ -85,11 +88,15 @@ export function OfficeCanvas({
     isLoading,
     error,
     zoomPercent,
+    followId,
+    stopFollow,
     zoomIn,
     zoomOut,
     resetZoom,
     setMoveKey,
   } = useOfficeRenderer(anchorIds);
+
+  const followedAgent = followId ? (agentMap.get(followId) ?? null) : null;
 
   const activeSpeeches = useMemo(
     () => [...sessionSpeeches, ...ambientSpeeches]
@@ -232,6 +239,14 @@ export function OfficeCanvas({
         </button>
       )}
 
+      {followedAgent && (
+        <div className={styles.followChip} role="status">
+          <span className={styles.followDot} aria-hidden="true" />
+          <span><b>{followedAgent.name}</b> 따라가는 중</span>
+          <button type="button" onClick={stopFollow}>그만 보기</button>
+        </div>
+      )}
+
       {showGuide && !isLoading && !error && (
         <section className={styles.guide} aria-label="오피스 이동 안내">
           <div>
@@ -244,7 +259,10 @@ export function OfficeCanvas({
         </section>
       )}
 
-      <nav className={styles.spaceRail} aria-label="공간 메뉴">
+      <nav
+        className={`${styles.spaceRail} ${consoleExpanded ? styles.spaceRailRaised : ''}`}
+        aria-label="공간 메뉴"
+      >
         <div className={styles.railLogo} aria-label="MetaHub AI">M</div>
         <div className={styles.railGroup}>
           <button type="button" className={styles.railActive} aria-label="오피스 보기" data-label="오피스" onClick={resetZoom}>

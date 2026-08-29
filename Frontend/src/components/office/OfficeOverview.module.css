@@ -1,7 +1,7 @@
 .card {
   position: absolute;
   top: 82px;
-  left: 84px;
+  left: 14px;
   z-index: 5;
   display: flex;
   gap: 10px;
@@ -121,7 +121,7 @@
 @media (width <= 900px) {
   .card {
     top: 72px;
-    left: 76px;
+    left: 8px;
     width: 240px;
   }
 

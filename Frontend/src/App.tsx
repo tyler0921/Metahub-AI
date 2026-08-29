@@ -57,6 +57,7 @@ export default function App(): React.JSX.Element {
               onSelectBrief={handleSelectBrief}
               onOpenConsole={handleOpenConsole}
               config={config}
+              consoleExpanded={!ceoCollapsed}
             />
             <div
               className={`${styles.consoleDock} ${ceoCollapsed ? styles.consoleDockCollapsed : ''}`}

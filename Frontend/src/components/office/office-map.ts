@@ -156,6 +156,29 @@ const NEIGHBORS = [
   [-1, -1], [1, -1], [-1, 1], [1, 1],
 ] as const;
 
+/**
+ * 목적지 타일이 막혀 있을 때 가장 가까운 걸을 수 있는 타일을 찾습니다.
+ * 좌석 좌표가 가구 충돌 박스와 살짝 겹치는 경우가 있어서, 그럴 때 벽을
+ * 뚫고 가는 대신 옆 타일로 목적지를 옮깁니다.
+ */
+export function nearestWalkable(x: number, y: number, maxRadius = 3): Point | null {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  if (!isBlocked(cx, cy)) return { x: cx, y: cy };
+
+  for (let r = 1; r <= maxRadius; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (!isBlocked(nx, ny)) return { x: nx, y: ny };
+      }
+    }
+  }
+  return null;
+}
+
 export function findPath(from: Point, to: Point, maxNodes = 5_000): Point[] {
   const start = { x: Math.round(from.x), y: Math.round(from.y) };
   const goal = { x: Math.round(to.x), y: Math.round(to.y) };
