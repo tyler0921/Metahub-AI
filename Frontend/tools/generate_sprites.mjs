@@ -17,7 +17,7 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -135,6 +135,7 @@ const CHARACTERS = [
   ['dev', '#178f88', '#242936', '#e0b088'],
   ['finance', '#31577f', '#273247', '#f2cba3'],
   ['writer', '#d8802f', '#6d4329', '#f5d5b0'],
+  ['designer', '#c9578b', '#3a2a20', '#f0c9a0'],
 ];
 
 const TROUSERS = hexRgb('#39404f');
@@ -845,4 +846,10 @@ function main() {
   console.log(`→ ${OUT_DIR}`);
 }
 
-main();
+// 직접 실행했을 때만 돌립니다 — 다른 스크립트가 drawCharacter 등을
+// import 할 때는 부수효과(파일 쓰기)가 함께 실행되면 안 됩니다.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
+
+export { drawCharacter, hexRgb, CHAR_W, CHAR_H, DIRECTIONS, FRAMES };

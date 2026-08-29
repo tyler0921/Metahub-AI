@@ -4,6 +4,14 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  drawCharacter,
+  hexRgb,
+  CHAR_W as GEN_CHAR_W,
+  CHAR_H as GEN_CHAR_H,
+  DIRECTIONS as GEN_DIRECTIONS,
+  FRAMES as GEN_FRAMES,
+} from './generate_sprites.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spriteDir = join(here, '..', 'public', 'sprites');
@@ -18,6 +26,14 @@ const FRAMES = 4;
 const ROLES = ['ceo', 'chief', 'planner', 'researcher', 'marketer', 'dev', 'finance', 'writer'];
 const FRAME_X = [0, -1, 0, 1];
 const FRAME_Y = [0, 1, 0, 1];
+
+/**
+ * 참조 원화가 없는 신규 캐릭터(디자인팀 등) — 절차적 생성기(generate_sprites.mjs)의
+ * drawCharacter 로 한 행을 더 그려 붙입니다. 참조 원화 행들보다 살짝 단순하지만
+ * 워크사이클(다리 스윙)이 있어 어색하게 붕 뜨지 않습니다.
+ * [id, 셔츠, 머리, 피부] — CHARACTERS 배열(generate_sprites.mjs)과 같은 값을 씁니다.
+ */
+const PROCEDURAL_ROLES = [['designer', '#c9578b', '#3a2a20', '#f0c9a0']];
 
 const source = await loadImage(sourcePath);
 const sourceCanvas = createCanvas(source.width, source.height);
@@ -95,7 +111,10 @@ function contentBounds(column, row) {
   return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
 }
 
-const atlas = createCanvas(FRAME_W * DIRECTIONS * FRAMES, FRAME_H * ROLES.length);
+const atlas = createCanvas(
+  FRAME_W * DIRECTIONS * FRAMES,
+  FRAME_H * (ROLES.length + PROCEDURAL_ROLES.length),
+);
 const ctx = atlas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
@@ -132,14 +151,45 @@ for (let roleIndex = 0; roleIndex < ROLES.length; roleIndex += 1) {
   }
 }
 
+// 참조 원화가 없는 캐릭터 — 절차적으로 그린 프레임을 같은 셀 크기로
+// 스케일해 붙입니다. 배치 방식(가운데 정렬·바닥 고정)은 위 원화 행과 같습니다.
+const procScale = Math.min((FRAME_W - 4) / GEN_CHAR_W, (FRAME_H - 4) / GEN_CHAR_H);
+const procWidth = Math.round(GEN_CHAR_W * procScale);
+const procHeight = Math.round(GEN_CHAR_H * procScale);
+
+for (let procIndex = 0; procIndex < PROCEDURAL_ROLES.length; procIndex += 1) {
+  const [roleId, shirtHex, hairHex, skinHex] = PROCEDURAL_ROLES[procIndex];
+  const shirt = hexRgb(shirtHex);
+  const hair = hexRgb(hairHex);
+  const skin = hexRgb(skinHex);
+  const roleIndex = ROLES.length + procIndex;
+
+  const cell = createCanvas(GEN_CHAR_W, GEN_CHAR_H);
+  const cellCtx = cell.getContext('2d');
+
+  for (let direction = 0; direction < GEN_DIRECTIONS.length; direction += 1) {
+    for (let frame = 0; frame < GEN_FRAMES; frame += 1) {
+      cellCtx.clearRect(0, 0, GEN_CHAR_W, GEN_CHAR_H);
+      drawCharacter(cellCtx, 0, 0, shirt, hair, skin, GEN_DIRECTIONS[direction], frame, roleId);
+
+      const cellX = (direction * FRAMES + frame) * FRAME_W;
+      const dx = cellX + Math.floor((FRAME_W - procWidth) / 2) + FRAME_X[frame];
+      const dy = roleIndex * FRAME_H + FRAME_H - procHeight - 2 + FRAME_Y[frame];
+      ctx.drawImage(cell, 0, 0, GEN_CHAR_W, GEN_CHAR_H, dx, dy, procWidth, procHeight);
+    }
+  }
+}
+
 writeFileSync(outputPath, atlas.toBuffer('image/png'));
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 manifest.characters.frameWidth = FRAME_W;
 manifest.characters.frameHeight = FRAME_H;
 manifest.characters.frames = FRAMES;
-manifest.characters.rows = Object.fromEntries(ROLES.map((role, index) => [role, index]));
-manifest.characters.source = 'docs/design/character-directions-v3.png';
+manifest.characters.rows = Object.fromEntries(
+  [...ROLES, ...PROCEDURAL_ROLES.map(([id]) => id)].map((role, index) => [role, index]),
+);
+manifest.characters.source = 'docs/design/character-directions-v3.png (+ 절차적 생성: designer)';
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log(`Wrote ${outputPath}`);

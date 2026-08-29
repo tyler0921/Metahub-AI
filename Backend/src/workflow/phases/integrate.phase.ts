@@ -81,7 +81,17 @@ export class IntegratePhase implements WorkflowPhase {
       ...departmentDrafts,
       reworkBlock,
       '',
-      `위 자료를 "${session.plan.deliverable}" 형태의 **하나의 완성된 문서**로 다시 쓰세요.`,
+      session.plan.kind === 'slides'
+        ? this.slidesInstructions(session.plan.deliverable)
+        : this.documentInstructions(session.plan.deliverable),
+      '',
+      '부서 이름을 문장에 노출하지 마세요. 한 사람이 쓴 것처럼 읽혀야 합니다.',
+    ].join('\n');
+  }
+
+  private documentInstructions(deliverable: string): string {
+    return [
+      `위 자료를 "${deliverable}" 형태의 **하나의 완성된 문서**로 다시 쓰세요.`,
       '',
       '필수 구조:',
       '1. `## 핵심 요약` — 대표가 30초 안에 읽을 3~5줄',
@@ -89,8 +99,26 @@ export class IntegratePhase implements WorkflowPhase {
       '3. `## 실행 계획` — 무엇을 / 누가 / 언제까지, 표로',
       '4. `## 쟁점` — 부서 간 의견이 갈린 지점 (없으면 생략)',
       '5. `## 대표님 결정 필요 사항` — 답을 기다리는 질문 목록',
+    ].join('\n');
+  }
+
+  /**
+   * Marp(https://marp.app) 호환 마크다운 — `---` 로 슬라이드를 나눕니다.
+   * 별도 렌더러 없이도 이 앱의 마크다운 뷰어에서 구분선 있는 문서로 읽히고,
+   * Marp 로 열면 그대로 슬라이드가 됩니다.
+   */
+  private slidesInstructions(deliverable: string): string {
+    return [
+      `위 자료를 "${deliverable}" 로 다시 쓰세요. 문서가 아니라 **발표 슬라이드**입니다.`,
       '',
-      '부서 이름을 문장에 노출하지 마세요. 한 사람이 쓴 것처럼 읽혀야 합니다.',
+      '형식 — Marp 호환 마크다운:',
+      '- 맨 앞에 프론트매터를 넣습니다: `---\\nmarp: true\\npaginate: true\\n---`',
+      '- 슬라이드마다 `---` 한 줄로 구분합니다.',
+      '- 슬라이드 하나에는 제목(`#`/`##`) 하나 + 불릿 5개 이내. 문단을 통째로 넣지 않습니다.',
+      '- 첫 슬라이드는 제목 슬라이드(제목 + 한 줄 부제), 마지막 슬라이드는 "대표님 결정 필요 사항"입니다.',
+      '- 발표자가 그 자리에서 읽을 대사가 아니라, 화면에 그대로 뜨는 **문구**를 씁니다. 길게 쓰지 말고 압축하세요.',
+      '- 표·비교가 필요하면 마크다운 표를 씁니다.',
+      '- 슬라이드 개수는 8~14장 사이로 맞춥니다.',
     ].join('\n');
   }
 }

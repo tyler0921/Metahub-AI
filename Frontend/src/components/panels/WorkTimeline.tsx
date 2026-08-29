@@ -180,7 +180,8 @@ function TimelineCard({
 
   if (entry.kind === 'tool') {
     const agent = agentMap.get(entry.agent);
-    const toolName = entry.tool === 'vault' ? 'Vault' : '파일 작성';
+    const toolName =
+      entry.tool === 'vault' ? 'Vault' : entry.tool === 'web-search' ? '웹 검색' : '파일 작성';
     const statusText =
       entry.status === 'failed' ? '실패' : entry.status === 'completed' ? '완료' : '시작';
 

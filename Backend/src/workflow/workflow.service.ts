@@ -304,6 +304,7 @@ export class WorkflowService {
         attempt,
         this.config.maxRework,
         session.plan.kind,
+        isWebsite ? output.artifacts : undefined,
       );
       session.review = verdict;
 

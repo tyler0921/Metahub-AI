@@ -17,9 +17,10 @@
       "marketer": 4,
       "dev": 5,
       "finance": 6,
-      "writer": 7
+      "writer": 7,
+      "designer": 8
     },
-    "source": "docs/design/character-directions-v3.png"
+    "source": "docs/design/character-directions-v3.png (+ 절차적 생성: designer)"
   },
   "tileSize": 32,
   "tiles": {

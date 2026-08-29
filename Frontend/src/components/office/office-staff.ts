@@ -46,6 +46,11 @@ export const STAFF_SEATS: readonly OfficeStaffSeat[] = [
   // ── 재무팀
   { id: 'finance-senior', sprite: 'finance', seat: { x: 17, y: 18 }, facing: 'up' },
   { id: 'finance-junior', sprite: 'finance', seat: { x: 21, y: 18 }, facing: 'up' },
+
+  // ── 디자인팀 (전용 방 없이 중앙 라운지 옆 통로에 자리합니다 — 팀장도 여기 포함)
+  { id: 'designer', sprite: 'designer', seat: { x: 26, y: 11 }, facing: 'down' },
+  { id: 'designer-senior', sprite: 'designer', seat: { x: 24, y: 11 }, facing: 'down' },
+  { id: 'designer-junior', sprite: 'designer', seat: { x: 28, y: 11 }, facing: 'down' },
 ];
 
 /** id → 좌석 (렌더러가 백엔드 직원 목록과 맞출 때 씁니다) */
@@ -57,8 +62,8 @@ export const STAFF_SEAT_MAP = new Map<AgentId, OfficeStaffSeat>(
 export const STAFF_SEAT_POINTS: ReadonlyArray<{ x: number; y: number }> =
   STAFF_SEATS.map((s) => s.seat);
 
-/** 팀장 7명 + 팀원 14명 */
-export const OFFICE_HEADCOUNT = 7 + STAFF_SEATS.length;
+/** 팀장 8명 + 팀원 16명 */
+export const OFFICE_HEADCOUNT = 8 + STAFF_SEATS.length;
 
 /** 팀장과 외형을 공유하기 위한 스프라이트 매핑 */
 export const SPRITE_OF = new Map<AgentId, AgentId>(

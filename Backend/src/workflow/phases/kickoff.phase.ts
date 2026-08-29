@@ -54,6 +54,14 @@ const DOCUMENT_INTENT =
   /(기획안|보고서|제안서|계획서|전략|분석해|조사해|정리해\s*줘|검토해)/i;
 
 /**
+ * "슬라이드로", "발표자료로" 처럼 프레젠테이션 형태를 못박으면 슬라이드입니다.
+ * DOCUMENT_INTENT 보다 먼저 봅니다 — "슬라이드로 정리해줘"는 정리해달라는
+ * 말보다 슬라이드라는 형태 지정이 더 구체적인 신호이기 때문입니다.
+ */
+const SLIDES_INTENT =
+  /(슬라이드|발표\s*자료|피치\s*덱|pitch\s*deck|PPT|파워포인트|프레젠테이션|presentation)/i;
+
+/**
  * 1단계 — 착수.
  * 비서실장이 대표 지시를 목표·성공기준·부서별 업무로 분해합니다.
  */
@@ -135,16 +143,19 @@ export class KickoffPhase implements WorkflowPhase {
       '각 부서는 팀장 아래 팀원들이 나눠서 작업하므로, 부서 단위로만 지시하세요.',
       '각 부서에는 "무엇을, 왜, 어떤 형식으로" 가 담긴 구체적 지시를 내리세요.',
       '',
-      '## 먼저 판단할 것 — 대표님이 원하는 게 "문서"인가 "실물"인가',
+      '## 먼저 판단할 것 — 대표님이 원하는 산출물의 형태',
       '',
       '- `document` : 읽고 판단하기 위한 보고서·기획안·전략안. 결과는 마크다운 문서 한 편입니다.',
       '- `website`  : 브라우저에서 바로 열리는 **실제 웹페이지**. 결과는 html/css/js 파일입니다.',
+      '- `slides`   : 회의·보고용 **발표자료**. 결과는 슬라이드 단위로 나뉜 마크다운입니다.',
       '',
       '"랜딩페이지를 만들어줘", "소개 사이트 하나 뽑아줘" 처럼 **결과물을 직접 쓰겠다는 지시**는 website 입니다.',
+      '"슬라이드로 정리해줘", "발표자료 만들어줘", "피치덱 뽑아줘" 처럼 발표 형태를 지정하면 slides 입니다.',
       '"랜딩페이지 기획안을 써줘" 처럼 문서를 요청하면 document 입니다.',
       '',
       'website 라면 부서 배정도 달라져야 합니다.',
       `- \`dev\` 는 **반드시** 포함하세요. 실제 코드를 쓰는 유일한 부서입니다.`,
+      '- `designer` 를 함께 포함하는 것을 우선 고려하세요. 개발팀이 코드를 쓰기 전에 컬러·타이포그래피·레이아웃 방향을 먼저 정해야 산출물이 템플릿처럼 보이지 않습니다.',
       '- `marketer` 에게는 "화면에 그대로 들어갈 헤드라인·본문 카피"를 쓰게 하세요. 채널 전략은 필요 없습니다.',
       '- `planner` 에게는 "페이지 섹션 구성과 각 섹션의 목적"을 정하게 하세요.',
       '- 재무·리서치는 이번 일에 실제로 필요할 때만 부르세요.',
@@ -152,7 +163,7 @@ export class KickoffPhase implements WorkflowPhase {
       '다음 스키마의 JSON으로 답하세요:',
       '{',
       '  "goal": "이 일의 목표를 한 문장으로",',
-      '  "kind": "document" 또는 "website",',
+      '  "kind": "document" 또는 "website" 또는 "slides",',
       '  "successCriteria": ["측정 가능한 성공 기준", "..."],',
       '  "deliverable": "최종 산출물의 형태 (예: 실행 계획서, 회사 소개 랜딩페이지)",',
       '  "assignments": [{"agent": "부서id", "task": "구체적인 업무 지시 2~4문장"}]',
@@ -169,9 +180,11 @@ export class KickoffPhase implements WorkflowPhase {
    * 표현이 함께 있으면 문서가 우선입니다.
    */
   private resolveKind(raw: RawPlan, brief: string): DeliverableKind {
+    if (SLIDES_INTENT.test(brief)) return 'slides';
     if (DOCUMENT_INTENT.test(brief)) return 'document';
     if (BUILD_INTENT.test(brief)) return 'website';
-    return raw.kind === 'website' ? 'website' : 'document';
+    if (raw.kind === 'website' || raw.kind === 'slides') return raw.kind;
+    return 'document';
   }
 
   /**
@@ -266,7 +279,8 @@ export class KickoffPhase implements WorkflowPhase {
       goal: raw.goal?.trim() || '대표 지시 이행',
       successCriteria: (raw.successCriteria ?? []).filter(Boolean),
       deliverable:
-        raw.deliverable?.trim() || (kind === 'website' ? '웹페이지' : '보고서'),
+        raw.deliverable?.trim() ||
+        (kind === 'website' ? '웹페이지' : kind === 'slides' ? '발표자료' : '보고서'),
       kind,
       assignments,
     };

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { AgentId, PhaseKey } from '@shared';
 import type { AgentEntity } from '../../agents/entities/agent.entity';
 import { LlmService } from '../../llm/llm.service';
+import { WebSearchService } from '../../search/web-search.service';
 import {
   PhaseNarrator,
   type PhaseContext,
@@ -21,8 +22,12 @@ import {
 export class DraftPhase implements WorkflowPhase {
   readonly key: PhaseKey = 'draft';
   readonly label = '부서별 초안 작성';
+  private readonly logger = new Logger(DraftPhase.name);
 
-  constructor(private readonly llm: LlmService) {}
+  constructor(
+    private readonly llm: LlmService,
+    private readonly webSearch: WebSearchService,
+  ) {}
 
   async execute(context: PhaseContext): Promise<void> {
     const { session, agents } = context;
@@ -35,7 +40,7 @@ export class DraftPhase implements WorkflowPhase {
 
         // 팀원이 없으면 팀장이 혼자 씁니다
         if (teammates.length === 0) {
-          const solo = await this.writeSection(context, lead, task, null);
+          const solo = await this.writeSection(context, narrator, lead, task, null);
           session.drafts.set(agent, solo);
           narrator.status(agent, 'done', '초안 완료');
           narrator.say(agent, solo, 'chief');
@@ -53,7 +58,7 @@ export class DraftPhase implements WorkflowPhase {
         const sections = await Promise.all(
           teammates.map(async (member) => {
             narrator.status(member.id, 'thinking', `${lead.dept} 초안 작성 중`);
-            const text = await this.writeSection(context, member, task, lead);
+            const text = await this.writeSection(context, narrator, member, task, lead);
             narrator.status(member.id, 'done', '작성 완료');
             narrator.say(member.id, text, agent);
             return { member, text };
@@ -72,13 +77,15 @@ export class DraftPhase implements WorkflowPhase {
   }
 
   /** 한 사람이 자기 관점으로 쓰는 원고 */
-  private writeSection(
+  private async writeSection(
     { session }: PhaseContext,
+    narrator: PhaseNarrator,
     author: AgentEntity,
     task: string,
     lead: AgentEntity | null,
   ): Promise<string> {
     const isMember = lead !== null;
+    const searchBlock = await this.researchBlock(narrator, author, task);
 
     return this.llm.complete(
       author.systemPrompt,
@@ -92,10 +99,50 @@ export class DraftPhase implements WorkflowPhase {
           : '당신의 전문 영역에 해당하는 부분만 작성하세요. 다른 부서 일까지 대신 하지 마세요.',
         '',
         '마크다운으로, 소제목을 써서 구조적으로 작성하세요. 서론 없이 바로 본론부터 시작하세요.',
+        ...searchBlock,
       ].join('\n'),
       { maxTokens: isMember ? 1800 : 3000, signal: session.signal },
       session.usage,
     );
+  }
+
+  /**
+   * 리서치팀 전용 — 실시간 검색 결과를 프롬프트에 넣습니다.
+   *
+   * 검색이 꺼져 있거나 실패해도(웹 검색 서비스는 절대 던지지 않습니다)
+   * 빈 배열이 돌아오므로, 지금까지처럼 LLM 지식만으로 쓰는 동작으로
+   * 조용히 되돌아갑니다.
+   */
+  private async researchBlock(
+    narrator: PhaseNarrator,
+    author: AgentEntity,
+    task: string,
+  ): Promise<string[]> {
+    if (author.team !== 'researcher' || !this.webSearch.enabled) return [];
+
+    narrator.tool(author.id, 'web-search', 'started', task.slice(0, 40));
+    const results = await this.webSearch.search(task).catch((cause: unknown) => {
+      this.logger.warn(`웹 검색 호출이 실패했습니다: ${String(cause)}`);
+      return [];
+    });
+    narrator.tool(
+      author.id,
+      'web-search',
+      'completed',
+      results.length > 0 ? `${results.length}건 찾음` : '결과 없음',
+    );
+
+    if (results.length === 0) return [];
+
+    return [
+      '',
+      '## 실시간 검색 결과',
+      '아래는 방금 검색한 실제 결과입니다. 여기 담긴 사실은 [추정] 태그 없이 그대로 인용하고,',
+      '출처가 되는 URL을 괄호로 함께 적으세요. 검색 결과에 없는 내용만 [추정]으로 표시합니다.',
+      ...results.map(
+        (r, i) => `${i + 1}. **${r.title}** — ${r.snippet} (${r.url})`,
+      ),
+    ];
   }
 
   /** 팀장이 팀원 원고를 부서 하나의 목소리로 합칩니다 */

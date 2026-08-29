@@ -1322,8 +1322,8 @@ export class OfficeRenderer {
   private drawToolBadge(cx: number, topY: number, tool: ToolKind): void {
     const { ctx } = this;
     const y = topY - 28;
-    const label = tool === 'vault' ? 'V' : 'F';
-    const color = tool === 'vault' ? '#8b7355' : '#3f857d';
+    const label = tool === 'vault' ? 'V' : tool === 'web-search' ? 'S' : 'F';
+    const color = tool === 'vault' ? '#8b7355' : tool === 'web-search' ? '#4a90e2' : '#3f857d';
 
     ctx.save();
     ctx.fillStyle = color;
