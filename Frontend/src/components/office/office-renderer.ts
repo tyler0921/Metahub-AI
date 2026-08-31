@@ -8,6 +8,7 @@ import {
   TILE,
   ZONES,
   MEETING_SEATS,
+  LOUNGE_BOUNDS,
   findPath,
   isBlocked,
   nearestWalkable,
@@ -48,21 +49,50 @@ const SEATED_TRANSITION_SPEED = TILE * 3.4;
 
 type LeisureKind = 'cafe' | 'lounge';
 
+interface TileBounds { x: number; y: number; w: number; h: number; }
+
+/**
+ * 주어진 범위 안에서 걸을 수 있는 타일을 찾아 `count` 개를 고릅니다.
+ * 레이아웃이 바뀌어도(맵 확장·방 재배치) 이 함수만 다시 실행되면 되므로,
+ * 카페·라운지 좌표를 손으로 다시 잡을 필요가 없습니다.
+ */
+function walkablePointsIn(bounds: TileBounds, count: number): Array<{ x: number; y: number }> {
+  const candidates: Array<{ x: number; y: number }> = [];
+  for (let y = bounds.y + 1; y < bounds.y + bounds.h - 1; y++) {
+    for (let x = bounds.x + 1; x < bounds.x + bounds.w - 1; x++) {
+      if (!isBlocked(x, y)) candidates.push({ x, y });
+    }
+  }
+  if (candidates.length === 0) return [];
+
+  const step = Math.max(1, Math.floor(candidates.length / count));
+  const picked: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < candidates.length && picked.length < count; i += step) {
+    const point = candidates[i];
+    if (point) picked.push(point);
+  }
+  return picked;
+}
+
+const cafeZone = ZONES.find((zone) => zone.kind === 'cafe');
+const CAFE_LEISURE_POINTS = cafeZone ? walkablePointsIn(cafeZone, 2) : [];
+const LOUNGE_LEISURE_POINTS = walkablePointsIn(LOUNGE_BOUNDS, 2);
+
 /**
  * 대기 직원이 잠깐 다녀오는 휴게 지점 (타일 좌표).
- * 카페·포커스 라운지·프로젝트 스튜디오 언저리의 빈 바닥입니다.
- * kind 는 어떤 연출(카페 김 파티클 등)을 붙일지 구분하는 데 씁니다.
+ * 카페 존(kind === 'cafe')과 중앙 라운지 범위(`LOUNGE_BOUNDS`) 안에서
+ * 걸을 수 있는 타일을 동적으로 골라 씁니다. kind 는 어떤 연출(카페 김
+ * 파티클 등)을 붙일지 구분하는 데 씁니다.
  */
 const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number; kind: LeisureKind }> = [
-  { x: 42, y: 26, kind: 'cafe' }, { x: 47, y: 26, kind: 'cafe' }, // 카페
-  { x: 25, y: 12, kind: 'lounge' }, { x: 28, y: 12, kind: 'lounge' }, // 중앙 라운지
+  ...CAFE_LEISURE_POINTS.map((point) => ({ ...point, kind: 'cafe' as const })),
+  ...LOUNGE_LEISURE_POINTS.map((point) => ({ ...point, kind: 'lounge' as const })),
 ];
 
-/** 배회 결정 간격 (ms) — 너무 잦으면 오피스가 산만해집니다 */
-const CHAT_SPOTS = [
-  [{ x: 42, y: 26 }, { x: 44, y: 26 }],
-  [{ x: 25, y: 12 }, { x: 27, y: 12 }],
-] as const;
+/** 잡담 스팟 — 카페·라운지 각각에서 나란한 두 지점을 한 쌍으로 씁니다 */
+const CHAT_SPOTS: ReadonlyArray<readonly [{ x: number; y: number }, { x: number; y: number }]> =
+  [CAFE_LEISURE_POINTS, LOUNGE_LEISURE_POINTS]
+    .filter((pair): pair is [{ x: number; y: number }, { x: number; y: number }] => pair.length === 2);
 
 const AMBIENT_CHAT_MIN_MS = 12_000;
 const AMBIENT_CHAT_MAX_MS = 24_000;
