@@ -57,7 +57,7 @@ export async function loadSpriteAssets(): Promise<SpriteAssets> {
     loadImage(`${BASE}/characters.png`),
     loadImage(`${BASE}/tiles.png`),
     loadImage(`${BASE}/props.png`),
-    loadImage('/map/office-v2.png'),
+    loadImage('/map/office-v3.png'),
     fetch(`${BASE}/manifest.json`).then((r) => r.json() as Promise<SpriteManifest>),
   ]);
 

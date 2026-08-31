@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "sprites": "node tools/generate_sprites.mjs",
+    "map:generate": "npm run sprites && node tools/generate_office.mjs",
     "sprites:reference-characters": "node tools/build_reference_characters.mjs",
     "map:validate": "node tools/validate_office_map.mjs",
     "sprites:validate": "node tools/validate_character_atlas.mjs"

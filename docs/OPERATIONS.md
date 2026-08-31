@@ -98,6 +98,16 @@ VAULT_EMBEDDING_MODEL=nomic-embed-text
 - 손그림 원화(더 이상 기본 파이프라인에서 쓰지 않음, 되돌리기용으로만 보관): `docs/design/character-directions-v3.png`
 - 런타임 아틀라스: `Frontend/public/sprites/characters.png`
 - 맵 단일 원본: `Frontend/src/data/office-map.json`
+- 배경 이미지 생성기: `Frontend/tools/generate_office.mjs` (+ 장식 가구 데이터 `Frontend/src/data/office-props.json`)
+
+레이아웃(방 배치·좌석·문)을 바꾸려면 `office-map.json`(부서장 좌석 포함) 과
+`office-staff.ts`(팀원 좌석)를 고치고, `office-props.json` 의 `staffSeats`
+사본도 같이 맞춘 뒤 아래 명령으로 배경을 다시 만든다.
+
+```powershell
+npm --workspace @ai-company/frontend run map:generate
+npm --workspace @ai-company/frontend run map:validate
+```
 
 캐릭터는 9명(대표님 포함), 방향은 `down/left/right/up`, 방향별 4프레임이며 전원 코드로 그립니다(셔츠·머리·피부 색은 `generate_sprites.mjs`의 `CHARACTERS` 배열). 대표님은 여기서 만든 기본값 위에 사용자가 오피스 화면에서 직접 고른 색이 덧씌워집니다. 다음 명령으로 재생성·검증합니다.
 
