@@ -13,8 +13,9 @@ import {
   nearestWalkable,
   zoneAt,
 } from './office-map';
-import { characterFrame, type SpriteAssets } from './sprites';
+import { characterFrame, type SpriteAssets, type SpriteRect } from './sprites';
 import { SPRITE_OF, STAFF_SEAT_MAP } from './office-staff';
+import { buildCustomCeoSheet, type CustomAppearance, type CustomCeoSheet } from './custom-character';
 // 상태색의 출처는 한 곳입니다 — 예전에는 이 파일이 복사본을 들고 있어서
 // 팔레트를 바꿀 때마다 두 군데를 따로 고쳐야 했습니다.
 import { STATUS_COLOR } from '@/lib/agent-status';
@@ -28,6 +29,14 @@ const ZOOM_MAX = 3.2;
 /** 버튼·휠·키보드 한 번당 배율 변화 (%) */
 const ZOOM_STEP_PERCENT = 5;
 /**
+ * 지수 감쇠 시상수(ms) — 값이 작을수록 목표값을 더 빨리 따라잡습니다.
+ * 매 프레임 `factor = 1 - e^(-dt/tau)` 만큼 목표에 다가갑니다.
+ */
+const PLAYER_ACCEL_TAU_MS = 120;
+const PLAYER_DECEL_TAU_MS = 100;
+const CAMERA_TAU_MS = 100;
+const ZOOM_TAU_MS = 120;
+/**
  * 자리에서 타자 치는 느낌을 내는 프레임 순서.
  * 걷기 프레임(1, 3)을 번갈아 쓰면 팔이 미세하게 움직여 보입니다.
  */
@@ -37,13 +46,16 @@ const SEATED_FOOT_LIFT = TILE * 0.58;
 /** 착석·기립 전환 속도. 순간 이동하면 벽에 하체가 잘린 것처럼 보입니다. */
 const SEATED_TRANSITION_SPEED = TILE * 3.4;
 
+type LeisureKind = 'cafe' | 'lounge';
+
 /**
  * 대기 직원이 잠깐 다녀오는 휴게 지점 (타일 좌표).
  * 카페·포커스 라운지·프로젝트 스튜디오 언저리의 빈 바닥입니다.
+ * kind 는 어떤 연출(카페 김 파티클 등)을 붙일지 구분하는 데 씁니다.
  */
-const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 42, y: 26 }, { x: 47, y: 26 }, // 카페
-  { x: 25, y: 12 }, { x: 28, y: 12 }, // 중앙 라운지
+const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number; kind: LeisureKind }> = [
+  { x: 42, y: 26, kind: 'cafe' }, { x: 47, y: 26, kind: 'cafe' }, // 카페
+  { x: 25, y: 12, kind: 'lounge' }, { x: 28, y: 12, kind: 'lounge' }, // 중앙 라운지
 ];
 
 /** 배회 결정 간격 (ms) — 너무 잦으면 오피스가 산만해집니다 */
@@ -52,17 +64,11 @@ const CHAT_SPOTS = [
   [{ x: 25, y: 12 }, { x: 27, y: 12 }],
 ] as const;
 
-const SMALL_TALK = [
-  ['오늘 점심은 뭐 드실래요?', '저는 김치찌개 생각 중이에요. 같이 가실래요?'],
-  ['커피 한 잔 하실래요?', '좋아요. 잠깐 쉬었다가 다시 집중하죠.'],
-  ['주말 잘 보내셨어요?', '네, 푹 쉬고 왔어요. 오늘 컨디션 좋네요!'],
-  ['요즘 출근길은 괜찮으셨어요?', '오늘은 생각보다 한산해서 일찍 왔어요.'],
-  ['여기 음악 분위기 좋지 않아요?', '맞아요. 조용해서 집중하기 딱 좋아요.'],
-] as const;
-
 const AMBIENT_CHAT_MIN_MS = 12_000;
 const AMBIENT_CHAT_MAX_MS = 24_000;
 const AMBIENT_CHAT_DURATION_MS = 11_000;
+/** LLM 대사를 기다리는 최대 시간 — 초과하면 대화를 취소합니다 */
+const AMBIENT_LINES_TIMEOUT_MS = 20_000;
 
 const WANDER_MIN_MS = 28_000;
 const WANDER_MAX_MS = 55_000;
@@ -90,10 +96,15 @@ interface Actor {
   /** 지금 쓰고 있는 도구 — 머리 위 아이콘 */
   tool: ToolKind | null;
   toolLabel: string;
+  /** 타일/초 속도 벡터 — 가속·감속 보간에 씁니다 (플레이어만 실제로 씁니다) */
+  vx: number;
+  vy: number;
   /** 다음 배회 결정 시각 (대기 중일 때만 씀) */
   wanderAt?: number;
   /** 지금 휴게 공간에 나와 있는가 */
   atLeisure?: boolean;
+  /** atLeisure 인 동안 어느 종류의 휴게 지점인지 — 카페면 김 파티클을 얹습니다 */
+  leisureKind?: LeisureKind;
   ambientPartner?: AgentId;
   /** 이동 좌표와 별개인 착석 표시 높이 */
   seatedLift: number;
@@ -102,10 +113,11 @@ interface Actor {
 interface AmbientConversation {
   a: AgentId;
   b: AgentId;
-  firstLine: string;
-  secondLine: string;
+  firstLine: string | null;
+  secondLine: string | null;
   startedAt: number | null;
   replied: boolean;
+  pairedAt: number;
 }
 
 interface Drawable {
@@ -138,6 +150,11 @@ export interface RendererCallbacks {
    */
   onActorSelect?: (agentId: AgentId | null) => void;
   onAmbientSpeech?: (event: SpeechEvent) => void;
+  /** 휴게 대화 대사 — 백엔드 LLM 으로 생성합니다. 실패·불가 시 null */
+  onRequestAmbientDialogue?: (
+    agentA: AgentId,
+    agentB: AgentId,
+  ) => Promise<{ firstLine: string; secondLine: string } | null>;
   /** 카메라가 특정 직원을 따라가기 시작·중단할 때. null 이면 대표를 다시 비춥니다. */
   onFollowChange?: (agentId: AgentId | null) => void;
 }
@@ -170,13 +187,20 @@ export class OfficeRenderer {
   private sessionAlert = false;
   private ambientConversation: AmbientConversation | null = null;
   private ambientConversationAt = performance.now() + 5_000;
+  /** 업무 세션 중에는 LLM 스몰토크를 시작하지 않습니다 */
+  private ambientChatEnabled = true;
+  /** 대표님 커스텀 외형 — 없으면(null) 공용 시트의 'ceo' 행을 그대로 씁니다 */
+  private ceoOverride: CustomCeoSheet | null = null;
 
   private camX = 0;
   private camY = 0;
   private viewportW = 0;
   private viewportH = 0;
   private zoom = ZOOM_DEFAULT;
+  private zoomTarget = ZOOM_DEFAULT;
   private baseZoom = ZOOM_DEFAULT;
+  /** true 인 동안엔 카메라가 보간 없이 목표 위치로 즉시 붙습니다 (최초 진입·리사이즈용) */
+  private cameraNeedsSnap = true;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -195,6 +219,7 @@ export class OfficeRenderer {
       facing: 'up', distance: 0, moving: false,
       status: 'idle', isPlayer: true, path: [],
       tool: null, toolLabel: '',
+      vx: 0, vy: 0,
       seatedLift: 0,
     });
 
@@ -222,6 +247,7 @@ export class OfficeRenderer {
         path: [],
         tool: null,
         toolLabel: '',
+        vx: 0, vy: 0,
         seatedLift: SEATED_FOOT_LIFT,
       });
     }
@@ -280,25 +306,30 @@ export class OfficeRenderer {
     this.keys.delete(key);
   }
 
-  /** 표시 배율(%) 기준으로 확대/축소 */
+  /** 표시 배율(%) 기준으로 확대/축소 — 목표만 바꾸고 실제 배율은 update 루프에서 애니메이션됩니다 */
   private adjustZoomPercent(deltaPercent: number): void {
-    const currentPercent = Math.round((this.zoom / this.baseZoom) * 100);
+    const currentPercent = Math.round((this.zoomTarget / this.baseZoom) * 100);
     const nextPercent = currentPercent + deltaPercent;
     this.setZoom((nextPercent / 100) * this.baseZoom);
   }
 
-  setZoom(next: number, anchorSx?: number, anchorSy?: number): void {
-    const min = this.minZoom;
-    const clamped = clamp(next, min, ZOOM_MAX);
-    if (Math.abs(clamped - this.zoom) < 0.001) return;
+  /** 목표 배율을 설정합니다. 실제 `zoom` 값은 매 프레임 이 목표로 지수 감쇠하며 다가갑니다. */
+  setZoom(next: number): void {
+    this.zoomTarget = clamp(next, this.minZoom, ZOOM_MAX);
+  }
 
-    const ax = anchorSx ?? this.viewportW / 2;
-    const ay = anchorSy ?? this.viewportH / 2;
-    const worldX = ax / this.zoom + this.camX;
-    const worldY = ay / this.zoom + this.camY;
-
-    this.zoom = clamped;
-    this.clampCamera(worldX - ax / this.zoom, worldY - ay / this.zoom);
+  /** 목표 배율로 부드럽게 다가갑니다. 카메라 클램프는 updateCamera 가 매 프레임 새 배율 기준으로 다시 계산합니다. */
+  private updateZoom(dt: number): void {
+    const diff = this.zoomTarget - this.zoom;
+    if (Math.abs(diff) < 0.0008) {
+      if (this.zoom !== this.zoomTarget) {
+        this.zoom = this.zoomTarget;
+        this.callbacks.onZoomChange?.(this.zoom, this.baseZoom);
+      }
+      return;
+    }
+    const factor = 1 - Math.exp(-dt / ZOOM_TAU_MS);
+    this.zoom += diff * factor;
     this.callbacks.onZoomChange?.(this.zoom, this.baseZoom);
   }
 
@@ -371,6 +402,12 @@ export class OfficeRenderer {
     }
   }
 
+  /** 업무 세션 중에는 false — Ollama 등 LLM 자원을 업무에 양보합니다 */
+  setAmbientChatEnabled(enabled: boolean): void {
+    this.ambientChatEnabled = enabled;
+    if (!enabled && this.ambientConversation) this.finishAmbientConversation();
+  }
+
   faceToward(from: AgentId, to: AgentId): void {
     const a = this.actors.get(from);
     const b = this.actors.get(to);
@@ -403,6 +440,19 @@ export class OfficeRenderer {
       this.publishedAnchors.clear();
       this.callbacks.onBubbleAnchors(new Map());
     }
+  }
+
+  /** 대표님 외형을 바꿉니다 — 즉석에서 새 시트를 그려 다음 프레임부터 바로 반영됩니다 */
+  setCeoAppearance(appearance: CustomAppearance): void {
+    const { frameWidth, frameHeight } = this.assets.manifest.characters;
+    this.ceoOverride = buildCustomCeoSheet(appearance, frameWidth, frameHeight);
+  }
+
+  /** 커스텀 시트 안에서 (방향, 프레임) 위치를 계산합니다 — 단일 행(16칸) 레이아웃입니다 */
+  private ceoOverrideFrame(sheet: CustomCeoSheet, direction: string, frame: number): SpriteRect | null {
+    const dirIndex = Math.max(0, sheet.directions.indexOf(direction));
+    const col = dirIndex * sheet.frames + (frame % sheet.frames);
+    return { x: col * sheet.frameWidth, y: 0, w: sheet.frameWidth, h: sheet.frameHeight };
   }
 
   /* ── 입력 ─────────────────────────────────────── */
@@ -571,22 +621,57 @@ export class OfficeRenderer {
     if (this.keys.has('ArrowUp') || this.keys.has('w') || this.keys.has('W')) dy -= 1;
     if (this.keys.has('ArrowDown') || this.keys.has('s') || this.keys.has('S')) dy += 1;
 
-    if (dx === 0 && dy === 0) {
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      this.approachVelocity(actor, (dx / len) * PLAYER_SPEED, (dy / len) * PLAYER_SPEED, dt, PLAYER_ACCEL_TAU_MS);
+      this.applyVelocity(actor, dt);
+      return;
+    }
+
+    // 더블클릭 목적지 이동 중이면 경로를 그대로 따라갑니다 (경로 자체가 이미 부드럽습니다)
+    if (actor.path.length > 0) {
+      actor.vx = 0;
+      actor.vy = 0;
       this.followPath(actor, dt, PLAYER_SPEED);
       return;
     }
 
-    const len = Math.hypot(dx, dy);
-    const step = (PLAYER_SPEED * dt) / 1000;
-    const nx = actor.x + (dx / len) * step;
-    const ny = actor.y + (dy / len) * step;
+    // 키를 뗀 순간 — 속도를 0으로 감쇠시켜 멈춥니다
+    this.approachVelocity(actor, 0, 0, dt, PLAYER_DECEL_TAU_MS);
+    this.applyVelocity(actor, dt);
+  }
+
+  /** 목표 속도로 지수 감쇠 — 프레임 속도와 무관하게 일정한 "무게감"을 냅니다 */
+  private approachVelocity(actor: Actor, targetVx: number, targetVy: number, dt: number, tauMs: number): void {
+    const factor = 1 - Math.exp(-dt / tauMs);
+    actor.vx += (targetVx - actor.vx) * factor;
+    actor.vy += (targetVy - actor.vy) * factor;
+  }
+
+  /** 현재 속도 벡터로 위치를 전진시킵니다 (축별 충돌 체크는 기존과 동일) */
+  private applyVelocity(actor: Actor, dt: number): void {
+    const speed = Math.hypot(actor.vx, actor.vy);
+    if (speed < 0.02) {
+      actor.vx = 0;
+      actor.vy = 0;
+      actor.moving = false;
+      return;
+    }
+
+    const step = dt / 1000;
+    const nx = actor.x + actor.vx * step;
+    const ny = actor.y + actor.vy * step;
 
     if (this.canStand(nx, actor.y)) actor.x = nx;
+    else actor.vx = 0;
     if (this.canStand(actor.x, ny)) actor.y = ny;
+    else actor.vy = 0;
 
-    actor.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    actor.facing = Math.abs(actor.vx) > Math.abs(actor.vy)
+      ? (actor.vx > 0 ? 'right' : 'left')
+      : actor.vy > 0 ? 'down' : 'up';
     actor.moving = true;
-    actor.distance += step;
+    actor.distance += speed * step;
   }
 
   private followPath(actor: Actor, dt: number, speed: number): void {
@@ -638,7 +723,8 @@ export class OfficeRenderer {
       }
       this.updateSeatedLift(actor, dt);
     }
-    this.updateCamera();
+    this.updateZoom(dt);
+    this.updateCamera(dt);
     this.updateNearby();
     if (this.marker && performance.now() - this.marker.at > 900) this.marker = null;
   }
@@ -657,6 +743,12 @@ export class OfficeRenderer {
 
       if (conversation.startedAt === null) {
         if (a.path.length > 0 || b.path.length > 0 || a.moving || b.moving) return;
+        if (!conversation.firstLine || !conversation.secondLine) {
+          if (now - conversation.pairedAt >= AMBIENT_LINES_TIMEOUT_MS) {
+            this.finishAmbientConversation();
+          }
+          return;
+        }
         this.faceToward(conversation.a, conversation.b);
         this.faceToward(conversation.b, conversation.a);
         conversation.startedAt = now;
@@ -668,7 +760,9 @@ export class OfficeRenderer {
       this.faceToward(conversation.b, conversation.a);
       if (!conversation.replied && now - conversation.startedAt >= 3_200) {
         conversation.replied = true;
-        this.emitAmbientSpeech(conversation.b, conversation.a, conversation.secondLine);
+        if (conversation.secondLine) {
+          this.emitAmbientSpeech(conversation.b, conversation.a, conversation.secondLine);
+        }
       }
       if (now - conversation.startedAt >= AMBIENT_CHAT_DURATION_MS) {
         this.finishAmbientConversation();
@@ -676,7 +770,7 @@ export class OfficeRenderer {
       return;
     }
 
-    if (this.meetingMode || now < this.ambientConversationAt) return;
+    if (this.meetingMode || now < this.ambientConversationAt || !this.ambientChatEnabled) return;
     const candidates = [...this.actors.values()].filter((actor) =>
       !actor.isPlayer &&
       actor.status === 'idle' &&
@@ -694,8 +788,7 @@ export class OfficeRenderer {
     candidates.splice(firstIndex, 1);
     const b = candidates[Math.floor(Math.random() * candidates.length)];
     const spot = CHAT_SPOTS[Math.floor(Math.random() * CHAT_SPOTS.length)];
-    const lines = SMALL_TALK[Math.floor(Math.random() * SMALL_TALK.length)];
-    if (!a || !b || !spot || !lines) return;
+    if (!a || !b || !spot) return;
 
     a.atLeisure = true;
     b.atLeisure = true;
@@ -708,11 +801,31 @@ export class OfficeRenderer {
     this.ambientConversation = {
       a: a.id as AgentId,
       b: b.id as AgentId,
-      firstLine: lines[0],
-      secondLine: lines[1],
+      firstLine: null,
+      secondLine: null,
       startedAt: null,
       replied: false,
+      pairedAt: now,
     };
+    this.requestAmbientLines(a.id as AgentId, b.id as AgentId);
+  }
+
+  private requestAmbientLines(agentA: AgentId, agentB: AgentId): void {
+    const request = this.callbacks.onRequestAmbientDialogue;
+    if (!request) {
+      this.finishAmbientConversation();
+      return;
+    }
+    void request(agentA, agentB).then((lines) => {
+      const conversation = this.ambientConversation;
+      if (!conversation || conversation.a !== agentA || conversation.b !== agentB) return;
+      if (!lines) {
+        this.finishAmbientConversation();
+        return;
+      }
+      conversation.firstLine = lines.firstLine;
+      conversation.secondLine = lines.secondLine;
+    });
   }
 
   private emitAmbientSpeech(agent: AgentId, to: AgentId, text: string): void {
@@ -772,6 +885,7 @@ export class OfficeRenderer {
     if (actor.atLeisure) {
       // 자리로 복귀
       actor.atLeisure = false;
+      actor.leisureKind = undefined;
       if (actor.homeX !== undefined && actor.homeY !== undefined) {
         this.walkTo(actor, actor.homeX, actor.homeY);
       }
@@ -779,6 +893,7 @@ export class OfficeRenderer {
       const spot = this.pickLeisure();
       if (spot) {
         actor.atLeisure = true;
+        actor.leisureKind = spot.kind;
         this.walkTo(actor, spot.x, spot.y);
       }
     }
@@ -789,7 +904,7 @@ export class OfficeRenderer {
     return WANDER_MIN_MS + Math.random() * (WANDER_MAX_MS - WANDER_MIN_MS);
   }
 
-  private pickLeisure(): { x: number; y: number } | null {
+  private pickLeisure(): { x: number; y: number; kind: LeisureKind } | null {
     const start = Math.floor(Math.random() * LEISURE_POINTS.length);
     for (let i = 0; i < LEISURE_POINTS.length; i++) {
       const spot = LEISURE_POINTS[(start + i) % LEISURE_POINTS.length];
@@ -798,7 +913,7 @@ export class OfficeRenderer {
     return null;
   }
 
-  private updateCamera(): void {
+  private updateCamera(dt: number): void {
     if (this.viewportW < 1) return;
 
     // Follow 모드면 지목한 직원을, 아니면 대표를 비춥니다.
@@ -809,7 +924,20 @@ export class OfficeRenderer {
     if (!focus) return;
 
     const foot = this.footPx(focus);
-    this.clampCamera(foot.x - this.viewW / 2, foot.y - this.viewH / 2);
+    const target = this.clampedTarget(foot.x - this.viewW / 2, foot.y - this.viewH / 2);
+
+    // 최초 진입·리사이즈 직후는 화면이 원점부터 훑고 지나가지 않도록 즉시 붙입니다.
+    // 그 외(팔로우 대상 전환 포함)에는 지수 감쇠로 부드럽게 따라갑니다.
+    if (this.cameraNeedsSnap) {
+      this.camX = target.x;
+      this.camY = target.y;
+      this.cameraNeedsSnap = false;
+      return;
+    }
+
+    const factor = 1 - Math.exp(-dt / CAMERA_TAU_MS);
+    this.camX += (target.x - this.camX) * factor;
+    this.camY += (target.y - this.camY) * factor;
   }
 
   /** 월드 좌표 기준 가시 영역 크기 */
@@ -828,23 +956,16 @@ export class OfficeRenderer {
   }
 
   /**
-   * 카메라 위치를 맵 안으로 제한합니다.
+   * 카메라 목표 위치를 맵 안으로 제한합니다 (상태를 바꾸지 않는 순수 계산).
    * 시야가 맵보다 넓으면 맵을 가운데 정렬해 빈 여백이 한쪽으로 쏠리지 않게 합니다.
    */
-  private clampCamera(x: number, y: number): void {
+  private clampedTarget(x: number, y: number): { x: number; y: number } {
     const { viewW, viewH } = this;
 
-    if (viewW >= MAP_W) {
-      this.camX = (MAP_W - viewW) / 2;
-    } else {
-      this.camX = clamp(x, 0, MAP_W - viewW);
-    }
+    const cx = viewW >= MAP_W ? (MAP_W - viewW) / 2 : clamp(x, 0, MAP_W - viewW);
+    const cy = viewH >= MAP_H ? (MAP_H - viewH) / 2 : clamp(y, 0, MAP_H - viewH);
 
-    if (viewH >= MAP_H) {
-      this.camY = (MAP_H - viewH) / 2;
-    } else {
-      this.camY = clamp(y, 0, MAP_H - viewH);
-    }
+    return { x: cx, y: cy };
   }
 
   private updateNearby(): void {
@@ -909,9 +1030,12 @@ export class OfficeRenderer {
     this.baseZoom = Math.max(ZOOM_DEFAULT, this.minZoom);
     if (wasAtBase || this.zoom < this.minZoom) {
       this.zoom = this.baseZoom;
+      this.zoomTarget = this.baseZoom;
       this.callbacks.onZoomChange?.(this.zoom, this.baseZoom);
     }
-    this.updateCamera();
+    // 리사이즈로 뷰포트가 바뀐 직후는 카메라가 애니메이션 없이 즉시 재정렬됩니다
+    this.cameraNeedsSnap = true;
+    this.updateCamera(0);
   }
 
   /* ── 좌표 변환 ────────────────────────────────── */
@@ -969,8 +1093,11 @@ export class OfficeRenderer {
     ctx.translate(-this.camX, -this.camY);
 
     this.drawFloor();
+    this.drawZoneTone();
+    this.drawMeetingSpotlight();
     this.drawIdleZoneShade();
     this.drawDoors();
+    this.drawDoorGlow();
     this.drawZoneLabels();
     this.drawCeoSeatMarker();
 
@@ -993,6 +1120,45 @@ export class OfficeRenderer {
 
   private drawFloor(): void {
     this.ctx.drawImage(this.assets.officeMap, 0, 0, MAP_W, MAP_H);
+  }
+
+  /**
+   * 미니맵에서만 쓰던 존별 고유색(`zone.color`)을 메인 캔버스에도 아주 옅게 깔아,
+   * 바닥이 전부 같은 톤으로 보이지 않게 합니다. 정적 배경 위에 얹는 것이라
+   * 알파를 낮게 잡아야 픽셀아트 색감을 해치지 않습니다.
+   */
+  private drawZoneTone(): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    for (const zone of ZONES) {
+      ctx.fillStyle = zone.color;
+      ctx.fillRect(zone.x * TILE, zone.y * TILE, zone.w * TILE, zone.h * TILE);
+    }
+    ctx.restore();
+  }
+
+  /** 회의가 진행 중이면 회의실 위에 맥동하는 따뜻한 스포트라이트를 얹습니다. */
+  private drawMeetingSpotlight(): void {
+    if (!this.meetingMode) return;
+
+    const { ctx } = this;
+    const pulse = 0.55 + Math.sin(performance.now() / 900) * 0.15;
+
+    ctx.save();
+    for (const zone of ZONES) {
+      if (zone.kind !== 'meeting') continue;
+      const cx = (zone.x + zone.w / 2) * TILE;
+      const cy = (zone.y + zone.h / 2) * TILE;
+      const radius = Math.max(zone.w, zone.h) * TILE * 0.62;
+
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      gradient.addColorStop(0, `rgba(255, 214, 150, ${0.22 * pulse})`);
+      gradient.addColorStop(1, 'rgba(255, 214, 150, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(zone.x * TILE, zone.y * TILE, zone.w * TILE, zone.h * TILE);
+    }
+    ctx.restore();
   }
 
   /**
@@ -1171,6 +1337,31 @@ export class OfficeRenderer {
     ctx.restore();
   }
 
+  /**
+   * 각 출입문 앞에 은은하게 숨 쉬는 따뜻한 빛 — 화분·램프 좌표가 없어도
+   * 이미 정확히 맞는 문 좌표만으로 "공간에 온기가 있다"는 느낌을 냅니다.
+   */
+  private drawDoorGlow(): void {
+    const { ctx } = this;
+    const t = performance.now();
+
+    ctx.save();
+    for (const door of DOORS) {
+      const cx = door.x * TILE + TILE / 2;
+      const cy = door.y * TILE + TILE / 2;
+      // 문마다 위상을 조금씩 어긋나게 해 전부 같이 맥동하지 않게 합니다
+      const breathe = 0.5 + Math.sin(t / 1400 + door.x * 0.7 + door.y * 0.7) * 0.5;
+      const radius = TILE * 1.1;
+
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      gradient.addColorStop(0, `rgba(255, 224, 168, ${0.16 + breathe * 0.1})`);
+      gradient.addColorStop(1, 'rgba(255, 224, 168, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    }
+    ctx.restore();
+  }
+
   private drawActor(actor: Actor): void {
     const { ctx, assets } = this;
     const { frameWidth, frameHeight } = assets.manifest.characters;
@@ -1195,7 +1386,12 @@ export class OfficeRenderer {
         ? TYPING_FRAMES[Math.floor(performance.now() / 190) % TYPING_FRAMES.length] ?? 0
         : 0;
 
-    const rect = characterFrame(assets.manifest, actor.sprite, facing, frame);
+    // 대표님은 커스텀 외형이 있으면 공용 시트 대신 그 캔버스에서 그립니다
+    const override = actor.isPlayer ? this.ceoOverride : null;
+    const image = override ? override.canvas : assets.characters;
+    const rect = override
+      ? this.ceoOverrideFrame(override, facing, frame)
+      : characterFrame(assets.manifest, actor.sprite, facing, frame);
     if (!rect) return;
 
     const w = frameWidth;
@@ -1218,12 +1414,12 @@ export class OfficeRenderer {
     ctx.fill();
     ctx.restore();
 
-    ctx.drawImage(assets.characters, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
+    ctx.drawImage(image, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
 
     if (working) this.drawWorkingEffect(foot.x, drawY);
     if (talking) this.drawTalkingEffect(foot.x, drawY);
     if (done) this.drawDoneEffect(foot.x, drawY);
-    if (idleSit) this.drawIdleEffect(foot.x, drawY, Boolean(actor.atLeisure));
+    if (idleSit) this.drawIdleEffect(foot.x, drawY, Boolean(actor.atLeisure), actor.leisureKind);
     if (actor.tool) this.drawToolBadge(foot.x, drawY, actor.tool);
     if (this.sessionAlert && !actor.isPlayer && actor.status !== 'idle') {
       this.drawAlertEffect(foot.x, drawY);
@@ -1298,7 +1494,7 @@ export class OfficeRenderer {
    * 일하는 중(ambientWorking)에는 뜨지 않습니다 — 작업·발언·완료처럼
    * "지금 상태"를 알리는 용도지, 캐릭터마다 붙는 장식이 아닙니다.
    */
-  private drawIdleEffect(cx: number, topY: number, atLeisure: boolean): void {
+  private drawIdleEffect(cx: number, topY: number, atLeisure: boolean, leisureKind?: LeisureKind): void {
     const { ctx } = this;
     const y = topY - 14;
     const icon = atLeisure ? '☕' : '💤';
@@ -1315,6 +1511,27 @@ export class OfficeRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(icon, cx, y + 1);
+    ctx.restore();
+
+    if (leisureKind === 'cafe') this.drawSteam(cx, y - 9);
+  }
+
+  /** 카페에서 쉬는 중일 때 뱃지 위로 피어오르는 김 세 줄기 */
+  private drawSteam(cx: number, topY: number): void {
+    const { ctx } = this;
+    const t = performance.now() / 1000;
+
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      const phase = (t * 0.55 + i / 3) % 1;
+      const rise = phase * 14;
+      const drift = Math.sin(phase * Math.PI * 2 + i) * 2.2;
+      ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.45;
+      ctx.fillStyle = '#f4ece0';
+      ctx.beginPath();
+      ctx.arc(cx - 4 + i * 4 + drift, topY - rise, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 

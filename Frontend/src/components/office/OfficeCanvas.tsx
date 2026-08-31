@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AgentId, AgentStatus, AppConfigResponse, SpeechEvent } from '@shared';
 import { WorkspaceSidebar, type WorkspaceTabKey } from '@/components/layout/WorkspaceSidebar';
 import { useSessionStore } from '@/store/session.store';
+import { CharacterCustomizer } from './CharacterCustomizer';
 import { ConversationFlow } from './ConversationFlow';
 import { MeetingRoomBadge } from './MeetingRoomBadge';
 import { NearbyCard } from './NearbyCard';
@@ -47,6 +48,7 @@ export function OfficeCanvas({
   const [showGuide, setShowGuide] = useState(
     () => window.localStorage.getItem('metahub-office-guide-seen') !== '1',
   );
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -94,6 +96,8 @@ export function OfficeCanvas({
     zoomOut,
     resetZoom,
     setMoveKey,
+    ceoAppearance,
+    setCeoAppearance,
   } = useOfficeRenderer(anchorIds);
 
   const followedAgent = followId ? (agentMap.get(followId) ?? null) : null;
@@ -291,11 +295,27 @@ export function OfficeCanvas({
               </span>
             </div>
           )}
+          <button
+            type="button"
+            aria-label="외형 설정"
+            data-label="외형"
+            onClick={() => setCustomizerOpen((open) => !open)}
+          >
+            <span aria-hidden="true">👤</span>
+          </button>
           <button type="button" aria-label="이동 도움말" data-label="도움말" onClick={() => setShowGuide(true)}>
             <span aria-hidden="true">?</span>
           </button>
         </div>
       </nav>
+
+      {customizerOpen && (
+        <CharacterCustomizer
+          appearance={ceoAppearance}
+          onChange={setCeoAppearance}
+          onClose={() => setCustomizerOpen(false)}
+        />
+      )}
 
       <OfficeOverview currentZone={currentZone} compact={Boolean(nearby)} />
 

@@ -24,7 +24,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── 규격 ────────────────────────────────────────────────
 const TILE = 32;
 const CHAR_W = 32;
-const CHAR_H = 48;
+// 캐릭터는 셀 위쪽부터 고정 오프셋으로 그려지므로(그림자가 y=47까지 닿음),
+// 프레임을 곧이곧대로 48로 두면 아틀라스 검증기가 "가장자리에 닿았다"고 봅니다.
+// 아래쪽에 2px 여유를 둬 발밑 그림자가 셀 경계에 닿지 않게 합니다.
+const CHAR_H = 50;
 const DIRECTIONS = ['down', 'left', 'right', 'up'];
 const FRAMES = 4;
 

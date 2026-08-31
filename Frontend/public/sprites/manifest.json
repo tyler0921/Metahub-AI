@@ -1,7 +1,7 @@
 {
   "characters": {
-    "frameWidth": 48,
-    "frameHeight": 72,
+    "frameWidth": 32,
+    "frameHeight": 50,
     "directions": [
       "down",
       "left",
@@ -19,8 +19,7 @@
       "finance": 6,
       "writer": 7,
       "designer": 8
-    },
-    "source": "docs/design/character-directions-v3.png (+ 절차적 생성: designer)"
+    }
   },
   "tileSize": 32,
   "tiles": {

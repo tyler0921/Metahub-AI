@@ -94,18 +94,20 @@ VAULT_EMBEDDING_MODEL=nomic-embed-text
 
 ## 캐릭터와 맵 자산
 
-- 기준 방향 시트: `docs/design/character-directions-v3.png`
-- 생성 원본: `docs/design/character-directions-v3-source.png`
+- 캐릭터 생성기(전원 절차적 생성): `Frontend/tools/generate_sprites.mjs`
+- 손그림 원화(더 이상 기본 파이프라인에서 쓰지 않음, 되돌리기용으로만 보관): `docs/design/character-directions-v3.png`
 - 런타임 아틀라스: `Frontend/public/sprites/characters.png`
 - 맵 단일 원본: `Frontend/src/data/office-map.json`
 
-캐릭터는 8명, 방향은 `down/left/right/up`, 방향별 4프레임입니다. 다음 명령으로 재생성·검증합니다.
+캐릭터는 9명(대표님 포함), 방향은 `down/left/right/up`, 방향별 4프레임이며 전원 코드로 그립니다(셔츠·머리·피부 색은 `generate_sprites.mjs`의 `CHARACTERS` 배열). 대표님은 여기서 만든 기본값 위에 사용자가 오피스 화면에서 직접 고른 색이 덧씌워집니다. 다음 명령으로 재생성·검증합니다.
 
 ```powershell
-npm --workspace @ai-company/frontend run sprites:characters
+npm --workspace @ai-company/frontend run sprites
 npm --workspace @ai-company/frontend run sprites:validate
 npm --workspace @ai-company/frontend run map:validate
 ```
+
+손그림 원화 버전으로 되돌리려면 `npm --workspace @ai-company/frontend run sprites:reference-characters`를 `sprites` 다음에 실행하세요 (스크립트 자체는 남아있지만 기본 파이프라인에서는 빠졌습니다).
 
 `office-map.json`에서 구역, 좌석, 회의 좌석, 스폰, 충돌 사각형을 수정할 수 있습니다. 빌드는 중복 구역 ID와 맵 바깥 좌표를 자동 차단합니다.
 
