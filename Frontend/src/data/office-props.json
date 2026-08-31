@@ -1,0 +1,29 @@
+{
+  "items": [
+    { "type": "plant", "x": 3, "y": 7 },
+    { "type": "plant", "x": 24, "y": 7 },
+    { "type": "plant", "x": 39, "y": 7 },
+    { "type": "bookshelf", "x": 66, "y": 3 },
+
+    { "type": "plant", "x": 3, "y": 18 },
+    { "type": "plant", "x": 20, "y": 18 },
+    { "type": "plant", "x": 53, "y": 18 },
+    { "type": "plant", "x": 67, "y": 18 },
+
+    { "type": "sofa", "x": 40, "y": 16 },
+    { "type": "chair", "x": 36, "y": 17 },
+    { "type": "chair", "x": 44, "y": 17 },
+    { "type": "coffee_table", "x": 40, "y": 18 },
+
+    { "type": "plant", "x": 3, "y": 29 },
+    { "type": "plant", "x": 20, "y": 29 },
+
+    { "type": "bookshelf", "x": 54, "y": 30 },
+    { "type": "bookshelf", "x": 59, "y": 30 },
+
+    { "type": "long_table", "x": 72, "y": 30 },
+    { "type": "round_table", "x": 68, "y": 27 },
+    { "type": "round_table", "x": 77, "y": 27 },
+    { "type": "plant", "x": 79, "y": 25 }
+  ]
+}
