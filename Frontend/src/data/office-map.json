@@ -4,7 +4,7 @@
   "cols": 82,
   "rows": 34,
   "spawn": { "x": 42, "y": 31 },
-  "ceoSeat": { "x": 44, "y": 3 },
+  "ceoSeat": { "x": 44, "y": 4 },
   "zones": [
     { "id": "researcher", "label": "리서치", "kind": "department", "x": 1, "y": 1, "w": 20, "h": 9, "color": "#76679a", "agent": "researcher", "seat": { "x": 11, "y": 4 }, "rug": false },
     { "id": "reception", "label": "비서실", "kind": "reception", "x": 22, "y": 1, "w": 14, "h": 9, "color": "#aa7b37", "agent": "chief", "seat": { "x": 29, "y": 4 }, "rug": false },
@@ -44,7 +44,7 @@
   "collisionBlockers": [
     { "x": 3, "y": 3, "w": 16, "h": 1 },
     { "x": 24, "y": 3, "w": 10, "h": 1 },
-    { "x": 43, "y": 2, "w": 2, "h": 1 },
+    { "x": 43, "y": 3, "w": 2, "h": 1 },
     { "x": 64, "y": 4, "w": 5, "h": 3 },
     { "x": 3, "y": 14, "w": 12, "h": 1 },
     { "x": 20, "y": 14, "w": 9, "h": 1 },

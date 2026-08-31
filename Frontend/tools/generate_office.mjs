@@ -130,12 +130,19 @@ for (const seat of seats) {
 }
 
 // ── 4) 회의 테이블 ──────────────────────────────────────
+// 테이블은 meetingSeats 의 중심이 아니라, 실제로 충돌 처리되는
+// collisionBlockers 항목(회의 테이블의 발판)을 기준으로 그립니다 —
+// 그래야 그려진 그래픽이 실제로 막혀 있는 영역과 정확히 겹칩니다.
 if (map.meetingSeats?.length) {
-  const xs = map.meetingSeats.map((s) => s.x);
-  const ys = map.meetingSeats.map((s) => s.y);
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2 + 0.5;
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2 + 0.5;
-  drawProp('meeting_table', cx, cy);
+  const seatXs = map.meetingSeats.map((s) => s.x);
+  const tableBlocker = map.collisionBlockers?.find(
+    (b) => b.x >= Math.min(...seatXs) && b.x + b.w <= Math.max(...seatXs) + 1,
+  );
+  if (tableBlocker) {
+    const cx = tableBlocker.x + tableBlocker.w / 2;
+    const cy = tableBlocker.y + tableBlocker.h;
+    drawProp('meeting_table', cx, cy);
+  }
 }
 
 // ── 5) 장식 가구 ────────────────────────────────────────

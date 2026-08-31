@@ -13,7 +13,7 @@
     { "type": "plant", "x": 3, "y": 7 },
     { "type": "plant", "x": 24, "y": 7 },
     { "type": "plant", "x": 39, "y": 7 },
-    { "type": "bookshelf", "x": 66, "y": 3 },
+    { "type": "bookshelf", "x": 77, "y": 7 },
 
     { "type": "plant", "x": 3, "y": 18 },
     { "type": "plant", "x": 20, "y": 18 },
@@ -34,6 +34,6 @@
     { "type": "long_table", "x": 72, "y": 30 },
     { "type": "round_table", "x": 68, "y": 27 },
     { "type": "round_table", "x": 77, "y": 27 },
-    { "type": "plant", "x": 79, "y": 25 }
+    { "type": "plant", "x": 79, "y": 28 }
   ]
 }

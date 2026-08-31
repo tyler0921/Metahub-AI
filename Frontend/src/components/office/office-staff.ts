@@ -57,7 +57,7 @@ export const STAFF_SEATS: readonly OfficeStaffSeat[] = [
   { id: 'designer-junior', sprite: 'designer', seat: { x: 30, y: 31 }, facing: 'up' },
 ];
 
-/** id → 좌석 (렌더러가 백엔드 직원 목록과 맞울 때 씁니다) */
+/** id → 좌석 (렌더러가 백엔드 직원 목록과 맞출 때 씁니다) */
 export const STAFF_SEAT_MAP = new Map<AgentId, OfficeStaffSeat>(
   STAFF_SEATS.map((s) => [s.id, s]),
 );

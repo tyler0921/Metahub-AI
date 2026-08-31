@@ -89,10 +89,27 @@ const LEISURE_POINTS: ReadonlyArray<{ x: number; y: number; kind: LeisureKind }>
   ...LOUNGE_LEISURE_POINTS.map((point) => ({ ...point, kind: 'lounge' as const })),
 ];
 
-/** 잡담 스팟 — 카페·라운지 각각에서 나란한 두 지점을 한 쌍으로 씁니다 */
+/** anchor 옆에서 걸을 수 있는 이웃 타일 하나를 찾습니다 — 없으면 null */
+function adjacentWalkable(anchor: { x: number; y: number }): { x: number; y: number } | null {
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const x = anchor.x + (dx ?? 0);
+    const y = anchor.y + (dy ?? 0);
+    if (!isBlocked(x, y)) return { x, y };
+  }
+  return null;
+}
+
+function chatPairIn(bounds: TileBounds): readonly [{ x: number; y: number }, { x: number; y: number }] | null {
+  const [anchor] = walkablePointsIn(bounds, 1);
+  if (!anchor) return null;
+  const neighbor = adjacentWalkable(anchor);
+  return neighbor ? [anchor, neighbor] : null;
+}
+
+/** 잡담 스팟 — 카페·라운지 각각에서 서로 붙어 있는 두 지점을 한 쌍으로 씁니다 */
 const CHAT_SPOTS: ReadonlyArray<readonly [{ x: number; y: number }, { x: number; y: number }]> =
-  [CAFE_LEISURE_POINTS, LOUNGE_LEISURE_POINTS]
-    .filter((pair): pair is [{ x: number; y: number }, { x: number; y: number }] => pair.length === 2);
+  [cafeZone ? chatPairIn(cafeZone) : null, chatPairIn(LOUNGE_BOUNDS)]
+    .filter((pair): pair is [{ x: number; y: number }, { x: number; y: number }] => pair !== null);
 
 const AMBIENT_CHAT_MIN_MS = 12_000;
 const AMBIENT_CHAT_MAX_MS = 24_000;
@@ -818,7 +835,10 @@ export class OfficeRenderer {
     candidates.splice(firstIndex, 1);
     const b = candidates[Math.floor(Math.random() * candidates.length)];
     const spot = CHAT_SPOTS[Math.floor(Math.random() * CHAT_SPOTS.length)];
-    if (!a || !b || !spot) return;
+    if (!a || !b || !spot) {
+      this.scheduleNextAmbientConversation(now);
+      return;
+    }
 
     a.atLeisure = true;
     b.atLeisure = true;
