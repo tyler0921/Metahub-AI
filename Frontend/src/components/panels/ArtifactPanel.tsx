@@ -1,10 +1,8 @@
 import { useCallback, useState } from 'react';
 import { API_BASE_URL } from '@/config/env';
+import { formatBytes } from '@/lib/format-bytes';
 import { useSessionStore } from '@/store/session.store';
 import styles from './ArtifactPanel.module.css';
-
-const formatBytes = (bytes: number): string =>
-  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 
 /**
  * 코드형 산출물 미리보기.

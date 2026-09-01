@@ -1,9 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 import type { TokenUsage } from '@shared';
 import type { LlmConfig } from '../config/configuration';
+import { readJsonFileOrDefault, writeJsonFileAtomic } from '../common/utils/json-file-store';
 
 interface BudgetState {
   version: 1;
@@ -77,26 +76,23 @@ export class LlmBudgetService {
   }
 
   private readState(): BudgetState {
-    try {
-      const parsed = JSON.parse(readFileSync(this.config.budgetStatePath, 'utf8')) as Partial<BudgetState>;
-      if (
-        parsed.version === 1 &&
-        typeof parsed.dayKey === 'string' &&
-        Number.isFinite(parsed.calls) &&
-        Number.isFinite(parsed.inputTokens) &&
-        Number.isFinite(parsed.outputTokens)
-      ) {
-        return {
-          version: 1,
-          dayKey: parsed.dayKey,
-          calls: Math.max(0, parsed.calls ?? 0),
-          inputTokens: Math.max(0, parsed.inputTokens ?? 0),
-          outputTokens: Math.max(0, parsed.outputTokens ?? 0),
-        };
-      }
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') this.logger.warn(`LLM 예산 상태를 읽지 못했습니다: ${String(error)}`);
+    const parsed = readJsonFileOrDefault<Partial<BudgetState>>(this.config.budgetStatePath, {}, (error) =>
+      this.logger.warn(`LLM 예산 상태를 읽지 못했습니다: ${String(error)}`),
+    );
+    if (
+      parsed.version === 1 &&
+      typeof parsed.dayKey === 'string' &&
+      Number.isFinite(parsed.calls) &&
+      Number.isFinite(parsed.inputTokens) &&
+      Number.isFinite(parsed.outputTokens)
+    ) {
+      return {
+        version: 1,
+        dayKey: parsed.dayKey,
+        calls: Math.max(0, parsed.calls ?? 0),
+        inputTokens: Math.max(0, parsed.inputTokens ?? 0),
+        outputTokens: Math.max(0, parsed.outputTokens ?? 0),
+      };
     }
     return this.emptyState(dayKey());
   }
@@ -106,9 +102,6 @@ export class LlmBudgetService {
   }
 
   private persist(): void {
-    mkdirSync(dirname(this.config.budgetStatePath), { recursive: true });
-    const tempPath = `${this.config.budgetStatePath}.tmp`;
-    writeFileSync(tempPath, `${JSON.stringify(this.state, null, 2)}\n`, 'utf8');
-    renameSync(tempPath, this.config.budgetStatePath);
+    writeJsonFileAtomic(this.config.budgetStatePath, this.state);
   }
 }

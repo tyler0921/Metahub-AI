@@ -1,7 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type {
   AutonomousApprovalItem,
@@ -9,6 +7,7 @@ import type {
   AutonomousInboxResponse,
 } from '@shared';
 import type { AutonomousWorkConfig } from '../config/configuration';
+import { readJsonFileOrDefault, writeJsonFileAtomic } from '../common/utils/json-file-store';
 
 interface InboxState extends AutonomousInboxResponse {
   version: 1;
@@ -111,21 +110,14 @@ export class AutonomousInboxStore {
   }
 
   private load(): InboxState {
-    try {
-      const parsed = JSON.parse(readFileSync(this.path, 'utf8')) as Partial<InboxState>;
-      if (parsed.version !== 1 || !Array.isArray(parsed.backlog) || !Array.isArray(parsed.approvals)) {
-        return freshState();
-      }
-      return { version: 1, backlog: parsed.backlog, approvals: parsed.approvals };
-    } catch {
+    const parsed = readJsonFileOrDefault<Partial<InboxState>>(this.path, {});
+    if (parsed.version !== 1 || !Array.isArray(parsed.backlog) || !Array.isArray(parsed.approvals)) {
       return freshState();
     }
+    return { version: 1, backlog: parsed.backlog, approvals: parsed.approvals };
   }
 
   private save(): void {
-    mkdirSync(dirname(this.path), { recursive: true });
-    const tempPath = `${this.path}.tmp`;
-    writeFileSync(tempPath, `${JSON.stringify(this.state, null, 2)}\n`, 'utf8');
-    renameSync(tempPath, this.path);
+    writeJsonFileAtomic(this.path, this.state);
   }
 }

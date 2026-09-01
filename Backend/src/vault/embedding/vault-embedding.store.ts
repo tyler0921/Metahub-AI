@@ -1,10 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 import type { VaultConfig } from '../../config/configuration';
 import type { VaultNoteEntity } from '../entities/vault-note.entity';
 import { OllamaEmbeddingProvider } from './ollama-embedding.provider';
+import { readJsonFileOrDefault, writeJsonFileAtomic } from '../../common/utils/json-file-store';
 
 /** 한 번의 회상에서 새로 임베딩할 노트 상한 — Ollama 는 직렬 처리라 대량 백필이 회상을 지연시킵니다 */
 const MAX_EMBED_PER_RECALL = 20;
@@ -137,25 +136,17 @@ export class VaultEmbeddingStore implements OnModuleInit {
   }
 
   private load(): Map<string, CacheEntry> {
-    try {
-      const parsed = JSON.parse(readFileSync(this.config.embeddingCachePath, 'utf8')) as Partial<CacheFile>;
-      if (parsed.version !== 1 || typeof parsed.entries !== 'object' || !parsed.entries) {
-        return new Map();
-      }
-      return new Map(Object.entries(parsed.entries));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        this.logger.warn(`임베딩 캐시를 읽지 못해 새로 시작합니다: ${String(error)}`);
-      }
+    const parsed = readJsonFileOrDefault<Partial<CacheFile>>(this.config.embeddingCachePath, {}, (error) =>
+      this.logger.warn(`임베딩 캐시를 읽지 못해 새로 시작합니다: ${String(error)}`),
+    );
+    if (parsed.version !== 1 || typeof parsed.entries !== 'object' || !parsed.entries) {
       return new Map();
     }
+    return new Map(Object.entries(parsed.entries));
   }
 
   private save(): void {
     const file: CacheFile = { version: 1, entries: Object.fromEntries(this.cache) };
-    mkdirSync(dirname(this.config.embeddingCachePath), { recursive: true });
-    const tempPath = `${this.config.embeddingCachePath}.tmp`;
-    writeFileSync(tempPath, JSON.stringify(file), 'utf8');
-    renameSync(tempPath, this.config.embeddingCachePath);
+    writeJsonFileAtomic(this.config.embeddingCachePath, file, false);
   }
 }

@@ -26,17 +26,11 @@
 }
 
 .badge {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
+  composes: statusBadge from '../../styles/shared.module.css';
   width: 34px;
   height: 34px;
-  border: 1px solid var(--status-color);
   border-radius: 9px;
-  color: var(--status-color);
   font-size: 12px;
-  font-weight: 700;
 }
 
 .headText {
@@ -83,11 +77,9 @@
 }
 
 .eyebrow {
-  display: block;
+  composes: eyebrow from '../../styles/shared.module.css';
   margin-bottom: 6px;
-  color: var(--dim);
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.06em;
 }
 
