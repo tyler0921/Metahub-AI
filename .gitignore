@@ -22,3 +22,6 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# 브레인스토밍 시각 companion 임시 목업/세션 파일
+.superpowers/

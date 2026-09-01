@@ -1,7 +1,7 @@
 {
   "characters": {
-    "frameWidth": 48,
-    "frameHeight": 72,
+    "frameWidth": 32,
+    "frameHeight": 50,
     "directions": [
       "down",
       "left",
@@ -17,9 +17,9 @@
       "marketer": 4,
       "dev": 5,
       "finance": 6,
-      "writer": 7
-    },
-    "source": "docs/design/character-directions-v3.png"
+      "writer": 7,
+      "designer": 8
+    }
   },
   "tileSize": 32,
   "tiles": {

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { AgentId, SpeechEvent } from '@shared';
 import { useSessionStore } from '@/store/session.store';
+import { companyService } from '@/services/company.service';
 import { DEPARTMENT_ZONES } from './office-map';
 import { STAFF_SEATS } from './office-staff';
 import { OfficeRenderer, ZOOM_DEFAULT, type NearbyInfo, type ZoneInfo } from './office-renderer';
 import type { ActorPosition } from './OfficeMinimap';
 import { loadSpriteAssets } from './sprites';
+import { loadStoredAppearance, saveStoredAppearance, type CustomAppearance } from './custom-character';
 
 interface OfficeBinding {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -25,6 +27,9 @@ interface OfficeBinding {
   zoomOut: () => void;
   resetZoom: () => void;
   setMoveKey: (key: string, pressed: boolean) => void;
+  /** 대표님 현재 외형 — 커스터마이징 팝오버가 선택 상태를 표시하는 데 씁니다 */
+  ceoAppearance: CustomAppearance;
+  setCeoAppearance: (next: CustomAppearance) => void;
 }
 
 /** 교차검토·개정 단계에는 직원들이 회의실에 모입니다 */
@@ -58,6 +63,7 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState({ current: ZOOM_DEFAULT, base: ZOOM_DEFAULT });
   const [followId, setFollowId] = useState<AgentId | null>(null);
+  const [ceoAppearance, setCeoAppearanceState] = useState<CustomAppearance>(() => loadStoredAppearance());
 
   const agents = useSessionStore((s) => s.agents);
 
@@ -87,11 +93,22 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
               [...current.filter((speech) => speech.at >= cutoff), event].slice(-8),
             );
           },
+          onRequestAmbientDialogue: async (agentA, agentB) => {
+            const { isRunning } = useSessionStore.getState();
+            if (isRunning) return null;
+            try {
+              return await companyService.requestAmbientChat(agentA, agentB);
+            } catch {
+              return null;
+            }
+          },
           // 클릭은 스토어로 바로 보냅니다 — 사이드바가 그 값을 보고 상세로 전환합니다
           onActorSelect: (agentId) => useSessionStore.getState().selectAgent(agentId),
           onFollowChange: setFollowId,
         });
         rendererRef.current = renderer;
+        renderer.setCeoAppearance(loadStoredAppearance());
+        renderer.setAmbientChatEnabled(!useSessionStore.getState().isRunning);
 
         const applySize = (): void => {
           const rect = stage.getBoundingClientRect();
@@ -120,6 +137,8 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
 
         unsubscribe = useSessionStore.subscribe((state) => {
           if (!renderer) return;
+
+          renderer.setAmbientChatEnabled(!state.isRunning);
 
           for (const [id, avatar] of state.avatars) {
             const signature = `${avatar.status}|${avatar.talkingTo ?? ''}`;
@@ -221,5 +240,11 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     zoomOut: () => rendererRef.current?.zoomOut(),
     resetZoom: () => rendererRef.current?.resetZoom(),
     setMoveKey: (key, pressed) => rendererRef.current?.setMoveKey(key, pressed),
+    ceoAppearance,
+    setCeoAppearance: (next) => {
+      setCeoAppearanceState(next);
+      saveStoredAppearance(next);
+      rendererRef.current?.setCeoAppearance(next);
+    },
   };
 }

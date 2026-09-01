@@ -61,6 +61,15 @@ export const SPAWN: Readonly<Point> = MAP.spawn;
 export const CEO_SEAT: Readonly<Point> = MAP.ceoSeat;
 export const MEETING_SEATS: ReadonlyArray<Point> = MAP.meetingSeats;
 
+/**
+ * 중앙 라운지(소파·안락의자) 범위 — 정식 zone 이 아닙니다(벽·문이 없는
+ * 열린 통로 위 장식 구역). `office-props.json` 의 라운지 가구, 그리고
+ * `office-renderer.ts` 의 휴게·잡담 스팟 계산이 이 경계를 씁니다.
+ */
+export const LOUNGE_BOUNDS: Readonly<{ x: number; y: number; w: number; h: number }> = {
+  x: 32, y: 12, w: 18, h: 9,
+};
+
 export type CellKind = 'wall' | 'floor' | 'glass';
 export type FloorKind = 'tile' | 'wood';
 

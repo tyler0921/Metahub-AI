@@ -59,6 +59,13 @@ export interface VaultConfig {
   embeddingCachePath: string;
 }
 
+export interface WebSearchConfig {
+  /** 꺼두면 리서치팀은 항상 LLM 지식만으로 씁니다 (지금까지의 동작) */
+  enabled: boolean;
+  /** 검색 한 번당 프롬프트에 넣을 결과 개수 */
+  resultLimit: number;
+}
+
 export interface WorkflowConfig {
   feedbackRounds: number;
   maxRework: number;
@@ -241,6 +248,14 @@ export const vaultConfig = registerAs(
   }),
 );
 
+export const webSearchConfig = registerAs(
+  'webSearch',
+  (): WebSearchConfig => ({
+    enabled: toBool(process.env.WEB_SEARCH_ENABLED, true),
+    resultLimit: Math.min(10, Math.max(1, toInt(process.env.WEB_SEARCH_RESULT_LIMIT, 5))),
+  }),
+);
+
 export const workflowConfig = registerAs(
   'workflow',
   (): WorkflowConfig => ({
@@ -282,4 +297,5 @@ export const configurations = [
   workflowConfig,
   autonomousWorkConfig,
   securityConfig,
+  webSearchConfig,
 ];

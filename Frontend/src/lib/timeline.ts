@@ -38,7 +38,7 @@ export type TimelineEntry =
       at: number;
       kind: 'tool';
       agent: AgentId;
-      tool: 'vault' | 'file-write';
+      tool: 'vault' | 'file-write' | 'web-search';
       status: 'started' | 'completed' | 'failed';
       label?: string;
     }

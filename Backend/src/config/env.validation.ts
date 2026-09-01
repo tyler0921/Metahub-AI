@@ -89,6 +89,13 @@ const envSchema = z.object({
   ),
   AUTONOMOUS_WORK_STATE_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
   AUTONOMOUS_WORK_INBOX_PATH: z.preprocess(emptyToUndefined, z.string().optional()),
+
+  // 'false' 를 명시할 때만 리서치팀 웹 검색을 끕니다 — 키 없이 동작합니다
+  WEB_SEARCH_ENABLED: z.preprocess(emptyToUndefined, z.string().optional()),
+  WEB_SEARCH_RESULT_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(1).max(10).optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

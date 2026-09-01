@@ -1,5 +1,7 @@
 import type {
+  AgentId,
   AgentsResponse,
+  AmbientChatResponse,
   AppConfigResponse,
   AutonomousWorkStatusResponse,
   AutonomousInboxResponse,
@@ -17,6 +19,10 @@ export const companyService = {
   health: (): Promise<HealthResponse> => http.get('/health'),
 
   getAgents: (): Promise<AgentsResponse> => http.get('/agents'),
+
+  /** 오피스 휴게 중 두 직원의 AI 스몰토크 */
+  requestAmbientChat: (agentA: AgentId, agentB: AgentId): Promise<AmbientChatResponse> =>
+    http.post('/agents/ambient-chat', { agentA, agentB }),
 
   getConfig: (): Promise<AppConfigResponse> => http.get('/config'),
 

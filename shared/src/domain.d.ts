@@ -15,6 +15,7 @@ export type AgentId =
   | 'dev'
   | 'finance'
   | 'writer'
+  | 'designer'
   // 팀원 (소속 부서의 초안 작성에 참여)
   | 'chief-senior' | 'chief-junior'
   | 'planner-senior' | 'planner-junior'
@@ -22,11 +23,12 @@ export type AgentId =
   | 'marketer-senior' | 'marketer-junior'
   | 'dev-senior' | 'dev-junior'
   | 'finance-senior' | 'finance-junior'
-  | 'writer-senior' | 'writer-junior';
+  | 'writer-senior' | 'writer-junior'
+  | 'designer-senior' | 'designer-junior';
 
 /** 부서를 대표하는 팀장 id */
 export type TeamId =
-  | 'chief' | 'planner' | 'researcher' | 'marketer' | 'dev' | 'finance' | 'writer';
+  | 'chief' | 'planner' | 'researcher' | 'marketer' | 'dev' | 'finance' | 'writer' | 'designer';
 
 /** 직급 — 부서 안에서 무슨 역할을 맡는지 결정합니다 */
 export type AgentRank = 'lead' | 'senior' | 'junior';
@@ -88,7 +90,7 @@ export type PhaseKey =
  * 이 값에 따라 파이프라인의 5단계가 통합(integrate)이 될지
  * 빌드(build)가 될지 갈립니다.
  */
-export type DeliverableKind = 'document' | 'website';
+export type DeliverableKind = 'document' | 'website' | 'slides';
 
 /** 코드형 산출물이 만들어낸 파일 하나 */
 export interface ArtifactFile {

@@ -16,7 +16,7 @@ import type {
 } from './domain';
 
 /** 직원이 실제로 만진 도구 — 머리 위 아이콘·타임라인에 씁니다 */
-export type ToolKind = 'vault' | 'file-write';
+export type ToolKind = 'vault' | 'file-write' | 'web-search';
 
 export type ToolStatus = 'started' | 'completed' | 'failed';
 

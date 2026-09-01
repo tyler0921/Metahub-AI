@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AgentsModule } from '../agents/agents.module';
 import { LlmModule } from '../llm/llm.module';
+import { SearchModule } from '../search/search.module';
 import { VaultModule } from '../vault/vault.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { BuildPhase } from './phases/build.phase';
@@ -22,7 +23,7 @@ import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 import { AutonomousInboxStore } from './autonomous-inbox.store';
 
 @Module({
-  imports: [AgentsModule, LlmModule, VaultModule, WorkspaceModule],
+  imports: [AgentsModule, LlmModule, SearchModule, VaultModule, WorkspaceModule],
   controllers: [WorkflowController, AutonomousWorkController],
   providers: [
     SessionRepository,

@@ -1,8 +1,10 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Agent, AgentsResponse, AppConfigResponse } from '@shared';
+import type { Agent, AgentsResponse, AmbientChatResponse, AppConfigResponse } from '@shared';
 import { AgentsService } from './agents.service';
+import { AmbientChatService } from './ambient-chat.service';
 import { AgentIdParamDto } from './dto/agent-id.param.dto';
+import { AmbientChatDto } from './dto/ambient-chat.dto';
 import type {
   AutonomousWorkConfig,
   LlmConfig,
@@ -16,6 +18,7 @@ import { LlmBudgetService } from '../llm/llm-budget.service';
 export class AgentsController {
   constructor(
     private readonly agents: AgentsService,
+    private readonly ambientChat: AmbientChatService,
     private readonly config: ConfigService,
     private readonly budget: LlmBudgetService,
   ) {}
@@ -32,6 +35,12 @@ export class AgentsController {
   @Get('agents/:id')
   findOne(@Param() params: AgentIdParamDto): Agent {
     return this.agents.findById(params.id).toPublic();
+  }
+
+  /** 오피스 휴게 중 두 직원의 AI 스몰토크 */
+  @Post('agents/ambient-chat')
+  generateAmbientChat(@Body() body: AmbientChatDto): Promise<AmbientChatResponse> {
+    return this.ambientChat.generate(body.agentA, body.agentB);
   }
 
   /** 실행 환경 (API 키 같은 비밀값은 내보내지 않습니다) */

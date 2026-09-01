@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import type { DeliverableKind, PhaseKey, ReviewResult } from '@shared';
+import type { ArtifactFile, DeliverableKind, PhaseKey, ReviewResult } from '@shared';
 import { LlmService } from '../../llm/llm.service';
 import {
   PhaseNarrator,
   type PhaseContext,
   type WorkflowPhase,
 } from './workflow-phase.interface';
+import { lintWebsiteArtifacts } from './website-lint';
 
 interface RawReview {
   verdict?: string;
@@ -36,6 +37,7 @@ export class ReviewPhase implements WorkflowPhase {
     attempt: number,
     maxRework: number,
     kind: DeliverableKind = 'document',
+    artifacts?: ArtifactFile[],
   ): Promise<ReviewResult> {
     const narrator = new PhaseNarrator(session, '검수');
     narrator.status('chief', 'thinking', '검수 중');
@@ -54,7 +56,23 @@ export class ReviewPhase implements WorkflowPhase {
       session.usage,
     );
 
-    const review = this.normalize(raw, attempt >= maxRework);
+    const isLastChance = attempt >= maxRework;
+    let review = this.normalize(raw, isLastChance);
+
+    // LLM 이 코드를 읽고 판단하는 것과 별개로, 자리표시자·깨진 링크 같은
+    // 기계적 결함은 결정적으로 검사합니다. LLM 이 승인해도 이 결함이
+    // 남아 있으면 반려로 뒤집습니다 — "의견"이 아니라 "사실"이기 때문입니다.
+    if (kind === 'website' && artifacts && artifacts.length > 0) {
+      const lintIssues = lintWebsiteArtifacts(artifacts);
+      if (lintIssues.length > 0) {
+        review = {
+          ...review,
+          verdict: isLastChance ? review.verdict : 'rework',
+          issues: [...new Set([...lintIssues, ...review.issues])],
+        };
+      }
+    }
+
     narrator.status('chief', 'idle');
     session.emit({ type: 'review', review, attempt });
     narrator.say(
@@ -74,6 +92,7 @@ export class ReviewPhase implements WorkflowPhase {
     kind: DeliverableKind,
   ): string {
     const isWebsite = kind === 'website';
+    const isSlides = kind === 'slides';
 
     return [
       `## 대표 지시\n${brief}`,
@@ -84,7 +103,9 @@ export class ReviewPhase implements WorkflowPhase {
       draft,
       '',
       '대표님께 이대로 올려도 되는지 **냉정하게** 검수하세요. 아첨은 금지입니다.',
-      isWebsite
+      isSlides
+        ? '체크 포인트: 슬라이드마다 `---` 로 나뉘어 있는가 / 슬라이드 하나에 정보가 과하게 몰려 있지 않은가 / 8~14장 범위인가 / 발표자료다운 압축된 문구인가 (긴 문단이 그대로 있지 않은가).'
+        : isWebsite
         ? [
             '이것은 브라우저에서 실제로 열릴 파일입니다. 코드를 읽고 판단하세요.',
             '',

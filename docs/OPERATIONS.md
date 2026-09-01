@@ -94,18 +94,38 @@ VAULT_EMBEDDING_MODEL=nomic-embed-text
 
 ## 캐릭터와 맵 자산
 
-- 기준 방향 시트: `docs/design/character-directions-v3.png`
-- 생성 원본: `docs/design/character-directions-v3-source.png`
+- 캐릭터 생성기(전원 절차적 생성): `Frontend/tools/generate_sprites.mjs`
+- 손그림 원화(더 이상 기본 파이프라인에서 쓰지 않음, 되돌리기용으로만 보관): `docs/design/character-directions-v3.png`
 - 런타임 아틀라스: `Frontend/public/sprites/characters.png`
 - 맵 단일 원본: `Frontend/src/data/office-map.json`
+- 배경 이미지 생성기: `Frontend/tools/generate_office.mjs` (+ 장식 가구 데이터 `Frontend/src/data/office-props.json`)
 
-캐릭터는 8명, 방향은 `down/left/right/up`, 방향별 4프레임입니다. 다음 명령으로 재생성·검증합니다.
+레이아웃(방 배치·좌석·문)을 바꾸려면 `office-map.json`(부서장 좌석 포함) 과
+`office-staff.ts`(팀원 좌석)를 고치고, `office-props.json` 의 `staffSeats`
+사본도 같이 맞춘 뒤 아래 명령으로 배경을 다시 만든다.
+
+좌석·구역 좌표를 바꾼 뒤에는 `office-map.json`의 `collisionBlockers`도 자동
+배치된 책상·가구가 실제로 놓이는 자리에 맞춰 손으로 다시 조정해야 할 수
+있다(그려지는 자리와 충돌 영역이 어긋나면 캐릭터가 가구 위에 서 있는 것처럼
+보인다). `office-props.json`의 `items` 배열(장식 가구 좌표)도 `staffSeats`
+사본과 별개로, 레이아웃이 바뀌면 함께 손봐야 한다.
 
 ```powershell
-npm --workspace @ai-company/frontend run sprites:characters
+npm --workspace @ai-company/frontend run map:generate
+npm --workspace @ai-company/frontend run map:validate
+```
+
+캐릭터는 9명(대표님 포함), 방향은 `down/left/right/up`, 방향별 4프레임이며 전원 코드로 그립니다(셔츠·머리·피부 색은 `generate_sprites.mjs`의 `CHARACTERS` 배열). 대표님은 여기서 만든 기본값 위에 사용자가 오피스 화면에서 직접 고른 색이 덧씌워집니다. 다음 명령으로 재생성·검증합니다.
+
+```powershell
+npm --workspace @ai-company/frontend run sprites
 npm --workspace @ai-company/frontend run sprites:validate
 npm --workspace @ai-company/frontend run map:validate
 ```
+
+손그림 원화 버전으로 되돌리려면 `npm --workspace @ai-company/frontend run sprites:reference-characters`를 `sprites` 다음에 실행하세요 (스크립트 자체는 남아있지만 기본 파이프라인에서는 빠졌습니다).
+
+주의: `map:generate`는 의존 작업으로 `npm run sprites`를 실행해 `characters.png`를 절차적 생성 방식으로 처음부터 다시 만든다. 그래서 `sprites:reference-characters`로 손그림 원화로 되돌려 둔 상태에서 `map:generate`를 실행하면 그 설정이 조용히 procedural 스타일로 되돌아간다.
 
 `office-map.json`에서 구역, 좌석, 회의 좌석, 스폰, 충돌 사각형을 수정할 수 있습니다. 빌드는 중복 구역 ID와 맵 바깥 좌표를 자동 차단합니다.
 

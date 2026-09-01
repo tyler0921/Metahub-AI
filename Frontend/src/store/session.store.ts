@@ -483,7 +483,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           }
 
           const toolLabel =
-            event.tool === 'vault' ? 'Vault' : '파일 작성';
+            event.tool === 'vault' ? 'Vault' : event.tool === 'web-search' ? '웹 검색' : '파일 작성';
           const statusLabel =
             event.status === 'started'
               ? '시작'

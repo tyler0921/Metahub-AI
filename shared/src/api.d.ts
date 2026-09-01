@@ -12,6 +12,17 @@ export interface AgentsResponse {
   office: OfficeMap;
 }
 
+/** POST /api/agents/ambient-chat */
+export interface AmbientChatRequest {
+  agentA: Agent['id'];
+  agentB: Agent['id'];
+}
+
+export interface AmbientChatResponse {
+  firstLine: string;
+  secondLine: string;
+}
+
 /** GET /api/config */
 export interface AppConfigResponse {
   provider: string;
