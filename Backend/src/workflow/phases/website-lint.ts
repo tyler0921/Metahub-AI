@@ -40,17 +40,7 @@ function isExternal(ref: string): boolean {
   return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(ref);
 }
 
-export function lintWebsiteArtifacts(files: ArtifactFile[]): string[] {
-  const issues: string[] = [];
-  if (files.length === 0) return ['생성된 파일이 없습니다.'];
-
-  const byPath = new Set(files.map((f) => f.path.toLowerCase()));
-  const htmlFiles = files.filter((f) => f.path.toLowerCase().endsWith('.html'));
-
-  if (!byPath.has('index.html')) {
-    issues.push('index.html 이 없습니다 — 미리보기가 열리지 않습니다.');
-  }
-
+function collectPlaceholderIssues(files: ArtifactFile[], issues: string[]): void {
   for (const file of files) {
     for (const { pattern, label } of PLACEHOLDER_PATTERNS) {
       if (pattern.test(file.content)) {
@@ -59,36 +49,60 @@ export function lintWebsiteArtifacts(files: ArtifactFile[]): string[] {
       }
     }
   }
+}
 
-  for (const file of htmlFiles) {
-    if (!/<!DOCTYPE html>/i.test(file.content)) {
-      issues.push(`${file.path}: <!DOCTYPE html> 선언이 없습니다.`);
-    }
-    if (!/<html[\s>]/i.test(file.content)) {
-      issues.push(`${file.path}: <html> 태그가 없습니다.`);
-    }
-    if (!/<\/html>\s*$/i.test(file.content.trim())) {
-      issues.push(`${file.path}: </html> 로 끝나지 않습니다 — 문서가 잘렸을 수 있습니다.`);
+function collectHtmlStructureIssues(file: ArtifactFile, issues: string[]): void {
+  if (!/<!DOCTYPE html>/i.test(file.content)) {
+    issues.push(`${file.path}: <!DOCTYPE html> 선언이 없습니다.`);
+  }
+  if (!/<html[\s>]/i.test(file.content)) {
+    issues.push(`${file.path}: <html> 태그가 없습니다.`);
+  }
+  if (!/<\/html>\s*$/i.test(file.content.trim())) {
+    issues.push(`${file.path}: </html> 로 끝나지 않습니다 — 문서가 잘렸을 수 있습니다.`);
+  }
+}
+
+function collectReferenceIssues(
+  file: ArtifactFile,
+  byPath: Set<string>,
+  issues: string[],
+): void {
+  for (const match of file.content.matchAll(REF_ATTR)) {
+    const ref = match[1];
+    if (isSkippable(ref)) continue;
+
+    if (isExternal(ref)) {
+      issues.push(
+        `${file.path}: "${ref}" 는 외부 리소스입니다 — 인터넷 없이 열려야 하므로 참조하면 안 됩니다.`,
+      );
+      continue;
     }
 
-    for (const match of file.content.matchAll(REF_ATTR)) {
-      const ref = match[1];
-      if (isSkippable(ref)) continue;
-
-      if (isExternal(ref)) {
-        issues.push(
-          `${file.path}: "${ref}" 는 외부 리소스입니다 — 인터넷 없이 열려야 하므로 참조하면 안 됩니다.`,
-        );
-        continue;
-      }
-
-      const clean = ref.split(/[?#]/)[0].replace(/^\.\//, '');
-      if (clean && !byPath.has(clean.toLowerCase())) {
-        issues.push(
-          `${file.path}: "${ref}" 를 참조하지만 그런 파일이 만들어지지 않았습니다.`,
-        );
-      }
+    const clean = ref.split(/[?#]/)[0].replace(/^\.\//, '');
+    if (clean && !byPath.has(clean.toLowerCase())) {
+      issues.push(
+        `${file.path}: "${ref}" 를 참조하지만 그런 파일이 만들어지지 않았습니다.`,
+      );
     }
+  }
+}
+
+export function lintWebsiteArtifacts(files: ArtifactFile[]): string[] {
+  if (files.length === 0) return ['생성된 파일이 없습니다.'];
+
+  const issues: string[] = [];
+  const byPath = new Set(files.map((f) => f.path.toLowerCase()));
+
+  if (!byPath.has('index.html')) {
+    issues.push('index.html 이 없습니다 — 미리보기가 열리지 않습니다.');
+  }
+
+  collectPlaceholderIssues(files, issues);
+
+  for (const file of files.filter((f) => f.path.toLowerCase().endsWith('.html'))) {
+    collectHtmlStructureIssues(file, issues);
+    collectReferenceIssues(file, byPath, issues);
   }
 
   // 중복 제거 — 같은 문구가 여러 파일에서 반복되면 검수 LLM 프롬프트만 길어집니다

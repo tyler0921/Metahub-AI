@@ -1,10 +1,11 @@
 /**
  * 대표님(플레이어) 전용 캐릭터 외형 생성기.
  *
- * `Frontend/tools/generate_sprites.mjs` 의 `drawCharacter()` 를 브라우저용으로
- * 그대로 옮긴 것입니다. `@napi-rs/canvas` 는 네이티브 Node 애드온이라 그 파일을
- * 브라우저 번들에 직접 import 할 수 없어서, 순수 그리기 로직만 복사해왔습니다 —
- * 원본을 고치면 이 파일도 같이 고쳐야 합니다.
+ * `Frontend/tools/generate_sprites.mjs` 의 그리기 절차를 브라우저용으로
+ * 옮긴 것입니다. `@napi-rs/canvas` 는 네이티브 Node 애드온이라 그 파일을
+ * 브라우저 번들에 직접 import 할 수 없어서, 순수 그리기 로직만 브라우저
+ * 캔버스 API 에 맞춰 다시 구성했습니다 — 원본 포즈를 고치면 여기도
+ * 같이 맞춰야 합니다.
  *
  * 다른 8명 직원은 손으로 그린 원화(`character-directions-v3.png`)에서 잘라낸
  * 고정 스프라이트라 색 파라미터가 없습니다. 대표님만 이 절차적 생성기로 그려서
@@ -19,6 +20,7 @@ const FRAMES = 4;
 /** 원화 캐릭터 셀 안에서 프레임마다 살짝 흔들리는 정렬 보정 — 원본과 동일 */
 const FRAME_X = [0, -1, 0, 1] as const;
 const FRAME_Y = [0, 1, 0, 1] as const;
+const SWING_BY_FRAME: Record<number, number> = { 0: 0, 1: 2, 2: 0, 3: -2 };
 
 export interface CustomAppearance {
   shirt: string;
@@ -40,171 +42,255 @@ export const SKIN_SWATCHES: readonly string[] = [
   '#f5d5b0', '#f2cba3', '#e8bd94', '#e0b088', '#c48958', '#8a5a35',
 ];
 
-type RGB = number[];
+type RGB = readonly [number, number, number];
+type Fill = RGB | readonly number[] | string;
+
+interface DrawPose {
+  brush: PixelBrush;
+  ox: number;
+  oy: number;
+  cx: number;
+  shirt: RGB;
+  hair: RGB;
+  skin: RGB;
+  direction: string;
+  swing: number;
+  facing: number;
+  sideView: boolean;
+  headTop: number;
+  headBottom: number;
+  halfW: number;
+}
+
+interface DrawCharacterParams {
+  ctx: CanvasRenderingContext2D;
+  ox: number;
+  oy: number;
+  shirt: RGB;
+  hair: RGB;
+  skin: RGB;
+  direction: string;
+  frame: number;
+}
+
+function hexChannel(hex: string, start: number): number {
+  return Number.parseInt(hex.slice(start, start + 2), 16);
+}
 
 function hexRgb(value: string): RGB {
-  const v = value.replace('#', '');
-  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+  const hex = value.replace('#', '');
+  return [hexChannel(hex, 0), hexChannel(hex, 2), hexChannel(hex, 4)];
 }
 
 function shade(color: RGB, amount: number): RGB {
-  return color.map((c) => Math.max(0, Math.min(255, c + amount)));
+  return [
+    Math.max(0, Math.min(255, color[0] + amount)),
+    Math.max(0, Math.min(255, color[1] + amount)),
+    Math.max(0, Math.min(255, color[2] + amount)),
+  ];
 }
 
-function rgbaStr(r: number, g: number, b: number, a = 255): string {
-  return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
-}
-
-function toFill(c: number[] | string, a?: number): string {
-  if (typeof c === 'string') return c;
-  if (c.length === 4 || a !== undefined) {
-    const [r, g, b, alpha = a ?? 255] = c.length === 4 ? c : [...c, a ?? 255];
-    return rgbaStr(r, g, b, alpha);
-  }
-  const [r, g, b] = c;
+function toFill(fill: Fill, alpha?: number): string {
+  if (typeof fill === 'string') return fill;
+  const [r, g, b, extra] = [...fill];
+  const a = extra ?? alpha;
+  if (a !== undefined) return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-function rect(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, fill: number[] | string): void {
-  ctx.fillStyle = toFill(fill);
-  ctx.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
-}
+/**  inclusive 좌표를 fillRect 에 맞게 그리는 얇은 래퍼 — 스프라이트 생성기와 호출 형태를 갈라 둡니다 */
+class PixelBrush {
+  constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, fill: number[] | string, width = 1): void {
-  ctx.strokeStyle = toFill(fill);
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-}
+  rect(x0: number, y0: number, x1: number, y1: number, fill: Fill): void {
+    this.ctx.fillStyle = toFill(fill);
+    this.ctx.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+  }
 
-function ellipse(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, fill: number[] | string): void {
-  const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
-  const rx = (x1 - x0) / 2;
-  const ry = (y1 - y0) / 2;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  ctx.fillStyle = toFill(fill);
-  ctx.fill();
+  stroke(x0: number, y0: number, x1: number, y1: number, fill: Fill, width = 1): void {
+    this.ctx.strokeStyle = toFill(fill);
+    this.ctx.lineWidth = width;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x0, y0);
+    this.ctx.lineTo(x1, y1);
+    this.ctx.stroke();
+  }
+
+  oval(x0: number, y0: number, x1: number, y1: number, fill: Fill): void {
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    this.ctx.beginPath();
+    this.ctx.ellipse(cx, cy, (x1 - x0) / 2, (y1 - y0) / 2, 0, 0, Math.PI * 2);
+    this.ctx.fillStyle = toFill(fill);
+    this.ctx.fill();
+  }
 }
 
 const TROUSERS = hexRgb('#39404f');
 const SHOES = hexRgb('#22262f');
 const OUTLINE = hexRgb('#1a1d24');
 
-/** `generate_sprites.mjs` 의 `drawCharacter()` 와 동일 — 대표님 역할(role='ceo')만 씁니다 */
-function drawCharacter(
-  ctx: CanvasRenderingContext2D,
-  ox: number,
-  oy: number,
-  shirt: RGB,
-  hair: RGB,
-  skin: RGB,
-  direction: string,
-  frame: number,
-): void {
-  const swing = { 0: 0, 1: 2, 2: 0, 3: -2 }[frame] ?? 0;
-  const sideView = direction === 'left' || direction === 'right';
-  const facing = direction === 'left' ? -1 : 1;
+function drawShadow(pose: DrawPose): void {
+  pose.brush.oval(pose.cx - 8, pose.oy + 42, pose.cx + 8, pose.oy + 47, [0, 0, 0, 70]);
+}
 
-  const cx = ox + 16;
-  const headTop = oy + 7;
-  const headBottom = oy + 21;
-  const halfW = sideView ? 5 : 7;
-
-  ellipse(ctx, cx - 8, oy + 42, cx + 8, oy + 47, [0, 0, 0, 70]);
-
-  if (sideView) {
-    for (const [depth, lift] of [
-      [0, -swing],
-      [1, swing],
-    ]) {
-      const lx = cx - 3 + depth * 2;
-      const leg = depth ? TROUSERS : shade(TROUSERS, -18);
-      rect(ctx, lx, oy + 33, lx + 4, oy + 42 + lift, leg);
-      rect(
-        ctx,
-        lx - (facing < 0 ? 2 : 0),
-        oy + 42 + lift,
-        lx + 4 + (facing > 0 ? 2 : 0),
-        oy + 45 + lift,
-        depth ? SHOES : shade(SHOES, -14),
-      );
-    }
-  } else {
-    for (const sign of [-1, 1]) {
-      const lift = sign < 0 ? swing : -swing;
-      const lx = cx + sign * 4;
-      rect(ctx, lx - 3, oy + 33, lx + 2, oy + 42 + lift, TROUSERS);
-      rect(ctx, lx - 3, oy + 42 + lift, lx + 2, oy + 45 + lift, SHOES);
-    }
+function drawSideLegs(pose: DrawPose): void {
+  const { brush, cx, oy, swing, facing } = pose;
+  for (const [depth, lift] of [
+    [0, -swing],
+    [1, swing],
+  ]) {
+    const lx = cx - 3 + depth * 2;
+    const leg = depth ? TROUSERS : shade(TROUSERS, -18);
+    brush.rect(lx, oy + 33, lx + 4, oy + 42 + lift, leg);
+    const shoeLeft = facing < 0 ? lx - 2 : lx;
+    const shoeRight = facing > 0 ? lx + 6 : lx + 4;
+    brush.rect(
+      shoeLeft,
+      oy + 42 + lift,
+      shoeRight,
+      oy + 45 + lift,
+      depth ? SHOES : shade(SHOES, -14),
+    );
   }
+}
 
+function drawFrontLegs(pose: DrawPose): void {
+  const { brush, cx, oy, swing } = pose;
+  for (const sign of [-1, 1]) {
+    const lift = sign < 0 ? swing : -swing;
+    const lx = cx + sign * 4;
+    brush.rect(lx - 3, oy + 33, lx + 2, oy + 42 + lift, TROUSERS);
+    brush.rect(lx - 3, oy + 42 + lift, lx + 2, oy + 45 + lift, SHOES);
+  }
+}
+
+function drawTorso(pose: DrawPose): void {
+  const { brush, cx, oy, shirt, direction, halfW } = pose;
   const bodyTop = oy + 22;
-  rect(ctx, cx - halfW, bodyTop, cx + halfW - 1, oy + 35, shirt);
-  rect(ctx, cx - halfW, oy + 32, cx + halfW - 1, oy + 35, shade(shirt, -24));
-  rect(ctx, cx - halfW, bodyTop, cx + halfW - 1, bodyTop + 2, shade(shirt, 18));
+  brush.rect(cx - halfW, bodyTop, cx + halfW - 1, oy + 35, shirt);
+  brush.rect(cx - halfW, oy + 32, cx + halfW - 1, oy + 35, shade(shirt, -24));
+  brush.rect(cx - halfW, bodyTop, cx + halfW - 1, bodyTop + 2, shade(shirt, 18));
 
   if (direction === 'down') {
-    rect(ctx, cx - 2, bodyTop, cx + 1, bodyTop + 3, shade(shirt, -30));
-  } else if (direction === 'up') {
-    line(ctx, cx, bodyTop + 1, cx, oy + 34, shade(shirt, -16));
+    brush.rect(cx - 2, bodyTop, cx + 1, bodyTop + 3, shade(shirt, -30));
+    return;
   }
+  if (direction === 'up') {
+    brush.stroke(cx, bodyTop + 1, cx, oy + 34, shade(shirt, -16));
+  }
+}
 
-  if (sideView) {
-    const ax = cx + facing * 3;
-    rect(ctx, ax - 2, oy + 23, ax + 2, oy + 32 + swing, shade(shirt, -14));
-    rect(ctx, ax - 2, oy + 32 + swing, ax + 2, oy + 35 + swing, skin);
+function drawSideArms(pose: DrawPose): void {
+  const { brush, cx, oy, shirt, skin, swing, facing } = pose;
+  const ax = cx + facing * 3;
+  brush.rect(ax - 2, oy + 23, ax + 2, oy + 32 + swing, shade(shirt, -14));
+  brush.rect(ax - 2, oy + 32 + swing, ax + 2, oy + 35 + swing, skin);
+}
+
+function drawFrontArms(pose: DrawPose): void {
+  const { brush, cx, oy, shirt, skin, swing } = pose;
+  for (const sign of [-1, 1]) {
+    const offset = sign < 0 ? -swing : swing;
+    const ax = cx + sign * 8;
+    brush.rect(ax - 1, oy + 23, ax + 1, oy + 32 + offset, shade(shirt, -12));
+    brush.rect(ax - 1, oy + 32 + offset, ax + 1, oy + 34 + offset, skin);
+  }
+}
+
+function drawSideHead(pose: DrawPose): void {
+  const { brush, cx, oy, hair, skin, facing, headTop, headBottom } = pose;
+  const hx0 = cx - 5 + facing;
+  const hx1 = cx + 5 + facing;
+  brush.rect(hx0, headTop, hx1, headBottom, skin);
+  brush.rect(hx0, headBottom - 2, hx1, headBottom, shade(skin, -18));
+  const noseX = facing < 0 ? hx0 - 1 : hx1 + 1;
+  brush.rect(noseX, oy + 15, noseX, oy + 17, shade(skin, -26));
+  brush.rect(hx0, headTop - 1, hx1, headTop + 4, hair);
+  if (facing < 0) {
+    brush.rect(hx1 - 3, headTop - 1, hx1, oy + 19, hair);
   } else {
-    for (const sign of [-1, 1]) {
-      const offset = sign < 0 ? -swing : swing;
-      const ax = cx + sign * 8;
-      rect(ctx, ax - 1, oy + 23, ax + 1, oy + 32 + offset, shade(shirt, -12));
-      rect(ctx, ax - 1, oy + 32 + offset, ax + 1, oy + 34 + offset, skin);
-    }
+    brush.rect(hx0, headTop - 1, hx0 + 3, oy + 19, hair);
   }
+  const earX = cx + (facing < 0 ? 2 : -3);
+  brush.rect(earX, oy + 15, earX + 1, oy + 17, shade(skin, -22));
+  const eyeX = facing < 0 ? hx0 + 1 : hx1 - 2;
+  brush.rect(eyeX, oy + 15, eyeX + 1, oy + 17, OUTLINE);
+}
 
-  rect(ctx, cx - 2, oy + 20, cx + 1, oy + 23, shade(skin, -28));
+function drawBackHead(pose: DrawPose): void {
+  const { brush, cx, hair, headTop, headBottom } = pose;
+  brush.rect(cx - 7, headTop - 1, cx + 6, headBottom, hair);
+  brush.rect(cx - 7, headBottom - 2, cx + 6, headBottom, shade(hair, -18));
+  brush.rect(cx - 5, headTop, cx + 4, headTop + 2, shade(hair, 22));
+}
 
-  if (sideView) {
-    const hx0 = cx - 5 + facing;
-    const hx1 = cx + 5 + facing;
-    rect(ctx, hx0, headTop, hx1, headBottom, skin);
-    rect(ctx, hx0, headBottom - 2, hx1, headBottom, shade(skin, -18));
-    const noseX = facing < 0 ? hx0 - 1 : hx1 + 1;
-    rect(ctx, noseX, oy + 15, noseX, oy + 17, shade(skin, -26));
-    rect(ctx, hx0, headTop - 1, hx1, headTop + 4, hair);
-    if (facing < 0) {
-      rect(ctx, hx1 - 3, headTop - 1, hx1, oy + 19, hair);
-    } else {
-      rect(ctx, hx0, headTop - 1, hx0 + 3, oy + 19, hair);
-    }
-    const earX = cx + (facing < 0 ? 2 : -3);
-    rect(ctx, earX, oy + 15, earX + 1, oy + 17, shade(skin, -22));
-    const eyeX = facing < 0 ? hx0 + 1 : hx1 - 2;
-    rect(ctx, eyeX, oy + 15, eyeX + 1, oy + 17, OUTLINE);
-  } else if (direction === 'up') {
-    rect(ctx, cx - 7, headTop - 1, cx + 6, headBottom, hair);
-    rect(ctx, cx - 7, headBottom - 2, cx + 6, headBottom, shade(hair, -18));
-    rect(ctx, cx - 5, headTop, cx + 4, headTop + 2, shade(hair, 22));
+function drawFrontHead(pose: DrawPose): void {
+  const { brush, cx, oy, hair, skin, headTop, headBottom } = pose;
+  brush.rect(cx - 7, headTop, cx + 6, headBottom, skin);
+  brush.rect(cx - 7, headBottom - 2, cx + 6, headBottom, shade(skin, -18));
+  brush.rect(cx - 7, headTop - 1, cx + 6, headTop + 4, hair);
+  brush.rect(cx - 7, headTop - 1, cx - 4, oy + 15, hair);
+  brush.rect(cx + 3, headTop - 1, cx + 6, oy + 15, hair);
+  brush.rect(cx - 5, oy + 15, cx - 4, oy + 17, OUTLINE);
+  brush.rect(cx + 3, oy + 15, cx + 4, oy + 17, OUTLINE);
+  brush.rect(cx - 1, oy + 18, cx, oy + 18, shade(skin, -40));
+}
+
+function drawHead(pose: DrawPose): void {
+  if (pose.sideView) {
+    drawSideHead(pose);
+    return;
+  }
+  if (pose.direction === 'up') {
+    drawBackHead(pose);
+    return;
+  }
+  drawFrontHead(pose);
+}
+
+function drawCeoMark(pose: DrawPose): void {
+  if (pose.direction !== 'down') return;
+  const { brush, cx, oy } = pose;
+  const bodyTop = oy + 22;
+  brush.stroke(cx - 5, bodyTop + 2, cx - 1, bodyTop + 7, [232, 228, 216]);
+  brush.stroke(cx + 4, bodyTop + 2, cx, bodyTop + 7, [232, 228, 216]);
+}
+
+/** `generate_sprites.mjs` 의 대표님(role='ceo') 포즈와 동일한 실루엣을 그립니다 */
+function drawCharacter(params: DrawCharacterParams): void {
+  const { ctx, ox, oy, shirt, hair, skin, direction, frame } = params;
+  const sideView = direction === 'left' || direction === 'right';
+  const pose: DrawPose = {
+    brush: new PixelBrush(ctx),
+    ox,
+    oy,
+    cx: ox + 16,
+    shirt,
+    hair,
+    skin,
+    direction,
+    swing: SWING_BY_FRAME[frame] ?? 0,
+    facing: direction === 'left' ? -1 : 1,
+    sideView,
+    headTop: oy + 7,
+    headBottom: oy + 21,
+    halfW: sideView ? 5 : 7,
+  };
+
+  drawShadow(pose);
+  if (pose.sideView) {
+    drawSideLegs(pose);
+    drawTorso(pose);
+    drawSideArms(pose);
   } else {
-    rect(ctx, cx - 7, headTop, cx + 6, headBottom, skin);
-    rect(ctx, cx - 7, headBottom - 2, cx + 6, headBottom, shade(skin, -18));
-    rect(ctx, cx - 7, headTop - 1, cx + 6, headTop + 4, hair);
-    rect(ctx, cx - 7, headTop - 1, cx - 4, oy + 15, hair);
-    rect(ctx, cx + 3, headTop - 1, cx + 6, oy + 15, hair);
-    rect(ctx, cx - 5, oy + 15, cx - 4, oy + 17, OUTLINE);
-    rect(ctx, cx + 3, oy + 15, cx + 4, oy + 17, OUTLINE);
-    rect(ctx, cx - 1, oy + 18, cx, oy + 18, shade(skin, -40));
+    drawFrontLegs(pose);
+    drawTorso(pose);
+    drawFrontArms(pose);
   }
-
-  // 대표님 표식 — 셔츠 위 흰색 브이넥 선 두 줄
-  if (direction === 'down') {
-    line(ctx, cx - 5, bodyTop + 2, cx - 1, bodyTop + 7, [232, 228, 216]);
-    line(ctx, cx + 4, bodyTop + 2, cx, bodyTop + 7, [232, 228, 216]);
-  }
+  pose.brush.rect(pose.cx - 2, oy + 20, pose.cx + 1, oy + 23, shade(skin, -28));
+  drawHead(pose);
+  drawCeoMark(pose);
 }
 
 const STORAGE_KEY = 'metahub-ceo-appearance';
@@ -278,7 +364,7 @@ export function buildCustomCeoSheet(
     const direction = DIRECTIONS[d];
     for (let frame = 0; frame < FRAMES; frame++) {
       cellCtx.clearRect(0, 0, CHAR_W, CHAR_H);
-      drawCharacter(cellCtx, 0, 0, shirt, hair, skin, direction, frame);
+      drawCharacter({ ctx: cellCtx, ox: 0, oy: 0, shirt, hair, skin, direction, frame });
 
       const col = d * FRAMES + frame;
       const cellX = col * frameWidth;

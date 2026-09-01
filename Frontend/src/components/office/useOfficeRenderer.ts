@@ -63,7 +63,7 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState({ current: ZOOM_DEFAULT, base: ZOOM_DEFAULT });
   const [followId, setFollowId] = useState<AgentId | null>(null);
-  const [ceoAppearance, setCeoAppearanceState] = useState<CustomAppearance>(() => loadStoredAppearance());
+  const [ceoAppearance, setCeoAppearance] = useState<CustomAppearance>(() => loadStoredAppearance());
 
   const agents = useSessionStore((s) => s.agents);
 
@@ -223,6 +223,12 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     rendererRef.current?.setAnchorTargets(anchorKey ? anchorKey.split(',') : []);
   }, [anchorKey, isLoading]);
 
+  const persistCeoAppearance = (next: CustomAppearance): void => {
+    setCeoAppearance(next);
+    saveStoredAppearance(next);
+    rendererRef.current?.setCeoAppearance(next);
+  };
+
   return {
     canvasRef,
     stageRef,
@@ -241,10 +247,6 @@ export function useOfficeRenderer(anchorIds: string[]): OfficeBinding {
     resetZoom: () => rendererRef.current?.resetZoom(),
     setMoveKey: (key, pressed) => rendererRef.current?.setMoveKey(key, pressed),
     ceoAppearance,
-    setCeoAppearance: (next) => {
-      setCeoAppearanceState(next);
-      saveStoredAppearance(next);
-      rendererRef.current?.setCeoAppearance(next);
-    },
+    setCeoAppearance: persistCeoAppearance,
   };
 }

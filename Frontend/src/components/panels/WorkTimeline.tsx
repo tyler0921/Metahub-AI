@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Agent, AgentId } from '@shared';
 import { participationReason } from '@/lib/participation-reason';
 import type { TimelineEntry } from '@/lib/timeline';
+import { toolDisplayName, toolStatusLabel } from '@/lib/tool-labels';
 import { toPlainText } from '@/lib/markdown';
 import { useSessionStore } from '@/store/session.store';
 import { ReviewCard } from './ReviewCard';
@@ -180,10 +181,8 @@ function TimelineCard({
 
   if (entry.kind === 'tool') {
     const agent = agentMap.get(entry.agent);
-    const toolName =
-      entry.tool === 'vault' ? 'Vault' : entry.tool === 'web-search' ? '웹 검색' : '파일 작성';
-    const statusText =
-      entry.status === 'failed' ? '실패' : entry.status === 'completed' ? '완료' : '시작';
+    const toolName = toolDisplayName(entry.tool);
+    const statusText = toolStatusLabel(entry.status);
 
     return (
       <article className={`${styles.card} ${styles.tool}`}>

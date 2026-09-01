@@ -2,9 +2,9 @@ import { HAIR_SWATCHES, SKIN_SWATCHES, type CustomAppearance } from './custom-ch
 import styles from './CharacterCustomizer.module.css';
 
 interface CharacterCustomizerProps {
-  appearance: CustomAppearance;
-  onChange: (next: CustomAppearance) => void;
-  onClose: () => void;
+  readonly appearance: CustomAppearance;
+  readonly onChange: (next: CustomAppearance) => void;
+  readonly onClose: () => void;
 }
 
 /**
@@ -15,7 +15,7 @@ export function CharacterCustomizer({
   appearance,
   onChange,
   onClose,
-}: CharacterCustomizerProps): React.JSX.Element {
+}: Readonly<CharacterCustomizerProps>): React.JSX.Element {
   return (
     <section className={styles.panel} aria-label="대표님 외형 설정">
       <header className={styles.header}>

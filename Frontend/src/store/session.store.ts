@@ -12,6 +12,7 @@ import type {
   WorkPlan,
 } from '@shared';
 import type { ReviewAttempt, TimelineEntry, UsageSlice } from '@/lib/timeline';
+import { toolDisplayName, toolStatusLabel } from '@/lib/tool-labels';
 import { create } from 'zustand';
 
 /**
@@ -482,14 +483,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             activeTools.delete(event.agent);
           }
 
-          const toolLabel =
-            event.tool === 'vault' ? 'Vault' : event.tool === 'web-search' ? '웹 검색' : '파일 작성';
-          const statusLabel =
-            event.status === 'started'
-              ? '시작'
-              : event.status === 'failed'
-                ? '실패'
-                : '완료';
+          const toolLabel = toolDisplayName(event.tool);
+          const statusLabel = toolStatusLabel(event.status);
 
           return {
             activeTools,

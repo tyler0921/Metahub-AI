@@ -122,6 +122,21 @@ const WANDER_MAX_MS = 55_000;
 
 type Facing = 'down' | 'left' | 'right' | 'up';
 
+function facingFromDelta(dx: number, dy: number): Facing {
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0) return 'right';
+    return 'left';
+  }
+  if (dy > 0) return 'down';
+  return 'up';
+}
+
+const TOOL_BADGE: Record<ToolKind, { label: string; color: string }> = {
+  vault: { label: 'V', color: '#8b7355' },
+  'web-search': { label: 'S', color: '#4a90e2' },
+  'file-write': { label: 'F', color: '#3f857d' },
+};
+
 interface Actor {
   id: string;
   sprite: string;
@@ -338,7 +353,7 @@ export class OfficeRenderer {
   }
 
   resetZoom(): void {
-    this.setZoom(this.baseZoom);
+    this.setZoomTarget(this.baseZoom);
   }
 
   /** 터치 컨트롤도 키보드와 같은 이동 상태를 사용합니다. */
@@ -357,11 +372,11 @@ export class OfficeRenderer {
   private adjustZoomPercent(deltaPercent: number): void {
     const currentPercent = Math.round((this.zoomTarget / this.baseZoom) * 100);
     const nextPercent = currentPercent + deltaPercent;
-    this.setZoom((nextPercent / 100) * this.baseZoom);
+    this.setZoomTarget((nextPercent / 100) * this.baseZoom);
   }
 
   /** 목표 배율을 설정합니다. 실제 `zoom` 값은 매 프레임 이 목표로 지수 감쇠하며 다가갑니다. */
-  setZoom(next: number): void {
+  setZoomTarget(next: number): void {
     this.zoomTarget = clamp(next, this.minZoom, ZOOM_MAX);
   }
 
@@ -461,7 +476,7 @@ export class OfficeRenderer {
     if (!a || !b) return;
     const dx = b.x - a.x;
     const dy = b.y - a.y;
-    a.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    a.facing = facingFromDelta(dx, dy);
   }
 
   resetAll(seats: Map<AgentId, { x: number; y: number }>): void {
@@ -714,9 +729,7 @@ export class OfficeRenderer {
     if (this.canStand(actor.x, ny)) actor.y = ny;
     else actor.vy = 0;
 
-    actor.facing = Math.abs(actor.vx) > Math.abs(actor.vy)
-      ? (actor.vx > 0 ? 'right' : 'left')
-      : actor.vy > 0 ? 'down' : 'up';
+    actor.facing = facingFromDelta(actor.vx, actor.vy);
     actor.moving = true;
     actor.distance += speed * step;
   }
@@ -744,7 +757,7 @@ export class OfficeRenderer {
       actor.distance += step;
     }
 
-    actor.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    actor.facing = facingFromDelta(dx, dy);
     actor.moving = true;
   }
 
@@ -868,7 +881,8 @@ export class OfficeRenderer {
     }
     void request(agentA, agentB).then((lines) => {
       const conversation = this.ambientConversation;
-      if (!conversation || conversation.a !== agentA || conversation.b !== agentB) return;
+      if (conversation?.a !== agentA || conversation?.b !== agentB) return;
+      if (!conversation) return;
       if (!lines) {
         this.finishAmbientConversation();
         return;
@@ -1589,17 +1603,16 @@ export class OfficeRenderer {
   private drawToolBadge(cx: number, topY: number, tool: ToolKind): void {
     const { ctx } = this;
     const y = topY - 28;
-    const label = tool === 'vault' ? 'V' : tool === 'web-search' ? 'S' : 'F';
-    const color = tool === 'vault' ? '#8b7355' : tool === 'web-search' ? '#4a90e2' : '#3f857d';
+    const badge = TOOL_BADGE[tool];
 
     ctx.save();
-    ctx.fillStyle = color;
+    ctx.fillStyle = badge.color;
     roundRect(ctx, cx - 8, y - 8, 16, 14, 4);
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.font = '700 9px "Pretendard Variable", Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(label, cx, y + 2);
+    ctx.fillText(badge.label, cx, y + 2);
     ctx.restore();
   }
 
