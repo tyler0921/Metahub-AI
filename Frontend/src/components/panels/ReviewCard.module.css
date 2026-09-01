@@ -69,11 +69,9 @@
 }
 
 .eyebrow {
-  display: block;
+  composes: eyebrow from '../../styles/shared.module.css';
   margin-bottom: 4px;
-  color: var(--dim);
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.04em;
 }
 

@@ -2,11 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Markdown } from '@/components/common/Markdown';
 import { ReviewCard } from '@/components/panels/ReviewCard';
 import { API_BASE_URL } from '@/config/env';
+import { formatBytes } from '@/lib/format-bytes';
 import { useSessionStore } from '@/store/session.store';
 import styles from './DeliverableFocus.module.css';
-
-const formatBytes = (bytes: number): string =>
-  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 
 /**
  * 산출물 집중 모드.

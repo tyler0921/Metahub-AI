@@ -22,17 +22,40 @@ const ENTITIES: Record<string, string> = {
   nbsp: ' ',
 };
 
+function codePointFromEntity(raw: string, radix: number): string | null {
+  const point = Number.parseInt(raw, radix);
+  if (!Number.isInteger(point) || point < 0 || point > 0x10_ffff) return null;
+  return String.fromCodePoint(point);
+}
+
 function decodeEntities(text: string): string {
   return text.replace(/&([a-zA-Z]+|#x?[0-9a-fA-F]+);/g, (match, code: string) => {
     if (ENTITIES[code]) return ENTITIES[code];
-    if (code.startsWith('#x')) return String.fromCharCode(parseInt(code.slice(2), 16));
-    if (code.startsWith('#')) return String.fromCharCode(parseInt(code.slice(1), 10));
+    if (code.startsWith('#x')) return codePointFromEntity(code.slice(2), 16) ?? match;
+    if (code.startsWith('#')) return codePointFromEntity(code.slice(1), 10) ?? match;
     return match;
   });
 }
 
+/** 닫히지 않은 태그는 그대로 남기고, 닫힌 태그만 선형 시간에 걷어냅니다 */
 function stripTags(html: string): string {
-  return decodeEntities(html.replace(/<[^>]+>/g, '')).trim();
+  let result = '';
+  let cursor = 0;
+  while (cursor < html.length) {
+    const open = html.indexOf('<', cursor);
+    if (open === -1) {
+      result += html.slice(cursor);
+      break;
+    }
+    result += html.slice(cursor, open);
+    const close = html.indexOf('>', open + 1);
+    if (close === -1) {
+      result += html.slice(open);
+      break;
+    }
+    cursor = close + 1;
+  }
+  return decodeEntities(result).trim();
 }
 
 /** DuckDuckGo 는 실제 URL 을 `//duckduckgo.com/l/?uddg=<encoded>&...` 로 감싸서 줍니다 */

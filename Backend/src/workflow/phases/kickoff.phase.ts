@@ -23,6 +23,12 @@ import {
  */
 const MAX_ASSIGNMENTS = 4;
 
+function defaultDeliverable(kind: DeliverableKind): string {
+  if (kind === 'website') return '웹페이지';
+  if (kind === 'slides') return '발표자료';
+  return '보고서';
+}
+
 /** 컨텍스트가 무한정 길어지지 않게 자릅니다 */
 function truncate(text: string, limit: number): string {
   return text.length <= limit
@@ -278,9 +284,7 @@ export class KickoffPhase implements WorkflowPhase {
     return {
       goal: raw.goal?.trim() || '대표 지시 이행',
       successCriteria: (raw.successCriteria ?? []).filter(Boolean),
-      deliverable:
-        raw.deliverable?.trim() ||
-        (kind === 'website' ? '웹페이지' : kind === 'slides' ? '발표자료' : '보고서'),
+      deliverable: raw.deliverable?.trim() || defaultDeliverable(kind),
       kind,
       assignments,
     };

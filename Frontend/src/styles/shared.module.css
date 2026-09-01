@@ -1,0 +1,18 @@
+/* 여러 패널이 함께 쓰는 CSS Modules 조각. `composes`로 가져다 쓰고,
+   크기·간격처럼 컴포넌트마다 다른 값만 각자 파일에 남깁니다. */
+
+.eyebrow {
+  display: block;
+  color: var(--dim);
+  font-weight: 700;
+}
+
+.statusBadge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--status-color);
+  color: var(--status-color);
+  font-weight: 700;
+}

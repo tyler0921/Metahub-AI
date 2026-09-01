@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 import type { AutonomousWorkConfig } from '../config/configuration';
+import { readJsonFileOrDefault, writeJsonFileAtomic } from '../common/utils/json-file-store';
 
 export interface AutonomousWorkState {
   version: 1;
@@ -101,28 +100,20 @@ export class AutonomousStateStore {
   }
 
   private load(): AutonomousWorkState {
-    try {
-      const parsed = JSON.parse(readFileSync(this.path, 'utf8')) as Partial<AutonomousWorkState>;
-      if (parsed.version !== 1 || typeof parsed.dayKey !== 'string') return freshState();
-      return {
-        ...freshState(),
-        ...parsed,
-        recentBriefs: Array.isArray(parsed.recentBriefs)
-          ? parsed.recentBriefs.filter((brief): brief is string => typeof brief === 'string').slice(0, 6)
-          : [],
-      };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        this.logger.warn(`자율 업무 상태 파일을 읽지 못해 초기화합니다: ${String(error)}`);
-      }
-      return freshState();
-    }
+    const parsed = readJsonFileOrDefault<Partial<AutonomousWorkState>>(this.path, {}, (error) =>
+      this.logger.warn(`자율 업무 상태 파일을 읽지 못해 초기화합니다: ${String(error)}`),
+    );
+    if (parsed.version !== 1 || typeof parsed.dayKey !== 'string') return freshState();
+    return {
+      ...freshState(),
+      ...parsed,
+      recentBriefs: Array.isArray(parsed.recentBriefs)
+        ? parsed.recentBriefs.filter((brief): brief is string => typeof brief === 'string').slice(0, 6)
+        : [],
+    };
   }
 
   private save(): void {
-    mkdirSync(dirname(this.path), { recursive: true });
-    const tempPath = `${this.path}.tmp`;
-    writeFileSync(tempPath, `${JSON.stringify(this.state, null, 2)}\n`, 'utf8');
-    renameSync(tempPath, this.path);
+    writeJsonFileAtomic(this.path, this.state);
   }
 }

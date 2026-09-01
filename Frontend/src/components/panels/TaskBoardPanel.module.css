@@ -12,11 +12,9 @@
 }
 
 .eyebrow {
-  display: block;
+  composes: eyebrow from '../../styles/shared.module.css';
   margin-bottom: 7px;
-  color: var(--dim);
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.06em;
 }
 
@@ -72,17 +70,11 @@
 }
 
 .badge {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
+  composes: statusBadge from '../../styles/shared.module.css';
   width: 24px;
   height: 24px;
-  border: 1px solid var(--status-color);
   border-radius: 7px;
-  color: var(--status-color);
   font-size: 10.5px;
-  font-weight: 700;
 }
 
 .dept {
