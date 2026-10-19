@@ -1,4 +1,19 @@
+/*
+ * HUD 배치 규칙 — 오버레이는 네 영역에 하나씩만 둡니다.
+ *
+ *   좌상: 현재 공간 카드        중상: .topCenter (회의·추적·안내)     우측: 활동 패널
+ *   좌하: 직원 카드 · 줌         중하: .bottomDock (공간 액션·메뉴)    우하: 미니맵
+ *
+ * 맵은 세로 가운데 정렬이라 위·아래에 레터박스가 생깁니다. 좌상·중상 HUD 는
+ * 그 띠 안에 들어가도록 top 을 작게 잡았습니다.
+ * --dock-bottom 은 지시 콘솔 바로 위 높이 — 콘솔이 펼쳐지면 .consoleOpen 이 올립니다.
+ */
 .stage {
+  --hud-inset: 14px;
+  --dock-bottom: 86px;
+  /* 공간 메뉴 높이(56px) + 간격 — 메뉴 위에 뜨는 것들의 바닥 */
+  --above-dock: calc(var(--dock-bottom) + 66px);
+
   position: relative;
   flex: 1;
   min-width: 0;
@@ -8,6 +23,10 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+.consoleOpen {
+  --dock-bottom: 172px;
 }
 
 .canvas {
@@ -52,29 +71,38 @@
  * 절대 부딪히지 않게 합니다. 콘솔이 펼쳐지면 그만큼 위로 밀려 올라갑니다
  * (consoleExpanded → .spaceRailRaised).
  */
-.spaceRail {
+.bottomDock {
   position: absolute;
+  bottom: var(--dock-bottom);
   left: 50%;
-  bottom: 86px;
   z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  max-width: calc(100% - 24px);
+  transform: translateX(-50%);
+  transition: bottom 0.2s ease;
+  pointer-events: none;
+}
+
+.bottomDock > * {
+  pointer-events: auto;
+}
+
+.spaceRail {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
   width: max-content;
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   padding: 8px;
   border: 1px solid var(--line-dark);
   border-radius: var(--radius-pill);
   background: var(--panel-dark);
   box-shadow: var(--shadow-lg);
   backdrop-filter: var(--blur);
-  transform: translateX(-50%);
-  transition: bottom 0.2s ease;
-}
-
-.spaceRailRaised {
-  bottom: 150px;
 }
 
 .railLogo {
@@ -247,12 +275,40 @@
   pointer-events: auto;
 }
 
-/* 클릭-추적(Follow) 모드 — 카메라가 지목한 직원을 계속 비추는 동안 뜹니다 */
-.followChip {
+.topCenter {
   position: absolute;
-  top: 20px;
+  top: var(--hud-inset);
   left: 50%;
   z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: min(520px, calc(100% - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.topCenter > * {
+  pointer-events: auto;
+}
+
+/*
+ * 좌상 카드(약 334px)와 우측 패널(약 352px) 사이에 520px 스택이 가운데로 들어가려면
+ * 1260px 이상이 필요합니다. 그보다 좁으면 카드 아래 왼쪽으로 내려 패널을 피합니다.
+ */
+@media (900px < width < 1260px) {
+  .topCenter {
+    top: 96px;
+    left: var(--hud-inset);
+    align-items: flex-start;
+    width: min(520px, calc(100% - 400px));
+    transform: none;
+  }
+}
+
+/* 클릭-추적(Follow) 모드 — 카메라가 지목한 직원을 계속 비추는 동안 뜹니다 */
+.followChip {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -264,7 +320,6 @@
   font-size: var(--fs-sm);
   box-shadow: var(--shadow-lg);
   backdrop-filter: var(--blur);
-  transform: translateX(-50%);
   animation: guideIn 0.2s ease-out;
 }
 
@@ -301,21 +356,16 @@
 }
 
 .guide {
-  position: absolute;
-  top: 82px;
-  left: 50%;
-  z-index: 9;
   display: flex;
   gap: 12px;
   align-items: center;
-  width: min(520px, calc(100% - 32px));
+  width: 100%;
   padding: 14px 15px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
   color: var(--text);
   box-shadow: var(--shadow-lg);
-  transform: translateX(-50%);
   animation: guideIn 0.28s ease-out;
 }
 
@@ -360,7 +410,7 @@
 @keyframes guideIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px) scale(0.97);
+    transform: translateY(-6px) scale(0.97);
   }
 }
 
@@ -370,9 +420,10 @@
 
 .sidebarDock {
   position: absolute;
-  top: 82px;
+  top: var(--hud-inset);
   right: 0;
-  bottom: 160px;
+  /* 미니맵(약 130px) 위까지 */
+  bottom: 156px;
   z-index: 6;
   display: flex;
   flex-direction: column;
@@ -394,15 +445,22 @@
 }
 
 @media (width <= 900px) {
+  /* 바텀시트 — 공간 메뉴 바로 위에 붙습니다 */
   .sidebarDock {
     top: auto;
     right: 8px;
-    bottom: 72px;
+    bottom: var(--above-dock);
     left: 8px;
     width: auto;
     min-width: 0;
     max-width: none;
-    max-height: 48vh;
+    max-height: 52vh;
+    padding-right: 0;
+  }
+
+  /* 닫혀 있을 때는 런처만 — 왼쪽 방향키와 부딪히지 않게 오른쪽에 둡니다 */
+  .sidebarDock:has(button[aria-label='활동 패널 열기']) {
+    left: auto;
   }
 }
 
@@ -439,39 +497,8 @@
   color: var(--text);
 }
 
-.helpChip {
-  position: absolute;
-  right: 14px;
-  bottom: 151px;
-  z-index: 5;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--dim);
-  font-size: var(--fs-xs);
-  box-shadow: var(--shadow);
-  pointer-events: none;
-}
-
-.helpChip kbd {
-  padding: 2px 6px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--accent-soft);
-  color: var(--text);
-  font: inherit;
-  font-weight: 800;
-}
 
 .zoneAction {
-  position: absolute;
-  bottom: 150px;
-  left: 50%;
-  z-index: 5;
   display: flex;
   gap: 9px;
   align-items: center;
@@ -484,7 +511,6 @@
   text-align: left;
   cursor: pointer;
   box-shadow: var(--shadow);
-  transform: translateX(-50%);
   animation: actionIn 0.18s ease-out;
 }
 
@@ -523,33 +549,73 @@
 @keyframes actionIn {
   from {
     opacity: 0;
-    transform: translate(-50%, 6px);
+    transform: translateY(6px);
   }
 }
 
 @media (width <= 900px) {
+  /* 좁은 화면 레이아웃: 메뉴는 콘솔 위 전폭 탭바, 줌은 우상단, 방향키는 메뉴 위 */
+  .stage {
+    --hud-inset: 8px;
+    --dock-bottom: 74px;
+    --above-dock: calc(var(--dock-bottom) + 60px);
+  }
+
+  .consoleOpen {
+    --dock-bottom: 158px;
+  }
+
+  .bottomDock {
+    width: calc(100% - 16px);
+    max-width: none;
+  }
+
+  .spaceRail {
+    justify-content: space-between;
+    width: 100%;
+    padding: 4px 6px;
+  }
+
+  .railLogo {
+    display: none;
+  }
+
+  .spaceRail button {
+    width: 36px;
+    height: 36px;
+    font-size: var(--fs-lg);
+  }
+
+  /* 좌상단 공간 카드 아래로 내려 겹치지 않게 합니다 */
+  .topCenter {
+    top: 88px;
+    width: calc(100% - 16px);
+  }
+
   .zoomControls {
-    top: auto;
-    bottom: 8px;
-    left: 8px;
+    top: var(--hud-inset);
+    right: 8px;
+    bottom: auto;
+    left: auto;
+  }
+
+  .zoomLabel {
+    display: none;
+  }
+
+  /* 활동 패널을 열면 방향키는 접습니다 — 시트가 그 자리를 씁니다 */
+  .stage:has(aside[data-drawer='open']) .touchControls {
+    display: none;
   }
 
   .guide {
     padding: 12px;
   }
 
-  .helpChip {
-    display: none;
-  }
-
-  .zoneAction {
-    bottom: 68px;
-  }
-
   .touchControls {
     position: absolute;
-    bottom: 78px;
-    left: 12px;
+    bottom: var(--above-dock);
+    left: 8px;
     z-index: 7;
     display: grid;
     grid-template-columns: repeat(3, 42px);

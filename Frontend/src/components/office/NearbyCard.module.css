@@ -1,7 +1,8 @@
 .card {
   position: absolute;
-  bottom: 150px;
-  left: 84px;
+  /* 좌하단 — 줌 컨트롤(약 64px) 바로 위 */
+  bottom: 76px;
+  left: 14px;
   z-index: 8;
   width: min(268px, calc(100% - 36px));
   padding: 14px;
@@ -203,7 +204,7 @@
 
 @media (width <= 640px) {
   .card {
-    bottom: 70px;
+    bottom: var(--above-dock, 134px);
     left: 8px;
     width: min(268px, calc(100% - 16px));
   }

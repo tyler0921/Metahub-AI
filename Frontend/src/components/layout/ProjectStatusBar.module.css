@@ -240,7 +240,8 @@
 }
 
 @media (width <= 560px) {
-  .autonomousControls {
+  /* 업무함은 남깁니다 — 자율 업무를 승인할 길이 여기뿐입니다 */
+  .autonomousToggle small {
     display: none;
   }
 }

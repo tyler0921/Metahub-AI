@@ -1,8 +1,5 @@
+/* 위치는 OfficeCanvas 의 .topCenter 스택이 정합니다 */
 .badge {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  z-index: 6;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -13,7 +10,6 @@
   background: rgb(24 31 42 / 88%);
   color: var(--text-on-dark);
   box-shadow: var(--shadow);
-  transform: translateX(-50%);
   animation: badgeIn 0.22s ease-out;
 }
 
@@ -78,7 +74,7 @@
 @keyframes badgeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translateY(-6px);
   }
 }
 
@@ -90,7 +86,6 @@
 
 @media (width <= 900px) {
   .badge {
-    top: 58px;
-    max-width: calc(100% - 96px);
+    max-width: 100%;
   }
 }

@@ -181,10 +181,11 @@ export function OfficeCanvas({
   };
 
   return (
-    <div className={styles.stage} ref={stageRef}>
+    <div
+      className={`${styles.stage} ${consoleExpanded ? styles.consoleOpen : ''}`}
+      ref={stageRef}
+    >
       <canvas ref={canvasRef} className={styles.canvas} />
-
-      <MeetingRoomBadge />
 
       <ConversationFlow
         speeches={activeSpeeches}
@@ -233,81 +234,92 @@ export function OfficeCanvas({
         />
       )}
 
-      {!nearby && zoneAction && (
-        <button type="button" className={styles.zoneAction} onClick={runZoneAction}>
-          <kbd>F</kbd>
-          <span>
-            <b>{zoneAction.label}</b>
-            {zoneAction.hint}
-          </span>
-        </button>
-      )}
+      {/*
+        화면 위 가운데 — 잠깐 떴다 사라지는 알림들을 한 줄로 쌓습니다.
+        각자 절대 위치를 가지면 회의·추적·안내가 동시에 뜰 때 서로 덮습니다.
+      */}
+      <div className={styles.topCenter}>
+        <MeetingRoomBadge />
 
-      {followedAgent && (
-        <div className={styles.followChip} role="status">
-          <span className={styles.followDot} aria-hidden="true" />
-          <span><b>{followedAgent.name}</b> 따라가는 중</span>
-          <button type="button" onClick={stopFollow}>그만 보기</button>
-        </div>
-      )}
-
-      {showGuide && !isLoading && !error && (
-        <section className={styles.guide} aria-label="오피스 이동 안내">
-          <div>
-            <strong>MetaHub 오피스에 오신 것을 환영합니다</strong>
-            <p><kbd>WASD</kbd> 또는 바닥 더블클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
+        {followedAgent && (
+          <div className={styles.followChip} role="status">
+            <span className={styles.followDot} aria-hidden="true" />
+            <span><b>{followedAgent.name}</b> 따라가는 중</span>
+            <button type="button" onClick={stopFollow}>그만 보기</button>
           </div>
-          <button type="button" onClick={dismissGuide} aria-label="안내 닫기">
-            <span aria-hidden="true">×</span>
-          </button>
-        </section>
-      )}
+        )}
 
-      <nav
-        className={`${styles.spaceRail} ${consoleExpanded ? styles.spaceRailRaised : ''}`}
-        aria-label="공간 메뉴"
-      >
-        <div className={styles.railLogo} aria-label="MetaHub AI">M</div>
-        <div className={styles.railGroup}>
-          <button type="button" className={styles.railActive} aria-label="오피스 보기" data-label="오피스" onClick={resetZoom}>
-            <span aria-hidden="true">⌂</span>
-          </button>
-          <button type="button" aria-label="업무 열기" data-label="업무" onClick={() => openPanel('tasks')}>
-            <span aria-hidden="true">◰</span>
-          </button>
-          <button type="button" aria-label="대화 열기" data-label="대화" onClick={() => openPanel('log')}>
-            <span aria-hidden="true">◌</span>
-          </button>
-          <button type="button" aria-label="산출물 열기" data-label="산출물" onClick={() => openPanel('result')}>
-            <span aria-hidden="true">▤</span>
-          </button>
-          <button type="button" aria-label="볼트 열기" data-label="볼트" onClick={() => openPanel('vault')}>
-            <span aria-hidden="true">◇</span>
-          </button>
-        </div>
-        <div className={styles.railBottom}>
-          {/* TopBar 를 없애면서 실행 환경 표시가 여기로 내려왔습니다 */}
-          {config && (
-            <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
-              <span>{config.provider}</span>
-              <span className={styles.railMetaModel}>
-                {config.provider === 'mock' ? '체험 모드' : config.model}
-              </span>
+        {showGuide && !isLoading && !error && (
+          <section className={styles.guide} aria-label="오피스 이동 안내">
+            <div>
+              <strong>MetaHub 오피스에 오신 것을 환영합니다</strong>
+              <p><kbd>WASD</kbd> 또는 바닥 더블클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
             </div>
-          )}
-          <button
-            type="button"
-            aria-label="외형 설정"
-            data-label="외형"
-            onClick={() => setCustomizerOpen((open) => !open)}
-          >
-            <span aria-hidden="true">👤</span>
+            <button type="button" onClick={dismissGuide} aria-label="안내 닫기">
+              <span aria-hidden="true">×</span>
+            </button>
+          </section>
+        )}
+      </div>
+
+      {/*
+        화면 아래 가운데 — 공간 액션과 메뉴를 지시 콘솔 바로 위에 쌓습니다.
+        콘솔이 펼쳐지면 .consoleOpen 이 --dock-bottom 을 올려 함께 밀려 올라갑니다.
+      */}
+      <div className={styles.bottomDock}>
+        {!nearby && zoneAction && (
+          <button type="button" className={styles.zoneAction} onClick={runZoneAction}>
+            <kbd>F</kbd>
+            <span>
+              <b>{zoneAction.label}</b>
+              {zoneAction.hint}
+            </span>
           </button>
-          <button type="button" aria-label="이동 도움말" data-label="도움말" onClick={() => setShowGuide(true)}>
-            <span aria-hidden="true">?</span>
-          </button>
-        </div>
-      </nav>
+        )}
+
+        <nav className={styles.spaceRail} aria-label="공간 메뉴">
+          <div className={styles.railLogo} aria-label="MetaHub AI">M</div>
+          <div className={styles.railGroup}>
+            <button type="button" className={styles.railActive} aria-label="오피스 보기" data-label="오피스" onClick={resetZoom}>
+              <span aria-hidden="true">⌂</span>
+            </button>
+            <button type="button" aria-label="업무 열기" data-label="업무" onClick={() => openPanel('tasks')}>
+              <span aria-hidden="true">◰</span>
+            </button>
+            <button type="button" aria-label="대화 열기" data-label="대화" onClick={() => openPanel('log')}>
+              <span aria-hidden="true">◌</span>
+            </button>
+            <button type="button" aria-label="산출물 열기" data-label="산출물" onClick={() => openPanel('result')}>
+              <span aria-hidden="true">▤</span>
+            </button>
+            <button type="button" aria-label="볼트 열기" data-label="볼트" onClick={() => openPanel('vault')}>
+              <span aria-hidden="true">◇</span>
+            </button>
+          </div>
+          <div className={styles.railBottom}>
+            {/* TopBar 를 없애면서 실행 환경 표시가 여기로 내려왔습니다 */}
+            {config && (
+              <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
+                <span>{config.provider}</span>
+                <span className={styles.railMetaModel}>
+                  {config.provider === 'mock' ? '체험 모드' : config.model}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="외형 설정"
+              data-label="외형"
+              onClick={() => setCustomizerOpen((open) => !open)}
+            >
+              <span aria-hidden="true">👤</span>
+            </button>
+            <button type="button" aria-label="이동 도움말" data-label="도움말" onClick={() => setShowGuide(true)}>
+              <span aria-hidden="true">?</span>
+            </button>
+          </div>
+        </nav>
+      </div>
 
       {customizerOpen && (
         <CharacterCustomizer
@@ -392,10 +404,6 @@ export function OfficeCanvas({
           openTab={panelRequest.tab}
           openRequestId={panelRequest.id}
         />
-      </div>
-
-      <div className={styles.helpChip} aria-hidden="true">
-        <kbd>WASD</kbd><span>이동</span><kbd>더블클릭</kbd><span>목적지 이동</span><kbd>F</kbd><span>상호작용</span>
       </div>
     </div>
   );

@@ -112,7 +112,7 @@ export function WorkspaceSidebar({
   }
 
   return (
-    <aside className={`${styles.drawer} sidebar`} aria-label="활동 패널">
+    <aside className={`${styles.drawer} sidebar`} aria-label="활동 패널" data-drawer="open">
       <header className={styles.drawerHeader}>
         <div>
           <span className={styles.eyebrow}>PEOPLE & WORK</span>
