@@ -36,14 +36,14 @@
 
 .copy strong {
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .copy small {
   color: var(--dim-on-dark);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
 }
 
 .stack {
@@ -64,7 +64,7 @@
   border-radius: 6px;
   background: rgb(255 255 255 / 10%);
   color: var(--text-on-dark);
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-style: normal;
   font-weight: 700;
 }
@@ -72,7 +72,7 @@
 .stack b {
   min-width: 18px;
   color: var(--dim-on-dark);
-  font-size: 8px;
+  font-size: var(--fs-xs);
 }
 
 @keyframes badgeIn {

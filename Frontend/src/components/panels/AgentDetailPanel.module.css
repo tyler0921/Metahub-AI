@@ -11,7 +11,7 @@
   background: transparent;
   color: var(--dim);
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -30,7 +30,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .headText {
@@ -39,7 +39,7 @@
 
 .name {
   display: block;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 
 .meta {
@@ -48,7 +48,7 @@
   align-items: center;
   margin-top: 3px;
   color: var(--dim);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
 }
 
 .meta i {
@@ -62,13 +62,13 @@
   margin: 0;
   padding: 6px 9px;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 650;
 }
 
 .chipOn {
   background: rgb(79 168 120 / 14%);
-  color: var(--st-done);
+  color: var(--st-done-text);
 }
 
 .chipOff {
@@ -79,19 +79,19 @@
 .eyebrow {
   composes: eyebrow from '../../styles/shared.module.css';
   margin-bottom: 6px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
 }
 
 .block p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
 }
 
 .aside {
   color: var(--dim);
-  font-size: 11.5px !important;
+  font-size: var(--fs-sm) !important;
 }
 
 .block p + .aside {
@@ -118,7 +118,7 @@
   display: block;
   margin-bottom: 4px;
   color: var(--dim);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -126,7 +126,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   /* 발언 하나가 초안 전문일 수 있어 목록에서는 잘라 둡니다 */
   display: -webkit-box;
@@ -147,7 +147,7 @@
   background: var(--panel-solid);
   color: var(--text-2);
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;

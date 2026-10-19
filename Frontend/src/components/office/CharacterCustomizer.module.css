@@ -30,7 +30,7 @@
 }
 
 .header strong {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text);
 }
 
@@ -62,7 +62,7 @@
   flex-shrink: 0;
   width: 34px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 

@@ -63,7 +63,7 @@ export function OfficeMinimap({
       ctx.fill();
 
       if (pos.isPlayer) {
-        ctx.strokeStyle = '#6c63ff';
+        ctx.strokeStyle = '#5a50e6';
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }

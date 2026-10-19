@@ -87,7 +87,7 @@
   border-radius: 50%;
   background: var(--accent);
   color: var(--text-on-dark);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
 }
 
@@ -111,7 +111,7 @@
   gap: 1px;
   padding: 0 2px;
   color: var(--dim-on-dark);
-  font-size: 9px;
+  font-size: var(--fs-xs);
   line-height: 1.3;
   text-align: left;
   white-space: nowrap;
@@ -135,7 +135,7 @@
   background: transparent;
   color: var(--dim-on-dark);
   font: inherit;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   cursor: pointer;
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
@@ -159,7 +159,7 @@
   border-radius: 7px;
   background: #181f2a;
   color: var(--text-on-dark);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
   opacity: 0;
@@ -206,12 +206,12 @@
   justify-content: center;
   background: rgb(252 253 254 / 92%);
   color: var(--dim);
-  font-size: 13px;
+  font-size: var(--fs-md);
   text-align: center;
 }
 
 .overlay b {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .overlay pre {
@@ -221,12 +221,12 @@
   border-radius: 6px;
   background: var(--accent-soft);
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .overlay span {
   max-width: 70%;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   opacity: 0.7;
 }
 
@@ -261,7 +261,7 @@
   border-radius: var(--radius-pill);
   background: var(--panel-dark);
   color: var(--text-on-dark);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   box-shadow: var(--shadow-lg);
   backdrop-filter: var(--blur);
   transform: translateX(-50%);
@@ -326,13 +326,13 @@
 
 .guide strong {
   display: block;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .guide p {
   margin: 5px 0 0;
   color: var(--dim);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   line-height: 1.55;
 }
 
@@ -419,7 +419,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
 }
 
@@ -430,7 +430,7 @@
 .zoomLabel {
   min-width: 44px;
   padding: 0 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--dim);
 }
@@ -452,7 +452,7 @@
   border-radius: 10px;
   background: var(--panel);
   color: var(--dim);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   box-shadow: var(--shadow);
   pointer-events: none;
 }
@@ -512,12 +512,12 @@
   flex-direction: column;
   gap: 1px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .zoneAction b {
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 @keyframes actionIn {
@@ -564,7 +564,7 @@
     background: rgb(20 27 37 / 88%);
     color: var(--text-on-dark);
     font: inherit;
-    font-size: 17px;
+    font-size: var(--fs-xl);
     box-shadow: var(--shadow);
     user-select: none;
   }

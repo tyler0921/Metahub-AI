@@ -21,13 +21,17 @@
   --line-dark:     rgb(255 255 255 / 12%);
   --text:          #202631;
   --text-2:        #4a5361;
-  --dim:           #8a9099;
+  /* 보조 글자 — 아이보리 세 표면(panel·panel-solid·accent-soft) 모두에서 4.5:1 이상 */
+  --dim:           #5f6670;
   --text-on-dark:  #f4f2ec;
   --dim-on-dark:   rgb(244 242 236 / 62%);
 
-  /* 액센트 — 딱 하나 */
-  --accent:        #6c63ff;
-  --accent-strong: #574fd6;
+  /*
+   * 액센트 — 딱 하나.
+   * 아이보리 위 글자로도, 밝은 글자를 얹은 버튼 바탕으로도 4.5:1 을 넘기는 명도입니다.
+   */
+  --accent:        #5a50e6;
+  --accent-strong: #4a41c4;
   /* 이름과 달리 액센트 색조가 아니라 "한 단계 눌린 표면"입니다 */
   --accent-soft:   #ece9e1;
 
@@ -39,6 +43,25 @@
   --danger:   #d95c5c;
   /* 같은 색상, 어두운 표면에서 읽히는 명도 — 새 색이 아니라 대비 짝입니다 */
   --danger-on-dark: #e88a8a;
+  /*
+   * 상태색을 아이보리 위 "글자"로 쓸 때의 대비 짝. 원래 상태색은 점·막대·테두리에만 씁니다.
+   * 노랑·초록은 밝아서 글자로는 2:1 도 안 나옵니다.
+   */
+  --st-work-text: #8a5a00;
+  --st-talk-text: #2a66aa;
+  --st-done-text: #2a724c;
+  --danger-text:  #ad3f3f;
+
+  /*
+   * 글자 크기 6단계. 11px 미만은 쓰지 않습니다.
+   * 새 크기가 필요해 보이면 굵기·색으로 위계를 먼저 만들어 보세요.
+   */
+  --fs-xs:  11px;   /* 배지·eyebrow·단축키 */
+  --fs-sm:  12px;   /* 메타·보조 설명 */
+  --fs-md:  13px;   /* 본문·버튼 */
+  --fs-lg:  15px;   /* 카드 제목 */
+  --fs-xl:  18px;   /* 패널 제목 */
+  --fs-2xl: 22px;   /* 화면 제목·큰 글리프 */
 
   /*
    * 그림자는 크고 흐린 것 하나만. 여러 겹을 쌓으면 아이보리가 탁해집니다.
@@ -55,7 +78,7 @@
   --panel-strong: #f7f5ef;
   --line-strong:  rgb(20 30 40 / 20%);
   --chrome-panel: #1e2531;
-  --hover-soft:   rgb(108 99 255 / 10%);
+  --hover-soft:   rgb(90 80 230 / 10%);
 
   color-scheme: light;
 

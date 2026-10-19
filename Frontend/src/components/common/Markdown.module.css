@@ -1,12 +1,12 @@
 .markdown {
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
 
 .markdown h1 {
   margin: 18px 0 10px;
-  font-size: 19px;
+  font-size: var(--fs-xl);
 }
 
 .markdown h2 {
@@ -14,20 +14,20 @@
   padding-bottom: 5px;
   border-bottom: 1px solid var(--line);
   color: var(--accent);
-  font-size: 15.5px;
+  font-size: var(--fs-lg);
 }
 
 .markdown h3 {
   margin: 14px 0 6px;
   color: var(--accent);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 
 .markdown table {
   width: 100%;
   margin: 10px 0;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .markdown th,
@@ -45,7 +45,7 @@
   padding: 1.5px 5px;
   border-radius: 4px;
   background: var(--accent-soft);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
 }
 
 .markdown blockquote {

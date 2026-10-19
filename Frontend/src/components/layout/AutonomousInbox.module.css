@@ -6,11 +6,11 @@
   width: min(430px, calc(100vw - 28px));
   max-height: calc(100vh - 64px);
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 13%);
+  border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel-strong);
   box-shadow: 0 24px 64px rgb(0 0 0 / 45%);
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .panel > header,
@@ -28,11 +28,11 @@
 }
 
 .panel > header div { display: grid; gap: 2px; }
-.panel > header strong { font-size: 14px; }
-.panel > header small { color: var(--text-muted); font-size: 10px; }
+.panel > header strong { font-size: var(--fs-lg); }
+.panel > header small { color: var(--dim); font-size: var(--fs-xs); }
 .panel button, .panel select, .panel textarea { font: inherit; }
 .panel button { cursor: pointer; }
-.panel > header button { border: 0; background: transparent; color: var(--text-muted); font-size: 22px; }
+.panel > header button { border: 0; background: transparent; color: var(--dim); font-size: var(--fs-2xl); }
 
 .composer { display: grid; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .composer textarea {
@@ -42,28 +42,28 @@
   border-radius: 10px;
   padding: 10px;
   background: var(--panel-solid);
-  color: var(--text-primary);
+  color: var(--text);
 }
 .composer > div { justify-content: space-between; gap: 8px; }
-.composer label { color: var(--text-muted); font-size: 11px; }
-.composer select { margin-left: 7px; border: 1px solid var(--line); border-radius: 7px; padding: 5px; background: var(--panel-solid); color: var(--text-primary); }
-.composer button, .panel li button { border: 1px solid rgb(108 99 255 / 38%); border-radius: 8px; padding: 6px 9px; background: rgb(108 99 255 / 18%); color: #cbc8ff; font-weight: 700; }
+.composer label { color: var(--dim); font-size: var(--fs-xs); }
+.composer select { margin-left: 7px; border: 1px solid var(--line); border-radius: 7px; padding: 5px; background: var(--panel-solid); color: var(--text); }
+.composer button, .panel li button { border: 1px solid rgb(90 80 230 / 38%); border-radius: 8px; padding: 6px 9px; background: rgb(90 80 230 / 18%); color: var(--accent-strong); font-weight: 700; }
 .panel button:disabled { cursor: default; opacity: .45; }
 
 .sections { max-height: 58vh; overflow: auto; padding: 5px 14px 14px; }
-.sections h3 { display: flex; align-items: center; gap: 6px; margin: 12px 0 7px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.sections h3 b { padding: 1px 6px; border-radius: 20px; background: rgb(255 255 255 / 7%); color: var(--text-primary); }
+.sections h3 { display: flex; align-items: center; gap: 6px; margin: 12px 0 7px; font-size: var(--fs-xs); color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+.sections h3 b { padding: 1px 6px; border-radius: 20px; background: var(--accent-soft); color: var(--text); }
 .sections ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .panel li { gap: 8px; min-height: 42px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-solid); }
-.panel li p { flex: 1; margin: 0; overflow: hidden; color: var(--text-primary); font-size: 11px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.panel li em { color: var(--st-work); font-size: 10px; font-style: normal; white-space: nowrap; }
-.priority { flex: 0 0 auto; color: #b9b4ff; font-size: 9px; font-weight: 800; }
+.panel li p { flex: 1; margin: 0; overflow: hidden; color: var(--text); font-size: var(--fs-xs); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.panel li em { color: var(--st-work-text); font-size: var(--fs-xs); font-style: normal; white-space: nowrap; }
+.priority { flex: 0 0 auto; color: var(--accent); font-size: var(--fs-xs); font-weight: 800; }
 .approval { align-items: flex-start !important; }
 .approval > div { gap: 5px; }
-.approval > div button:last-child { border-color: rgb(79 168 120 / 40%); background: rgb(79 168 120 / 16%); color: #8bd7ad; }
-.history li[data-status='rejected'] em { color: #ef8c8c; }
-.empty, .error { margin: 8px 2px; color: var(--text-muted); font-size: 11px; }
-.error { color: #ef8c8c; }
+.approval > div button:last-child { border-color: rgb(79 168 120 / 40%); background: rgb(79 168 120 / 16%); color: var(--st-done-text); }
+.history li[data-status='rejected'] em { color: var(--danger-text); }
+.empty, .error { margin: 8px 2px; color: var(--dim); font-size: var(--fs-xs); }
+.error { color: var(--danger-text); }
 
 @media (width <= 560px) {
   .panel { inset: 48px 8px auto; width: auto; max-height: calc(100vh - 56px); }

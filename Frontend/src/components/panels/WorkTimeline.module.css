@@ -1,7 +1,7 @@
 .empty {
   padding: 40px 10px;
   color: var(--dim);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   text-align: center;
 }
 
@@ -80,7 +80,7 @@
 
 .kind {
   color: var(--dim);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
 }
@@ -91,14 +91,14 @@
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
   color: var(--dim);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
 .title {
   margin: 0;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   line-height: 1.55;
 }
@@ -106,7 +106,7 @@
 .meta {
   margin: 4px 0 0;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .agentLink {
@@ -115,7 +115,7 @@
   background: none;
   color: var(--accent);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -128,7 +128,7 @@
   margin: 0;
   padding-left: 16px;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -161,12 +161,12 @@
 }
 
 .team strong {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .team span {
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -178,7 +178,7 @@
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 700;
   text-align: left;
   cursor: pointer;
@@ -198,7 +198,7 @@
   max-height: 120px;
   overflow: hidden;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -218,7 +218,7 @@
   padding-top: 20px;
   background: linear-gradient(transparent, var(--panel-solid) 55%);
   color: var(--accent);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   text-align: center;
 }
 

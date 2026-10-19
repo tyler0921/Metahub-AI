@@ -6,7 +6,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  width: 300px;
+  width: 320px;
   min-height: 70px;
   padding: 9px 10px;
   border: 1px solid var(--line);
@@ -33,12 +33,12 @@
 
 .roomIcon i {
   border-radius: 3px;
-  background: rgb(108 99 255 / 12%);
+  background: rgb(90 80 230 / 12%);
 }
 
 .roomIcon i:nth-child(2),
 .roomIcon i:nth-child(3) {
-  background: rgb(108 99 255 / 8%);
+  background: rgb(90 80 230 / 8%);
 }
 
 .roomIcon span {
@@ -50,7 +50,7 @@
   border: 2px solid var(--panel-solid);
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgb(108 99 255 / 14%);
+  box-shadow: 0 0 0 3px rgb(90 80 230 / 14%);
   transform: translate(-50%, -50%);
 }
 
@@ -63,7 +63,7 @@
 
 .roomInfo > span {
   color: var(--accent);
-  font-size: 8px;
+  font-size: var(--fs-xs);
   font-weight: 900;
   letter-spacing: 0.55px;
 }
@@ -71,7 +71,7 @@
 .roomInfo strong {
   margin: 1px 0 2px;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -79,7 +79,7 @@
 .roomInfo small {
   overflow: hidden;
   color: var(--dim);
-  font-size: 9.5px;
+  font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -95,14 +95,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  /* 부서 약칭 두 글자가 --fs-xs 로 들어가는 최소 지름 */
+  width: 30px;
+  height: 30px;
   margin-left: -8px;
   border: 2px solid var(--panel-solid);
   border-radius: 50%;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-style: normal;
   font-weight: 700;
 }
@@ -110,7 +111,7 @@
 .presence b {
   margin-left: 4px;
   color: var(--dim);
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .compact {

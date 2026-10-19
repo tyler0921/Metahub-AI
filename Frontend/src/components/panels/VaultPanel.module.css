@@ -1,14 +1,14 @@
 .empty {
   padding: 40px 10px;
   color: var(--dim);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   text-align: center;
 }
 
 .path {
   margin: 0 0 12px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   word-break: break-all;
 }
 
@@ -27,13 +27,13 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--accent-soft);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .date {
   flex-shrink: 0;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .title {
