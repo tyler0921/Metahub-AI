@@ -16,6 +16,10 @@ dist/
 # **소스 폴더까지** 무시됩니다. 저장소 루트에만 걸어야 합니다.
 /vault/
 /data/
+/workspace/
+
+# 백엔드 테스트(api-e2e 등)가 만드는 임시 런타임 데이터
+Backend/data/
 
 .DS_Store
 Thumbs.db
@@ -25,3 +29,6 @@ Thumbs.db
 
 # 브레인스토밍 시각 companion 임시 목업/세션 파일
 .superpowers/
+
+# Playwright MCP 스냅샷/스크린샷
+.playwright-mcp/
