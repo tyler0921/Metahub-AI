@@ -58,7 +58,7 @@
 }
 
 .task:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: var(--accent-soft);
 }
 
@@ -127,7 +127,7 @@
 
 .active {
   background: var(--hover-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .todo {

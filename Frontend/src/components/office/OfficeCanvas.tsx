@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AgentId, AgentStatus, AppConfigResponse, SpeechEvent } from '@shared';
-import { WorkspaceSidebar, type WorkspaceTabKey } from '@/components/layout/WorkspaceSidebar';
+import { Icon, type IconName } from '@/components/common/Icon';
+import { WorkspaceSidebar } from '@/components/layout/WorkspaceSidebar';
 import { useSessionStore } from '@/store/session.store';
+import { WORKSPACE_TABS, useUiStore, type WorkspaceTabKey } from '@/store/ui.store';
 import { CharacterCustomizer } from './CharacterCustomizer';
 import { ConversationFlow } from './ConversationFlow';
 import { MeetingRoomBadge } from './MeetingRoomBadge';
@@ -14,6 +16,14 @@ import { spaceActionAt } from './office-interactions';
 import styles from './OfficeCanvas.module.css';
 
 const MAX_BUBBLES = 4;
+
+/** 하단 메뉴 아이콘 — 상단 탭과 같은 이름(WORKSPACE_TABS)을 씁니다 */
+const TAB_ICONS: Record<WorkspaceTabKey, IconName> = {
+  tasks: 'tasks',
+  log: 'chat',
+  result: 'package',
+  vault: 'book',
+};
 const SPEECH_VISIBLE_MS = 14_000;
 
 interface OfficeCanvasProps {
@@ -41,10 +51,9 @@ export function OfficeCanvas({
   const avatars = useSessionStore((s) => s.avatars);
   const [now, setNow] = useState(() => Date.now());
   const [interactionOpen, setInteractionOpen] = useState(false);
-  const [panelRequest, setPanelRequest] = useState<{ tab: WorkspaceTabKey; id: number }>({
-    tab: 'log',
-    id: 0,
-  });
+  const requestPanel = useUiStore((s) => s.requestPanel);
+  const panelRequest = useUiStore((s) => s.panelRequest);
+  const openTab = useUiStore((s) => s.openPanel);
   const [showGuide, setShowGuide] = useState(
     () => window.localStorage.getItem('metahub-office-guide-seen') !== '1',
   );
@@ -100,6 +109,11 @@ export function OfficeCanvas({
     setCeoAppearance,
   } = useOfficeRenderer(anchorIds);
 
+  // 상단 "오피스" 탭 — 패널은 WorkspaceSidebar 가 닫고, 배율은 여기서 되돌립니다
+  useEffect(() => {
+    if (panelRequest.id > 0 && panelRequest.tab === 'office') resetZoom();
+  }, [panelRequest, resetZoom]);
+
   const followedAgent = followId ? (agentMap.get(followId) ?? null) : null;
 
   const activeSpeeches = useMemo(
@@ -119,8 +133,8 @@ export function OfficeCanvas({
   }, [avatars]);
 
   const openPanel = useCallback((tab: WorkspaceTabKey): void => {
-    setPanelRequest((request) => ({ tab, id: request.id + 1 }));
-  }, []);
+    requestPanel(tab);
+  }, [requestPanel]);
 
   const playerPosition = positions.get('ceo');
   const zoneAction = useMemo(
@@ -278,44 +292,52 @@ export function OfficeCanvas({
         )}
 
         <nav className={styles.spaceRail} aria-label="공간 메뉴">
-          <div className={styles.railLogo} aria-label="MetaHub AI">M</div>
           <div className={styles.railGroup}>
-            <button type="button" className={styles.railActive} aria-label="오피스 보기" data-label="오피스" onClick={resetZoom}>
-              <span aria-hidden="true">⌂</span>
+            <button
+              type="button"
+              className={openTab === null ? styles.railActive : ''}
+              aria-label="오피스 보기"
+              aria-current={openTab === null ? 'page' : undefined}
+              data-label="오피스"
+              onClick={() => requestPanel('office')}
+            >
+              <Icon name="home" />
             </button>
-            <button type="button" aria-label="업무 열기" data-label="업무" onClick={() => openPanel('tasks')}>
-              <span aria-hidden="true">◰</span>
-            </button>
-            <button type="button" aria-label="대화 열기" data-label="대화" onClick={() => openPanel('log')}>
-              <span aria-hidden="true">◌</span>
-            </button>
-            <button type="button" aria-label="산출물 열기" data-label="산출물" onClick={() => openPanel('result')}>
-              <span aria-hidden="true">▤</span>
-            </button>
-            <button type="button" aria-label="볼트 열기" data-label="볼트" onClick={() => openPanel('vault')}>
-              <span aria-hidden="true">◇</span>
-            </button>
+            {WORKSPACE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={openTab === tab.key ? styles.railActive : ''}
+                aria-label={`${tab.label} 열기`}
+                aria-current={openTab === tab.key ? 'page' : undefined}
+                data-label={tab.label}
+                onClick={() => openPanel(tab.key)}
+              >
+                <Icon name={TAB_ICONS[tab.key]} />
+              </button>
+            ))}
           </div>
-          <div className={styles.railBottom}>
-            {/* TopBar 를 없애면서 실행 환경 표시가 여기로 내려왔습니다 */}
-            {config && (
-              <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
-                <span>{config.provider}</span>
-                <span className={styles.railMetaModel}>
-                  {config.provider === 'mock' ? '체험 모드' : config.model}
-                </span>
-              </div>
-            )}
+          {/* 실행 환경 — 어떤 모델이 일하고 있는지 */}
+          {config && (
+            <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
+              <span>AI 모델</span>
+              <span className={styles.railMetaModel}>
+                {config.provider === 'mock' ? '체험 모드' : config.model}
+              </span>
+            </div>
+          )}
+          <div className={styles.railGroup}>
             <button
               type="button"
               aria-label="외형 설정"
+              aria-expanded={customizerOpen}
               data-label="외형"
               onClick={() => setCustomizerOpen((open) => !open)}
             >
-              <span aria-hidden="true">👤</span>
+              <Icon name="user" />
             </button>
             <button type="button" aria-label="이동 도움말" data-label="도움말" onClick={() => setShowGuide(true)}>
-              <span aria-hidden="true">?</span>
+              <Icon name="help" />
             </button>
           </div>
         </nav>
@@ -331,7 +353,7 @@ export function OfficeCanvas({
 
       <OfficeOverview currentZone={currentZone} compact={Boolean(nearby)} />
 
-      <OfficeMinimap positions={positions} statuses={avatarStatuses} />
+      <OfficeMinimap positions={positions} statuses={avatarStatuses} onShowAll={resetZoom} />
 
       <div className={styles.touchControls} aria-label="캐릭터 이동">
         <button
@@ -382,7 +404,7 @@ export function OfficeCanvas({
 
       <div className={styles.zoomControls}>
         <button type="button" className={styles.zoomBtn} onClick={zoomOut} aria-label="축소">
-          −
+          <Icon name="minus" size={18} />
         </button>
         <button
           type="button"
@@ -393,7 +415,7 @@ export function OfficeCanvas({
           {zoomPercent}%
         </button>
         <button type="button" className={styles.zoomBtn} onClick={zoomIn} aria-label="확대">
-          +
+          <Icon name="plus" size={18} />
         </button>
       </div>
 
@@ -401,8 +423,6 @@ export function OfficeCanvas({
         <WorkspaceSidebar
           embedded
           onSelectBrief={onSelectBrief}
-          openTab={panelRequest.tab}
-          openRequestId={panelRequest.id}
         />
       </div>
     </div>

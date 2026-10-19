@@ -216,7 +216,7 @@
 
 .file a {
   overflow: hidden;
-  color: var(--accent);
+  color: var(--accent-text);
   white-space: nowrap;
   text-overflow: ellipsis;
   text-decoration: none;

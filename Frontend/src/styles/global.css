@@ -1,56 +1,52 @@
 /*
- * Cozy Pixel Operations Room
+ * MetaHub Night Office
  *
- * 두 개의 표면이 있습니다.
- *  - **오피스**: 따뜻한 픽셀 공간. 캔버스가 알아서 칠합니다.
- *  - **관제 패널**: 차분한 아이보리. 오피스 위에 얹혀 정보를 나릅니다.
+ * 따뜻한 픽셀 오피스 위에 **네이비 유리 HUD** 를 얹습니다.
+ *  - 오피스: 캔버스가 칠하는 따뜻한 바닥·방
+ *  - HUD·패널: 짙은 네이비 + 보라빛 테두리. 같은 표면을 쓰는 것끼리 한 덩어리로 읽힙니다.
  *
- * 둘을 같은 톤으로 만들면 서로를 잡아먹습니다. 아이보리 패널이
- * 픽셀 화면과 충돌하지 않으면서도 읽히는 이유가 이 분리에 있습니다.
- *
- * 규칙은 그대로입니다 — 액센트 1색 + 상태 4색. UI 색은 여기서만 나옵니다.
+ * 규칙 — 액센트 1색(보라) + 상태 4색. UI 색은 여기서만 나옵니다.
+ * 대비는 모두 패널(--panel)·카드(--panel-solid)·눌린 표면(--accent-soft) 위에서 4.5:1 이상입니다.
  */
 :root {
-  /* 표면 — 오피스는 딥 뉴트럴, 패널은 아이보리 */
-  --bg:            #ece9e1;
-  --frame:         #151923;   /* 캔버스 뒤 */
-  --panel:         #f7f5ef;   /* 관제 패널 본체 — 솔리드입니다 */
-  --panel-solid:   #fdfcf8;   /* 패널 위에 얹히는 카드 */
-  --panel-dark:    rgb(17 24 39 / 88%);   /* 다크 알약·레일 */
-  --line:          rgb(20 30 40 / 12%);
-  --line-dark:     rgb(255 255 255 / 12%);
-  --text:          #202631;
-  --text-2:        #4a5361;
-  /* 보조 글자 — 아이보리 세 표면(panel·panel-solid·accent-soft) 모두에서 4.5:1 이상 */
-  --dim:           #5f6670;
-  --text-on-dark:  #f4f2ec;
-  --dim-on-dark:   rgb(244 242 236 / 62%);
+  /* 표면 */
+  --bg:            #10152b;   /* 전체 화면 오버레이(집중 모드) 바탕 */
+  --frame:         #0c1124;   /* 캔버스 뒤·레터박스 */
+  --panel:         rgb(23 28 53 / 94%);   /* HUD 카드·패널 본체 */
+  --panel-solid:   #1e2444;   /* 패널 위에 얹히는 카드 */
+  --panel-dark:    rgb(17 21 42 / 92%);   /* 메뉴·콘솔처럼 공간 위에 직접 뜨는 것 */
+  --line:          rgb(160 170 255 / 14%);
+  --line-dark:     rgb(160 170 255 / 16%);
+  /* HUD 테두리 — 시안의 보라빛 윤곽 */
+  --line-glow:     rgb(129 116 255 / 34%);
+  --text:          #eef0fb;
+  --text-2:        #c3c8de;
+  --dim:           #9aa1bd;
+  --text-on-dark:  #eef0fb;
+  --dim-on-dark:   #9aa1bd;
 
   /*
-   * 액센트 — 딱 하나.
-   * 아이보리 위 글자로도, 밝은 글자를 얹은 버튼 바탕으로도 4.5:1 을 넘기는 명도입니다.
+   * 액센트 — 보라 하나.
+   * --accent 는 흰 글자를 얹는 바탕(5.2:1), 글자로 쓸 때는 --accent-text 입니다.
    */
-  --accent:        #5a50e6;
-  --accent-strong: #4a41c4;
+  --accent:        #6352f5;
+  --accent-strong: #5444e0;
+  --accent-text:   #a99cff;
   /* 이름과 달리 액센트 색조가 아니라 "한 단계 눌린 표면"입니다 */
-  --accent-soft:   #ece9e1;
+  --accent-soft:   #262d52;
 
-  /* 상태 4색 */
+  /* 상태 4색 — 점·막대·테두리용 */
   --st-work:  #f2b84b;   /* 작업 중 */
   --st-talk:  #4a90e2;   /* 대화 중 */
   --st-done:  #4fa878;   /* 완료   */
   --st-idle:  #9aa0a8;   /* 대기   */
   --danger:   #d95c5c;
-  /* 같은 색상, 어두운 표면에서 읽히는 명도 — 새 색이 아니라 대비 짝입니다 */
-  --danger-on-dark: #e88a8a;
-  /*
-   * 상태색을 아이보리 위 "글자"로 쓸 때의 대비 짝. 원래 상태색은 점·막대·테두리에만 씁니다.
-   * 노랑·초록은 밝아서 글자로는 2:1 도 안 나옵니다.
-   */
-  --st-work-text: #8a5a00;
-  --st-talk-text: #2a66aa;
-  --st-done-text: #2a724c;
-  --danger-text:  #ad3f3f;
+  --danger-on-dark: #f08a8a;
+  /* 상태색을 글자로 쓸 때의 대비 짝 */
+  --st-work-text: #f2c26b;
+  --st-talk-text: #7fb2f0;
+  --st-done-text: #6fcf9a;
+  --danger-text:  #f08a8a;
 
   /*
    * 글자 크기 6단계. 11px 미만은 쓰지 않습니다.
@@ -63,24 +59,22 @@
   --fs-xl:  18px;   /* 패널 제목 */
   --fs-2xl: 22px;   /* 화면 제목·큰 글리프 */
 
-  /*
-   * 그림자는 크고 흐린 것 하나만. 여러 겹을 쌓으면 아이보리가 탁해집니다.
-   * blur 는 남겨 두되 레일처럼 공간 위에 직접 뜨는 것에만 씁니다.
-   */
-  --blur:      blur(10px);
-  --shadow:    0 10px 30px rgb(16 22 34 / 18%);
-  --shadow-lg: 0 18px 48px rgb(16 22 34 / 26%);
-  --radius:    12px;
+  --blur:      blur(14px);
+  --shadow:    0 10px 30px rgb(4 6 18 / 45%);
+  --shadow-lg: 0 18px 48px rgb(4 6 18 / 55%);
+  /* 시안의 은은한 보라 발광 — 활성 요소에만 */
+  --glow:      0 0 0 1px rgb(129 116 255 / 40%), 0 8px 24px rgb(99 82 245 / 35%);
+  --radius:    14px;
   --radius-sm: 10px;
   --radius-pill: 999px;
 
   /* 보조 표면 */
-  --panel-strong: #f7f5ef;
-  --line-strong:  rgb(20 30 40 / 20%);
-  --chrome-panel: #1e2531;
-  --hover-soft:   rgb(90 80 230 / 10%);
+  --panel-strong: rgb(23 28 53 / 96%);
+  --line-strong:  rgb(160 170 255 / 24%);
+  --chrome-panel: #141936;
+  --hover-soft:   rgb(129 116 255 / 14%);
 
-  color-scheme: light;
+  color-scheme: dark;
 
   /* 윈도우 크롬 — 상태색으로 흡수 */
   --dot-red:    var(--danger);

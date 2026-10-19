@@ -29,11 +29,11 @@
 }
 
 .brief {
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-text);
 }
 
 .plan {
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-text);
 }
 
 .phase {
@@ -113,7 +113,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font: inherit;
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -157,7 +157,7 @@
 }
 
 .team button:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 .team strong {
@@ -190,7 +190,7 @@
 }
 
 .speaker:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .speechBody {
@@ -217,7 +217,7 @@
   left: 0;
   padding-top: 20px;
   background: linear-gradient(transparent, var(--panel-solid) 55%);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--fs-xs);
   text-align: center;
 }

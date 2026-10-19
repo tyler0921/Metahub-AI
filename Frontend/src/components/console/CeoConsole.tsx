@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Icon } from '@/components/common/Icon';
 import { BRIEF_SAMPLES } from '@/constants/samples';
 import styles from './CeoConsole.module.css';
 
@@ -84,8 +85,8 @@ export function CeoConsole({
   };
 
   return (
-    <form className={`${styles.console} ${expanded ? styles.expanded : ''}`} onSubmit={handleSubmit}>
-      {followUpFrom && expanded && (
+    <form className={styles.console} onSubmit={handleSubmit}>
+      {followUpFrom && (
         <div className={styles.followUpNotice}>
           <span><b>이어서 지시</b> 직전 산출물을 기준으로 수정합니다.</span>
           <button type="button" onClick={onCancelFollowUp}>새 업무로 전환</button>
@@ -93,17 +94,12 @@ export function CeoConsole({
       )}
 
       <div className={styles.inputRow}>
-        <button
-          type="button"
-          className={styles.expandBtn}
-          aria-label={expanded ? '빠른 지시 닫기' : '빠른 지시 열기'}
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-        </button>
-
-        <span className={styles.commandIcon}>대표 지시</span>
+        <label className={styles.commandIcon} htmlFor="brief">
+          <span className={styles.spark} aria-hidden="true">
+            <Icon name="sparkles" size={18} />
+          </span>
+          대표지시
+        </label>
 
         <textarea
           ref={inputRef}
@@ -118,9 +114,36 @@ export function CeoConsole({
               : 'AI 팀에 업무를 지시하세요…'
           }
           onFocus={() => setExpanded(true)}
+          onBlur={() => {
+            // 쓰던 글이 있으면 펼친 채로 둡니다 — 접히면 쓰던 줄이 가려집니다
+            if (!brief.trim()) setExpanded(false);
+          }}
           onChange={(event) => setBrief(event.target.value)}
           onKeyDown={handleKeyDown}
         />
+      </div>
+
+      <div className={styles.quickRow}>
+        <span className={styles.quickLabel}>빠른 지시</span>
+        <div className={styles.chips}>
+          {BRIEF_SAMPLES.map((sample, index) => (
+            <button
+              key={sample}
+              type="button"
+              className={styles.chip}
+              disabled={disabled || isRunning}
+              title={sample}
+              onClick={() => {
+                setBrief(sample);
+                setExpanded(true);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+            >
+              {CHIP_LABELS[index] ?? sample.slice(0, 8)}
+            </button>
+          ))}
+        </div>
+        <span className={styles.keyboardHint}>Enter 전송 · Shift+Enter 줄바꿈</span>
 
         {isRunning ? (
           <button
@@ -137,30 +160,11 @@ export function CeoConsole({
             className={styles.submit}
             disabled={disabled || !brief.trim()}
           >
-            전달
+            <Icon name="send" size={17} />
+            전송
           </button>
         )}
       </div>
-
-      {expanded && (
-        <div className={styles.quickRow}>
-          <span className={styles.quickLabel}>빠른 지시</span>
-          <div className={styles.chips}>
-            {BRIEF_SAMPLES.map((sample, index) => (
-              <button
-                key={sample}
-                type="button"
-                className={styles.chip}
-                disabled={disabled || isRunning}
-                onClick={() => setBrief(sample)}
-              >
-                {CHIP_LABELS[index] ?? sample.slice(0, 8)}
-              </button>
-            ))}
-          </div>
-          <span className={styles.keyboardHint}>Enter 전송 · Shift+Enter 줄바꿈</span>
-        </div>
-      )}
     </form>
   );
 }

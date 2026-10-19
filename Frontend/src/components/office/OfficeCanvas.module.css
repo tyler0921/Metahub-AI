@@ -10,9 +10,10 @@
  */
 .stage {
   --hud-inset: 14px;
-  --dock-bottom: 86px;
-  /* 공간 메뉴 높이(56px) + 간격 — 메뉴 위에 뜨는 것들의 바닥 */
-  --above-dock: calc(var(--dock-bottom) + 66px);
+  /* 콘솔(두 줄, 약 108px) + 바닥 18px + 간격 */
+  --dock-bottom: 138px;
+  /* 공간 메뉴 높이(60px) + 간격 — 메뉴 위에 뜨는 것들의 바닥 */
+  --above-dock: calc(var(--dock-bottom) + 72px);
 
   position: relative;
   flex: 1;
@@ -25,8 +26,9 @@
   box-shadow: none;
 }
 
+/* 입력창이 세 줄로 펼쳐지면 그만큼 */
 .consoleOpen {
-  --dock-bottom: 172px;
+  --dock-bottom: 182px;
 }
 
 .canvas {
@@ -94,50 +96,32 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: max-content;
   max-width: 100%;
-  padding: 8px;
-  border: 1px solid var(--line-dark);
+  padding: 7px;
+  border: 1px solid var(--line-glow);
   border-radius: var(--radius-pill);
   background: var(--panel-dark);
   box-shadow: var(--shadow-lg);
   backdrop-filter: var(--blur);
 }
 
-.railLogo {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--text-on-dark);
-  font-size: var(--fs-lg);
-  font-weight: 800;
-}
-
-.railGroup,
-.railBottom {
+.railGroup {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
 }
 
-.railBottom {
-  padding-left: 10px;
-  border-left: 1px solid var(--line-dark);
-}
-
-/* 프로바이더·모델 — TopBar 를 없애면서 여기로 내려온 실행 환경 표시 */
+/* 실행 환경 — 앞뒤 구분선 사이에 둡니다 */
 .railMeta {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 0 2px;
+  padding: 0 14px;
+  border-right: 1px solid var(--line-dark);
+  border-left: 1px solid var(--line-dark);
   color: var(--dim-on-dark);
   font-size: var(--fs-xs);
   line-height: 1.3;
@@ -147,7 +131,8 @@
 
 .railMetaModel {
   color: var(--text-on-dark);
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: 700;
 }
 
 .spaceRail button {
@@ -156,26 +141,28 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--dim-on-dark);
   font: inherit;
-  font-size: var(--fs-xl);
   cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
-}
-
-.spaceRail button:hover,
-.spaceRail .railActive {
-  background: rgb(255 255 255 / 10%);
-  color: var(--text-on-dark);
+  transition: background 0.16s ease, color 0.16s ease;
 }
 
 .spaceRail button:hover {
-  transform: translateY(-2px);
+  background: var(--hover-soft);
+  color: var(--text-on-dark);
+}
+
+/* 지금 보고 있는 곳 — 시안처럼 보라 원 + 은은한 발광 */
+.spaceRail .railActive,
+.spaceRail .railActive:hover {
+  background: var(--accent);
+  color: var(--text-on-dark);
+  box-shadow: var(--glow);
 }
 
 .spaceRail button::after {
@@ -184,8 +171,9 @@
   bottom: calc(100% + 10px);
   left: 50%;
   padding: 6px 8px;
+  border: 1px solid var(--line-glow);
   border-radius: 7px;
-  background: #181f2a;
+  background: var(--panel-solid);
   color: var(--text-on-dark);
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -211,10 +199,6 @@
   .railMeta {
     display: none;
   }
-
-  .railBottom {
-    padding-left: 4px;
-  }
 }
 
 .bubbleLayer {
@@ -232,7 +216,7 @@
   gap: 8px;
   align-items: center;
   justify-content: center;
-  background: rgb(252 253 254 / 92%);
+  background: var(--bg);
   color: var(--dim);
   font-size: var(--fs-md);
   text-align: center;
@@ -268,10 +252,11 @@
   gap: 2px;
   align-items: center;
   padding: 3px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-glow);
   border-radius: var(--radius-pill);
-  background: var(--panel);
+  background: var(--panel-dark);
   box-shadow: var(--shadow);
+  backdrop-filter: var(--blur);
   pointer-events: auto;
 }
 
@@ -294,12 +279,12 @@
 }
 
 /*
- * 좌상 카드(약 334px)와 우측 패널(약 352px) 사이에 520px 스택이 가운데로 들어가려면
- * 1260px 이상이 필요합니다. 그보다 좁으면 카드 아래 왼쪽으로 내려 패널을 피합니다.
+ * 좌상 카드(약 414px)와 우측 패널(약 352px) 사이에 520px 스택이 가운데로 들어가려면
+ * 1360px 이상이 필요합니다. 그보다 좁으면 카드 아래 왼쪽으로 내려 패널을 피합니다.
  */
-@media (900px < width < 1260px) {
+@media (900px < width < 1360px) {
   .topCenter {
-    top: 96px;
+    top: 128px;
     left: var(--hud-inset);
     align-items: flex-start;
     width: min(520px, calc(100% - 400px));
@@ -434,8 +419,13 @@
   pointer-events: none;
 }
 
+/* 닫혀 있으면 세로 레일만 — 높이를 늘리지 않고 위에 붙습니다 */
 .sidebarDock:has(button[aria-label='활동 패널 열기']) {
-  width: 54px;
+  width: 76px;
+}
+
+.sidebarDock:has(button[aria-label='활동 패널 열기']) > * {
+  flex: 0 0 auto;
 }
 
 .sidebarDock > * {
@@ -474,11 +464,12 @@
 }
 
 .zoomBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  font-size: var(--fs-lg);
-  line-height: 1;
 }
 
 .zoomBtn:hover {
@@ -486,11 +477,11 @@
 }
 
 .zoomLabel {
-  min-width: 44px;
+  min-width: 52px;
   padding: 0 4px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--dim);
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 700;
 }
 
 .zoomLabel:hover {
@@ -515,7 +506,7 @@
 }
 
 .zoneAction:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: var(--accent-soft);
 }
 
@@ -557,12 +548,12 @@
   /* 좁은 화면 레이아웃: 메뉴는 콘솔 위 전폭 탭바, 줌은 우상단, 방향키는 메뉴 위 */
   .stage {
     --hud-inset: 8px;
-    --dock-bottom: 74px;
+    --dock-bottom: 116px;
     --above-dock: calc(var(--dock-bottom) + 60px);
   }
 
   .consoleOpen {
-    --dock-bottom: 158px;
+    --dock-bottom: 160px;
   }
 
   .bottomDock {
@@ -574,10 +565,6 @@
     justify-content: space-between;
     width: 100%;
     padding: 4px 6px;
-  }
-
-  .railLogo {
-    display: none;
   }
 
   .spaceRail button {

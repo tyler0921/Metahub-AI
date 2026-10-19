@@ -1,5 +1,5 @@
 /*
- * 얇은 상단 관제 바.
+ * 상단 내비게이션 바.
  * officeArea 의 첫 자식으로 들어가 캔버스를 밀어 내립니다 (떠 있지 않습니다).
  */
 .bar {
@@ -7,13 +7,82 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 14px;
-  height: 40px;
-  padding: 0 16px;
+  gap: 10px;
+  height: 52px;
+  padding: 0 14px 0 18px;
   border-bottom: 1px solid var(--line-dark);
   background: var(--chrome-panel);
   color: var(--text-on-dark);
   font-size: var(--fs-sm);
+}
+
+.brand {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  margin-right: 14px;
+}
+
+.logo {
+  width: 30px;
+  height: 22px;
+}
+
+.brand b {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* 화면 탭 — 지금 보는 곳에 보라 밑줄 */
+.tabs {
+  display: flex;
+  align-self: stretch;
+  gap: 2px;
+}
+
+.tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--dim-on-dark);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text-on-dark);
+}
+
+.tabs .activeTab {
+  background: linear-gradient(180deg, transparent, rgb(129 116 255 / 14%));
+  color: var(--text-on-dark);
+  font-weight: 700;
+}
+
+.tabs .activeTab::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgb(99 82 245 / 70%);
+}
+
+.spacer {
+  flex: 1;
+  min-width: 0;
 }
 
 .progressTrack {
@@ -23,7 +92,6 @@
   left: 0;
   height: 2px;
   overflow: hidden;
-  background: rgb(255 255 255 / 5%);
   pointer-events: none;
 }
 
@@ -41,26 +109,34 @@
   box-shadow: 0 0 10px rgb(79 168 120 / 35%);
 }
 
-.phase {
+/* 오른쪽 알약들 — 같은 높이·테두리로 한 줄을 이룹니다 */
+.phase,
+.autonomousToggle,
+.runNow,
+.online {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 3%);
+  color: var(--text-on-dark);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .phase b {
-  color: var(--text-on-dark);
-  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 .step {
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 8%);
-  color: var(--dim-on-dark);
-  font-size: var(--fs-xs);
-  font-weight: 700;
+  color: var(--accent-text);
+  font-weight: 800;
 }
 
 .dotIdle,
@@ -96,101 +172,37 @@
   }
 }
 
-.title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--dim-on-dark);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.metrics {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 8px;
-}
-
 .autonomousControls {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .autonomousToggle,
-.runNow,
-.inboxButton {
-  min-height: 25px;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 5%);
-  color: var(--dim-on-dark);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 700;
+.runNow {
   cursor: pointer;
 }
 
 .autonomousToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-}
-
-.autonomousToggle i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--st-idle);
+  color: var(--dim-on-dark);
 }
 
 .autonomousToggle[data-enabled='true'] {
-  border-color: rgb(79 168 120 / 34%);
-  background: rgb(79 168 120 / 12%);
-  color: #8bd7ad;
-}
-
-.autonomousToggle[data-enabled='true'] i {
-  background: var(--st-done);
-  box-shadow: 0 0 7px rgb(79 168 120 / 55%);
+  border-color: rgb(79 168 120 / 45%);
+  background: rgb(79 168 120 / 16%);
+  color: var(--st-done-text);
 }
 
 .autonomousToggle small {
-  color: currentColor;
   font-size: var(--fs-xs);
-  opacity: 0.7;
-}
-
-.runNow {
-  padding: 3px 8px;
-  color: var(--text-on-dark);
-}
-
-.inboxButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-}
-
-.inboxButton b {
-  min-width: 15px;
-  border-radius: var(--radius-pill);
-  background: #8f6fff;
-  color: white;
-  font-size: var(--fs-xs);
-  line-height: 15px;
+  opacity: 0.75;
 }
 
 .autonomousToggle:hover:not(:disabled),
 .runNow:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 24%);
-  background: rgb(255 255 255 / 10%);
+  border-color: var(--line-glow);
+  background: var(--hover-soft);
 }
 
 .autonomousToggle:disabled,
@@ -199,61 +211,117 @@
   opacity: 0.45;
 }
 
+.metrics {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+}
+
 .metric {
   color: var(--dim-on-dark);
   font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
-.dividerDot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgb(255 255 255 / 22%);
-}
-
 .cost {
-  padding: 1px 8px;
+  padding: 2px 9px;
   border-radius: var(--radius-pill);
-  background: rgb(90 80 230 / 18%);
-  color: #b9b4ff;
+  background: rgb(129 116 255 / 18%);
+  color: var(--accent-text);
   font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
 
-@media (width <= 640px) {
-  .title {
-    display: none;
-  }
+.online svg {
+  color: var(--st-done-text);
 }
 
-@media (width <= 760px) {
+/* 직원 얼굴 대신 부서 약칭 — 겹쳐 쌓은 원 */
+.avatars {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 1px 10px 1px 12px;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-pill);
+}
+
+.avatars i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 부서 약칭 두 글자가 --fs-xs 로 들어가는 지름 */
+  width: 32px;
+  height: 32px;
+  margin-left: -6px;
+  border: 2px solid var(--chrome-panel);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.avatars b {
+  margin-left: 6px;
+  color: var(--dim-on-dark);
+  font-size: var(--fs-xs);
+}
+
+/* 좁아질수록 덜 중요한 것부터 접습니다 */
+@media (width <= 1500px) {
   .tokenMetric,
   .teamMetric {
     display: none;
   }
+}
 
-  .runNow {
+@media (width <= 1280px) {
+  .avatars,
+  .metrics {
+    display: none;
+  }
+
+  .tabs button {
+    padding: 0 10px;
+  }
+}
+
+/* 900px 이하는 하단 탭바가 같은 역할을 합니다 */
+@media (width <= 1100px) {
+  .tabs {
     display: none;
   }
 }
 
-@media (width <= 560px) {
-  /* 업무함은 남깁니다 — 자율 업무를 승인할 길이 여기뿐입니다 */
-  .autonomousToggle small {
+@media (width <= 640px) {
+  .brand b,
+  .runNow,
+  .online {
     display: none;
   }
-}
 
-@media (width <= 460px) {
-  .metrics .dividerDot,
-  .metrics .metric:nth-of-type(n + 2) {
-    display: none;
+  .brand {
+    margin-right: 0;
   }
 
   .bar {
-    gap: 9px;
+    gap: 6px;
     padding-inline: 10px;
+  }
+
+  .phase,
+  .autonomousToggle {
+    padding: 0 10px;
+  }
+}
+
+@media (width <= 400px) {
+  .autonomousToggle small {
+    display: none;
   }
 }

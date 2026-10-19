@@ -31,16 +31,14 @@
 
 /*
  * 지시 콘솔 — 하단 중앙 도크.
- *
- * 펼쳐도 캔버스를 덮지 않도록 폭을 720px 로 묶습니다.
- * 우측 미니맵·사이드바를 피하려고 가용 폭에서 220px 를 뺍니다.
+ * 좌하단 줌(약 180px)·우하단 미니맵(약 240px)을 양쪽에서 피합니다.
  */
 .consoleDock {
   position: absolute;
   bottom: 18px;
   left: 50%;
   z-index: 9;
-  width: min(720px, calc(100% - 220px));
+  width: min(760px, calc(100% - 500px));
   transform: translateX(-50%);
   transition: width 160ms ease;
   pointer-events: none;
@@ -51,9 +49,6 @@
   pointer-events: auto;
 }
 
-.consoleDockCollapsed {
-  width: 420px;
-}
 
 .offlineMain {
   flex: 1;
@@ -67,8 +62,7 @@
     padding: 0;
   }
 
-  .consoleDock,
-  .consoleDockCollapsed {
+  .consoleDock {
     bottom: 8px;
     width: calc(100% - 16px);
   }

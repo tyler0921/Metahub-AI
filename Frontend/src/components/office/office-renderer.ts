@@ -1149,7 +1149,7 @@ export class OfficeRenderer {
     const dpr = this.dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#151923';
+    ctx.fillStyle = '#0c1124';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1247,52 +1247,62 @@ export class OfficeRenderer {
     ctx.restore();
   }
 
+  /**
+   * 맵 배율과 상관없이 화면에서 일정 크기로 보이게 하는 배율.
+   * 기본 배율(맵 전체 보기)은 0.5 안팎이라, 월드 크기 그대로 그리면 글자가 5px 로 뭉개집니다.
+   */
+  private screenScale(screenPx: number, worldPx: number): number {
+    return Math.max(1, screenPx / (worldPx * this.zoom));
+  }
+
+  /** 방 이름표 — 시안처럼 윗벽에 걸친 네이비 알약 + 부서색 표식 */
   private drawZoneLabels(): void {
     const { ctx } = this;
     ctx.save();
     // letterSpacing 은 lib.dom 타입에 없는 브라우저가 있어 쓰지 않습니다
-    ctx.font = '600 10px "Pretendard Variable", Pretendard, system-ui, sans-serif';
+    ctx.font = '700 10px "Pretendard Variable", Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
 
     // 조명을 나누는 중이면(투입 부서가 정해짐) 비활성 라벨을 눌러 시선을 모읍니다
     const lighting = this.activeTeams.size > 0;
+    const k = this.screenScale(13, 10);
 
     for (const zone of ZONES) {
       if (zone.showLabel === false) continue;
 
       const isDept = Boolean(zone.agent);
       const active = isDept && zone.agent ? this.activeTeams.has(zone.agent) : false;
-
-      const cx = (zone.x + zone.w / 2) * TILE;
-      const cy = (zone.y + 0.65) * TILE;
-      const label = zone.label;
+      const label = zone.kind === 'department' ? `${zone.label}팀` : zone.label;
 
       const textW = ctx.measureText(label).width;
-      // 부서 플로어 라벨은 상태 점을 위해 왼쪽에 여백을 둡니다
-      const dotSpace = isDept ? 12 : 0;
-      const boxW = textW + 14 + dotSpace;
-      const boxH = 16;
+      const markW = 14;
+      const boxW = textW + 20 + markW;
+      const boxH = 18;
 
       // 조명이 켜졌고 이 부서가 비활성이면 라벨도 함께 가라앉힙니다
       const dimmed = lighting && isDept && !active;
-      ctx.globalAlpha = dimmed ? 0.4 : 1;
 
-      // 형광 배지가 아니라 사무실 사인처럼 — 테두리도 색도 쓰지 않습니다
-      ctx.fillStyle = active ? 'rgba(20,26,36,0.82)' : 'rgba(24,31,42,0.62)';
-      roundRect(ctx, cx - boxW / 2, cy - boxH / 2, boxW, boxH, 5);
+      ctx.save();
+      // 윗벽 선에 걸쳐 둡니다 — 방 안쪽으로 내리면 맨 윗줄 직원 이름표와 겹칩니다
+      ctx.translate((zone.x + zone.w / 2) * TILE, zone.y * TILE + 4);
+      ctx.scale(k, k);
+      ctx.globalAlpha = dimmed ? 0.45 : 1;
+
+      ctx.fillStyle = 'rgba(20,24,48,0.92)';
+      roundRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 6);
+      ctx.fill();
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = active ? 'rgba(169,156,255,0.9)' : 'rgba(129,116,255,0.38)';
+      ctx.stroke();
+
+      // 부서색 표식 — 미니맵과 같은 색이라 두 화면이 이어져 읽힙니다
+      ctx.fillStyle = zone.color;
+      roundRect(ctx, -boxW / 2 + 6, -4.5, 9, 9, 2.5);
       ctx.fill();
 
-      if (isDept) {
-        // 활성 부서는 액센트 점, 대기 부서는 은은한 회색 점
-        ctx.fillStyle = active ? '#8b83ff' : 'rgba(154,160,168,0.7)';
-        ctx.beginPath();
-        ctx.arc(cx - boxW / 2 + 9, cy, 2.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = 'rgba(241,244,248,0.92)';
-      ctx.fillText(label, cx + dotSpace / 2, cy + 4);
-      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(238,240,251,0.96)';
+      ctx.fillText(label, markW / 2 + 2, 3.6);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1646,11 +1656,16 @@ export class OfficeRenderer {
    * 검정 글자 + 상태 점 하나로 통일하고, 색은 상태(작업/발언/완료)를
    * 알리는 데만 씁니다. 직책은 근접 카드가 보여주므로 여기선 생략합니다.
    */
-  private drawNameTag(actor: Actor, cx: number, cy: number): void {
+  private drawNameTag(actor: Actor, x: number, y: number): void {
     const { ctx } = this;
     const label = actor.name;
 
     ctx.save();
+    // 머리 위 기준점에서 화면 크기 10.5px 로 키웁니다 — 이름표는 위로만 자랍니다
+    ctx.translate(x, y);
+    ctx.scale(this.screenScale(10.5, 11), this.screenScale(10.5, 11));
+    const cx = 0;
+    const cy = 0;
     ctx.font = '600 11px "Pretendard Variable", Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
 

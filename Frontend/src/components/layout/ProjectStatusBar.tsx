@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
+import { Icon, type IconName } from '@/components/common/Icon';
 import { AutonomousInbox } from './AutonomousInbox';
 import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
 import { formatElapsed } from '@/lib/format-elapsed';
 import { estimateCost, formatUsd } from '@/lib/llm-cost';
 import { useAutonomousWork } from '@/hooks/useAutonomousWork';
+import { deptAbbrev } from '@/lib/agent-status';
 import { useSessionStore } from '@/store/session.store';
+import { WORKSPACE_TABS, useUiStore, type WorkspaceTabKey } from '@/store/ui.store';
 import styles from './ProjectStatusBar.module.css';
 
+const TAB_ICONS: Record<WorkspaceTabKey, IconName> = {
+  tasks: 'tasks',
+  log: 'chat',
+  result: 'package',
+  vault: 'book',
+};
+
 /**
- * 얇은 상단 프로젝트 상태 바 (OpenClaw Office 관제 헤더).
+ * 상단 내비게이션 바.
  *
- * 예전의 떠 있는 알약을 대체합니다 — 게임 HUD 처럼 늘 같은 자리에 붙어
- * **지시 · 단계 · 경과 · 호출 · 토큰 · 비용**을 한 줄로 보여줍니다.
+ * 왼쪽은 회사 이름과 화면 탭(오피스 · 업무 · 진행 · 산출물 · 문서),
+ * 오른쪽은 자율 운영 · 진행 단계 · 경과 · 비용 · 온라인 인원입니다.
+ * 탭은 별도 페이지가 아니라 활동 패널을 엽니다 — 하단 메뉴와 같은 요청을 씁니다.
  * 대기 중에도 사라지지 않아 캔버스 높이가 흔들리지 않습니다.
  */
 export function ProjectStatusBar(): React.JSX.Element {
@@ -33,7 +44,19 @@ export function ProjectStatusBar(): React.JSX.Element {
   );
   const [now, setNow] = useState(() => Date.now());
   const autonomous = useAutonomousWork();
-  const [inboxOpen, setInboxOpen] = useState(false);
+  const inboxOpen = useUiStore((s) => s.inboxOpen);
+  const setInboxOpen = useUiStore((s) => s.setInboxOpen);
+  const setInboxCount = useUiStore((s) => s.setInboxCount);
+  const openPanel = useUiStore((s) => s.openPanel);
+  const requestPanel = useUiStore((s) => s.requestPanel);
+
+  // 우측 레일의 알림 배지가 읽습니다
+  const inboxCount = autonomous.status
+    ? autonomous.status.queuedCount + autonomous.status.pendingApprovalCount
+    : 0;
+  useEffect(() => {
+    setInboxCount(inboxCount);
+  }, [inboxCount, setInboxCount]);
 
   useEffect(() => {
     if (!running) return;
@@ -84,27 +107,52 @@ export function ProjectStatusBar(): React.JSX.Element {
       className={styles.bar}
       data-state={state}
       style={{ '--progress': `${progress}%` } as React.CSSProperties}
-      role="status"
-      aria-live="polite"
     >
-      <span className={styles.phase}>
-        <i
-          className={
-            idle ? styles.dotIdle : running ? styles.dotWork : styles.dotDone
-          }
-          aria-hidden="true"
-        />
-        <b>{phaseLabel}</b>
-        {!idle && (
-          <span className={styles.step}>
-            {step}/{PHASE_SEQUENCE.length}
-          </span>
-        )}
+      <span className={styles.brand}>
+        <svg className={styles.logo} viewBox="0 0 32 24" aria-hidden="true">
+          <defs>
+            <linearGradient id="metahub-logo" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stopColor="#8f7bff" />
+              <stop offset="1" stopColor="#5b8cff" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M3 21V5.5a2 2 0 0 1 3.5-1.3L16 15l9.5-10.8A2 2 0 0 1 29 5.5V21"
+            fill="none"
+            stroke="url(#metahub-logo)"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <b>MetaHub AI 회사</b>
       </span>
 
-      <span className={styles.title}>
-        {idle ? 'MetaHub AI 회사' : brief || '진행 중'}
-      </span>
+      <nav className={styles.tabs} aria-label="화면">
+        <button
+          type="button"
+          className={openPanel === null ? styles.activeTab : ''}
+          aria-current={openPanel === null ? 'page' : undefined}
+          onClick={() => requestPanel('office')}
+        >
+          <Icon name="home" size={17} />
+          오피스
+        </button>
+        {WORKSPACE_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={openPanel === tab.key ? styles.activeTab : ''}
+            aria-current={openPanel === tab.key ? 'page' : undefined}
+            onClick={() => requestPanel(tab.key)}
+          >
+            <Icon name={TAB_ICONS[tab.key]} size={17} />
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <span className={styles.spacer} />
 
       {autonomous.status?.configured && (
         <span className={styles.autonomousControls} title={autonomous.error ?? undefined}>
@@ -116,8 +164,8 @@ export function ProjectStatusBar(): React.JSX.Element {
             disabled={autonomous.isBusy}
             aria-pressed={autonomous.status.enabled}
           >
-            <i aria-hidden="true" />
-            {autonomous.status.enabled ? '자율 ON' : '자율 정지'}
+            <Icon name="bolt" size={15} />
+            {autonomous.status.enabled ? 'AI 자동화 ON' : 'AI 자동화 정지'}
             <small>
               {autonomous.status.runsToday}/{autonomous.status.dailyLimit}
             </small>
@@ -135,46 +183,58 @@ export function ProjectStatusBar(): React.JSX.Element {
               지금 실행
             </button>
           )}
-          <button
-            type="button"
-            className={styles.inboxButton}
-            onClick={() => setInboxOpen((open) => !open)}
-            aria-expanded={inboxOpen}
-          >
-            업무함
-            {(autonomous.status.queuedCount + autonomous.status.pendingApprovalCount) > 0 && (
-              <b>{autonomous.status.queuedCount + autonomous.status.pendingApprovalCount}</b>
-            )}
-          </button>
         </span>
       )}
 
-      <span className={styles.metrics}>
-        {idle ? (
-          <span className={styles.metric}>{agents.length}명 온라인</span>
-        ) : (
-          <>
-            <span className={`${styles.metric} ${styles.teamMetric}`}>
-              {workingCount > 0
-                ? `${workingCount}명 작업 중`
-                : `${team.length}명 참여`}
-            </span>
-            <span className={`${styles.dividerDot} ${styles.teamMetric}`} aria-hidden="true" />
-            <span className={styles.metric}>{formatElapsed(elapsedSeconds)}</span>
-            <span className={styles.dividerDot} aria-hidden="true" />
-            <span className={styles.metric}>LLM {calls}회</span>
-            {tokens > 0 && (
-              <>
-                <span className={`${styles.dividerDot} ${styles.tokenMetric}`} aria-hidden="true" />
-                <span className={`${styles.metric} ${styles.tokenMetric}`}>
-                  {tokens.toLocaleString()} tok
-                </span>
-              </>
-            )}
-            <span className={styles.dividerDot} aria-hidden="true" />
-            <span className={styles.cost}>{costLabel}</span>
-          </>
+      {/* 진행 단계 — 바뀔 때마다 스크린리더가 읽습니다 */}
+      <span
+        className={styles.phase}
+        role="status"
+        aria-live="polite"
+        title={!idle && brief ? brief : undefined}
+      >
+        <i
+          className={
+            idle ? styles.dotIdle : running ? styles.dotWork : styles.dotDone
+          }
+          aria-hidden="true"
+        />
+        <b>{phaseLabel}</b>
+        {!idle && (
+          <span className={styles.step}>
+            {step}/{PHASE_SEQUENCE.length}
+          </span>
         )}
+      </span>
+
+      {!idle && (
+        <span className={styles.metrics}>
+          <span className={`${styles.metric} ${styles.teamMetric}`}>
+            {workingCount > 0
+              ? `${workingCount}명 작업 중`
+              : `${team.length}명 참여`}
+          </span>
+          <span className={styles.metric}>{formatElapsed(elapsedSeconds)}</span>
+          <span className={`${styles.metric} ${styles.tokenMetric}`}>LLM {calls}회</span>
+          {tokens > 0 && (
+            <span className={`${styles.metric} ${styles.tokenMetric}`}>
+              {tokens.toLocaleString()} tok
+            </span>
+          )}
+          <span className={styles.cost}>{costLabel}</span>
+        </span>
+      )}
+
+      <span className={styles.online}>
+        <Icon name="users" size={16} />
+        {agents.length}명 온라인
+      </span>
+
+      <span className={styles.avatars} aria-hidden="true">
+        {agents.slice(0, 3).map((agent) => (
+          <i key={agent.id}>{deptAbbrev(agent.dept)}</i>
+        ))}
+        {agents.length > 3 && <b>+{agents.length - 3}</b>}
       </span>
 
       <span className={styles.progressTrack} aria-hidden="true">

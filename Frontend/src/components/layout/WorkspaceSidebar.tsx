@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '@/components/common/Icon';
 import { AgentDetailPanel } from '@/components/panels/AgentDetailPanel';
 import { CoPilotPanel } from '@/components/panels/CoPilotPanel';
 import { DeliverablePanel } from '@/components/panels/DeliverablePanel';
@@ -7,29 +8,19 @@ import { VaultPanel } from '@/components/panels/VaultPanel';
 import { UsagePanel } from '@/components/panels/UsagePanel';
 import { WorkTimeline } from '@/components/panels/WorkTimeline';
 import { useSessionStore } from '@/store/session.store';
+import { WORKSPACE_TABS, useUiStore, type WorkspaceTabKey } from '@/store/ui.store';
 import styles from './WorkspaceSidebar.module.css';
 
-export type WorkspaceTabKey = 'tasks' | 'log' | 'result' | 'vault';
-
-const TABS: ReadonlyArray<{ key: WorkspaceTabKey; label: string }> = [
-  { key: 'tasks', label: '업무' },
-  { key: 'log', label: '진행' },
-  { key: 'result', label: '산출물' },
-  { key: 'vault', label: '문서' },
-];
+export type { WorkspaceTabKey } from '@/store/ui.store';
 
 interface WorkspaceSidebarProps {
   onSelectBrief: (brief: string) => void;
   embedded?: boolean;
-  openTab?: WorkspaceTabKey;
-  openRequestId?: number;
 }
 
 export function WorkspaceSidebar({
   onSelectBrief,
   embedded = false,
-  openTab,
-  openRequestId = 0,
 }: WorkspaceSidebarProps): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<WorkspaceTabKey>('log');
   const [drawerOpen, setDrawerOpen] = useState(!embedded);
@@ -45,6 +36,11 @@ export function WorkspaceSidebar({
       avatar.status === 'thinking' || avatar.status === 'talking',
     ).length,
   );
+  const panelRequest = useUiStore((s) => s.panelRequest);
+  const setOpenPanel = useUiStore((s) => s.setOpenPanel);
+  const inboxOpen = useUiStore((s) => s.inboxOpen);
+  const inboxCount = useUiStore((s) => s.inboxCount);
+  const setInboxOpen = useUiStore((s) => s.setInboxOpen);
   const prevLogCount = useRef(logCount);
   const prevRunning = useRef(isRunning);
 
@@ -73,13 +69,22 @@ export function WorkspaceSidebar({
   }, [logCount, drawerOpen, activeTab]);
 
   useEffect(() => {
-    if (!openTab || openRequestId === 0) return;
-    setActiveTab(openTab);
+    if (panelRequest.id === 0) return;
+    if (panelRequest.tab === 'office') {
+      setDrawerOpen(false);
+      return;
+    }
+    setActiveTab(panelRequest.tab);
     setDrawerOpen(true);
-    // 레일에서 탭을 고른 건 "목록으로 돌아가겠다"는 뜻입니다
+    // 메뉴에서 탭을 고른 건 "목록으로 돌아가겠다"는 뜻입니다
     selectAgent(null);
-    if (openTab === 'log') setUnreadCount(0);
-  }, [openTab, openRequestId, selectAgent]);
+    if (panelRequest.tab === 'log') setUnreadCount(0);
+  }, [panelRequest, selectAgent]);
+
+  // 상단 탭이 지금 열린 패널을 표시할 수 있게 알려 줍니다
+  useEffect(() => {
+    setOpenPanel(drawerOpen ? activeTab : null);
+  }, [drawerOpen, activeTab, setOpenPanel]);
 
   // 캔버스에서 직원을 클릭하면 패널이 닫혀 있어도 열어 상세를 보여줍니다
   useEffect(() => {
@@ -103,9 +108,21 @@ export function WorkspaceSidebar({
             if (activeTab === 'log') setUnreadCount(0);
           }}
         >
-          <span className={styles.launcherIcon} aria-hidden="true">◫</span>
+          <Icon name="users" size={20} />
           <span>활동</span>
           {unreadCount > 0 && <b>{unreadCount}</b>}
+        </button>
+        {/* 알림 = 자율 업무함. 승인을 기다리는 일이 여기 쌓입니다 */}
+        <button
+          type="button"
+          className={styles.drawerLauncher}
+          aria-label="알림(자율 업무함) 열기"
+          aria-expanded={inboxOpen}
+          onClick={() => setInboxOpen(!inboxOpen)}
+        >
+          <Icon name="bell" size={20} />
+          <span>알림</span>
+          {inboxCount > 0 && <b>{inboxCount}</b>}
         </button>
       </aside>
     );
@@ -115,7 +132,6 @@ export function WorkspaceSidebar({
     <aside className={`${styles.drawer} sidebar`} aria-label="활동 패널" data-drawer="open">
       <header className={styles.drawerHeader}>
         <div>
-          <span className={styles.eyebrow}>PEOPLE & WORK</span>
           <strong>팀 활동</strong>
         </div>
         <div className={styles.headerMeta}>
@@ -132,7 +148,7 @@ export function WorkspaceSidebar({
       {/* 직원 상세를 보는 동안에는 탭을 숨깁니다 — 되돌아갈 길은 패널 안에 있습니다 */}
       {!selectedAgentId && (
         <div className={styles.tabs} role="tablist" aria-label="업무 보기">
-          {TABS.map((tab) => (
+          {WORKSPACE_TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -168,7 +184,6 @@ export function WorkspaceSidebar({
 
       <CoPilotPanel
         className={styles.copilot}
-        theme="light"
         onSelectBrief={onSelectBrief}
       />
     </aside>

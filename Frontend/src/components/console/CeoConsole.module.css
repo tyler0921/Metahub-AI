@@ -1,70 +1,52 @@
+/*
+ * 대표 지시 콘솔 — 하단 중앙.
+ * 1행: 지시 입력, 2행: 빠른 지시 칩 + 전송. 시안대로 칩은 늘 보입니다.
+ */
 .console {
   overflow: hidden;
-  border: 1px solid var(--line-dark);
-  border-radius: 16px;
+  border: 1px solid var(--line-glow);
+  border-radius: 18px;
   background: var(--panel-dark);
   color: var(--text-on-dark);
   backdrop-filter: var(--blur);
   box-shadow: var(--shadow-lg);
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.expanded {
-  border-color: rgb(255 255 255 / 22%);
+/* 입력 중 — 테두리가 보라로 밝아져 어디에 쓰고 있는지 보입니다 */
+.console:focus-within {
+  border-color: rgb(129 116 255 / 60%);
+  box-shadow: var(--shadow-lg), 0 0 0 3px rgb(99 82 245 / 18%);
 }
 
 .inputRow {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  min-height: 58px;
-  padding: 8px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px 6px;
 }
 
-.expandBtn,
-.submit,
-.cancelBtn {
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 12px;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-/*
- * 행은 아래 정렬(전송 버튼이 입력 끝을 따라감)이지만, 접기 버튼·라벨은 글이 시작되는
- * 첫 줄에 붙어 있어야 합니다. 그렇지 않으면 펼쳤을 때 라벨이 본문 아래로 떨어져 보입니다.
- */
-.expandBtn,
-.commandIcon {
-  align-self: flex-start;
-}
-
-.expandBtn {
-  width: 40px;
-  height: 40px;
-  background: rgb(255 255 255 / 8%);
-  color: var(--dim-on-dark);
-  font-size: var(--fs-2xl);
-}
-
-.expandBtn:hover {
-  background: rgb(255 255 255 / 13%);
-  color: var(--text-on-dark);
-}
-
-/* 예전엔 ⌘ 글리프였습니다 — 업무 화면에서는 이모지·기호보다 말이 낫습니다 */
 .commandIcon {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+  gap: 10px;
   height: 40px;
-  padding: 0 2px 0 4px;
-  color: var(--dim-on-dark);
-  font-size: var(--fs-xs);
-  font-weight: 700;
+  color: var(--text-on-dark);
+  font-size: var(--fs-lg);
+  font-weight: 800;
   white-space: nowrap;
+}
+
+.spark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgb(129 116 255 / 18%);
+  color: var(--accent-text);
 }
 
 .input {
@@ -86,17 +68,88 @@
   color: var(--dim-on-dark);
 }
 
+/* 포커스는 .console:focus-within 이 보여 줍니다 */
 .input:focus {
   outline: none;
 }
 
-.submit {
-  min-width: 62px;
-  height: 42px;
+.quickRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 12px 12px 16px;
+}
+
+.quickLabel {
+  flex-shrink: 0;
+  margin-right: 4px;
+  color: var(--dim-on-dark);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.chips {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  min-height: 34px;
   padding: 0 14px;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 4%);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--line-glow);
+  background: var(--hover-soft);
+  color: var(--text-on-dark);
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.keyboardHint {
+  flex-shrink: 0;
+  color: var(--dim-on-dark);
+  font-size: var(--fs-xs);
+}
+
+.submit,
+.cancelBtn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 92px;
+  height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.submit {
   background: var(--accent);
   color: var(--text-on-dark);
-  font-size: var(--fs-md);
+  box-shadow: 0 6px 18px rgb(99 82 245 / 35%);
 }
 
 .submit:hover:not(:disabled) {
@@ -105,74 +158,24 @@
 
 .submit:disabled,
 .cancelBtn:disabled {
-  opacity: 0.4;
+  box-shadow: none;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* 중단은 색 하나로만 구분합니다 — 아이콘 없이 --danger */
+/* 중단은 색 하나로만 구분합니다 */
 .cancelBtn {
-  min-width: 64px;
-  height: 42px;
-  padding: 0 13px;
   background: rgb(217 92 92 / 24%);
   color: var(--danger-on-dark);
-  font-size: var(--fs-md);
-}
-
-.quickRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 9px 12px 11px;
-  border-top: 1px solid rgb(255 255 255 / 9%);
-  background: rgb(255 255 255 / 3%);
-}
-
-.quickLabel {
-  flex-shrink: 0;
-  color: var(--dim-on-dark);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-
-.chips {
-  display: flex;
-  flex: 1;
-  gap: 5px;
-  min-width: 0;
-}
-
-.chip {
-  padding: 6px 9px;
-  border: 1px solid var(--line-dark);
-  border-radius: var(--radius-pill);
-  background: rgb(255 255 255 / 6%);
-  color: var(--dim-on-dark);
-  font: inherit;
-  font-size: var(--fs-xs);
-  cursor: pointer;
-}
-
-.chip:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 26%);
-  background: rgb(255 255 255 / 12%);
-  color: var(--text-on-dark);
-}
-
-.keyboardHint {
-  flex-shrink: 0;
-  color: var(--dim-on-dark);
-  font-size: var(--fs-xs);
-  opacity: 0.7;
 }
 
 .followUpNotice {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 11px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--line-dark);
-  background: rgb(255 255 255 / 6%);
+  background: rgb(129 116 255 / 10%);
   color: var(--dim-on-dark);
   font-size: var(--fs-xs);
 }
@@ -193,13 +196,33 @@
   cursor: pointer;
 }
 
+@media (width <= 1100px) {
+  .keyboardHint {
+    display: none;
+  }
+}
+
 @media (width <= 640px) {
-  .keyboardHint,
   .quickLabel {
     display: none;
   }
 
-  .chips {
-    overflow-x: auto;
+  .inputRow {
+    gap: 8px;
+    padding: 8px 10px 4px;
+  }
+
+  .commandIcon {
+    font-size: var(--fs-md);
+  }
+
+  .quickRow {
+    padding: 4px 8px 8px 10px;
+  }
+
+  .submit,
+  .cancelBtn {
+    min-width: 0;
+    padding: 0 14px;
   }
 }

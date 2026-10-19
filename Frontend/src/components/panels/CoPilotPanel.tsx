@@ -6,7 +6,6 @@ import styles from './CoPilotPanel.module.css';
 
 interface CoPilotPanelProps {
   className?: string;
-  theme?: 'dark' | 'light';
   onSelectBrief: (brief: string) => void;
 }
 
@@ -40,7 +39,6 @@ const phaseLabel = (key: PhaseKey | null): string =>
 /** Co-pilot 추천 액션 + 스마트 프롬프트 + 투입 부서 진행 스택 */
 export function CoPilotPanel({
   className,
-  theme = 'dark',
   onSelectBrief,
 }: CoPilotPanelProps): React.JSX.Element {
   const isRunning = useSessionStore((s) => s.isRunning);
@@ -80,7 +78,6 @@ export function CoPilotPanel({
     <section
       className={[
         styles.panel,
-        theme === 'light' ? styles.light : '',
         className,
       ].filter(Boolean).join(' ')}
       aria-label="Co-pilot"

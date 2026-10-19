@@ -1,131 +1,123 @@
+/* 좌상단 — 지금 서 있는 공간 */
 .card {
   position: absolute;
   top: var(--hud-inset, 14px);
   left: 14px;
   z-index: 5;
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: center;
-  width: 320px;
-  min-height: 70px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
+  width: 400px;
+  padding: 12px;
+  border: 1px solid var(--line-glow);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--blur);
   transition: width 0.18s ease, transform 0.18s ease;
 }
 
-.roomIcon {
-  position: relative;
-  display: grid;
-  flex: 0 0 48px;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 2px;
-  width: 48px;
-  height: 48px;
-  padding: 4px;
-  border: 1px solid var(--line);
+/* 실제 맵에서 잘라 온 방 미리보기 */
+.thumb {
+  flex: 0 0 104px;
+  height: 72px;
+  border: 1px solid var(--line-dark);
   border-radius: 10px;
-  background: var(--accent-soft);
-}
-
-.roomIcon i {
-  border-radius: 3px;
-  background: rgb(90 80 230 / 12%);
-}
-
-.roomIcon i:nth-child(2),
-.roomIcon i:nth-child(3) {
-  background: rgb(90 80 230 / 8%);
-}
-
-.roomIcon span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--panel-solid);
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgb(90 80 230 / 14%);
-  transform: translate(-50%, -50%);
+  background-color: var(--accent-soft);
+  background-image: url('/map/office-v3.png');
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 .roomInfo {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
-.roomInfo > span {
-  color: var(--accent);
-  font-size: var(--fs-xs);
-  font-weight: 900;
-  letter-spacing: 0.55px;
+.titleRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
 }
 
-.roomInfo strong {
-  margin: 1px 0 2px;
+.titleRow strong {
   overflow: hidden;
-  font-size: var(--fs-md);
+  font-size: var(--fs-xl);
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.titleRow em {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--text-on-dark);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 800;
 }
 
 .roomInfo small {
   overflow: hidden;
   color: var(--dim);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.presence {
+.tags {
   display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  padding-left: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
 }
 
-.presence i {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 부서 약칭 두 글자가 --fs-xs 로 들어가는 최소 지름 */
-  width: 30px;
-  height: 30px;
-  margin-left: -8px;
-  border: 2px solid var(--panel-solid);
-  border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
+.tags i {
+  padding: 2px 9px;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 4%);
+  color: var(--text-2);
   font-size: var(--fs-xs);
   font-style: normal;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.presence b {
-  margin-left: 4px;
-  color: var(--dim);
-  font-size: var(--fs-xs);
-}
-
+/* 직원 카드가 뜨면 한 단계 작게 */
 .compact {
-  width: 270px;
-  transform: translateY(-2px);
+  width: 340px;
+}
+
+.compact .thumb {
+  flex-basis: 80px;
+  height: 56px;
 }
 
 @media (width <= 900px) {
   .card {
     left: 8px;
-    width: 240px;
+    gap: 10px;
+    width: min(300px, calc(100% - 120px));
+    padding: 9px;
   }
 
-  .presence {
+  .thumb {
+    flex-basis: 64px;
+    height: 48px;
+  }
+
+  .titleRow strong {
+    font-size: var(--fs-lg);
+  }
+
+  .tags {
     display: none;
   }
 }

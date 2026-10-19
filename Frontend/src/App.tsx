@@ -59,9 +59,7 @@ export default function App(): React.JSX.Element {
               config={config}
               consoleExpanded={!ceoCollapsed}
             />
-            <div
-              className={`${styles.consoleDock} ${ceoCollapsed ? styles.consoleDockCollapsed : ''}`}
-            >
+            <div className={styles.consoleDock}>
               <CeoConsole
                 isRunning={isRunning}
                 isCancelling={isCancelling}

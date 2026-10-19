@@ -3,11 +3,11 @@
   transform: translate(-50%, -100%);
   max-width: 300px;
   padding: 11px 13px;
-  border: 1px solid rgb(255 255 255 / 60%);
+  border: 1px solid var(--line-glow);
   border-radius: 13px 13px 13px 4px;
-  background: rgb(252 253 254 / 96%);
+  background: var(--panel-solid);
   color: var(--text-2);
-  box-shadow: 0 8px 26px rgb(10 16 24 / 28%);
+  box-shadow: var(--shadow);
   pointer-events: none;
   animation: pop 0.18s ease-out;
   border-top: 3px solid transparent;
@@ -45,7 +45,7 @@
   left: 50%;
   margin-left: -6px;
   border: 6px solid transparent;
-  border-top-color: rgb(252 253 254 / 96%);
+  border-top-color: var(--panel-solid);
   border-bottom: 0;
 }
 

@@ -5,26 +5,52 @@
   z-index: 6;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 7px 8px 8px;
-  border: 1px solid var(--line-dark);
-  border-radius: 12px;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--line-glow);
+  border-radius: var(--radius);
   background: var(--panel-dark);
   box-shadow: var(--shadow);
+  backdrop-filter: var(--blur);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .label {
-  color: var(--dim-on-dark);
+  color: var(--text-on-dark);
   font-size: var(--fs-xs);
   font-weight: 800;
-  letter-spacing: 0.6px;
-  text-align: center;
+}
+
+.showAll {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim-on-dark);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.showAll:hover {
+  background: var(--hover-soft);
+  color: var(--text-on-dark);
 }
 
 .canvas {
   display: block;
-  width: 148px;
-  height: 96px;
+  width: 200px;
+  height: auto;
   border-radius: 6px;
   image-rendering: pixelated;
 }
