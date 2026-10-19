@@ -41,9 +41,9 @@
 - 레이어 규칙: Controller(입출력) / Service(도메인) / Formatter·Exporter(직렬화) — 변환 로직은 Controller 에 두지 않는다. 프론트는 `services/` 에서만 fetch.
 - **내보내기 원본 = 세션 결과(`sessions.result_json` 의 `Deliverable`)**. 볼트 노트가 아니다 — 1:1 대화로 고친 현재 버전이 여기에 반영되기 때문.
 - slides 본문은 **Marp 호환 마크다운**: 맨 앞 프론트매터(`---\nmarp: true\npaginate: true\n---`), 슬라이드는 `---` 한 줄로 구분, 슬라이드마다 제목(`#`/`##`) 하나 + 불릿 ≤5, 표 가능, 첫 장은 제목 슬라이드, 8~14장.
-- website 는 `Deliverable.artifacts[]` + `workspace/<workspaceFolder>/` 실제 파일. (WorkspaceService 경로 검증 재사용)
+- website 는 `Deliverable.artifacts[]` 의 `path` + `content` (result_json 에 이미 저장됨). *(내 판단)* 디스크(`workspace/`)는 읽지 않는다 — 원본을 result_json 하나로 통일해야 1:1 대화 수정·되돌리기와 어긋나지 않고, 디스크 일부 삭제·오래된 세션도 문제없다.
 - 서체: **맑은 고딕(Malgun Gothic)** — *내 판단*: 앱의 Pretendard 는 받는 PC 에 없을 가능성이 높다. 동아시아 글꼴 지정(eastAsia)까지 맞춘다.
-- 다운로드는 GET 이라 AdminMutationGuard 를 통과하지 않지만, 보안 선행 작업(루프백 바인딩·CORS 기본값)이 적용된 상태를 전제로 한다.
+- *(내 판단)* **순서: 보안 선행 작업(직원 대화 설계 §6) 뒤에 착수.** 현재 코드는 루프백 바인딩·CORS 기본값이 미적용(`main.ts` listen 에 host 없음, 가드는 GET 통과). 다운로드는 그 정책 아래 들어간다.
 
 ## 4. 제안 설계 (빌더 재량 포함)
 
