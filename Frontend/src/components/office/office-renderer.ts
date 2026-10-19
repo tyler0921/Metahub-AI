@@ -520,7 +520,8 @@ export class OfficeRenderer {
   /* ── 입력 ─────────────────────────────────────── */
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (this.isTyping(e.target)) return;
+    // 다른 컴포넌트가 이미 처리한 키(예: 탭 화살표 이동)는 건드리지 않습니다
+    if (e.defaultPrevented || this.isTyping(e.target)) return;
     if (MOVE_KEYS.has(e.key)) {
       this.keys.add(e.key);
       const player = this.actors.get('ceo');
@@ -640,10 +641,18 @@ export class OfficeRenderer {
     this.adjustZoomPercent(delta);
   };
 
+  /**
+   * 이 키를 오피스 이동으로 쓰면 안 되는 경우.
+   * 글 입력뿐 아니라 방향키를 스스로 쓰는 위젯(탭 목록·선택 상자·대화상자)도 포함합니다 —
+   * 활동 패널 탭에서 →를 누를 때 대표님까지 걸어가면 안 됩니다.
+   */
   private isTyping(target: EventTarget | null): boolean {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
+      return true;
+    }
+    return target.closest('[role="tablist"], [role="dialog"], [role="listbox"], [role="menu"]') !== null;
   }
 
   /* ── 이동 ─────────────────────────────────────── */

@@ -96,6 +96,22 @@ export function WorkspaceSidebar({
     if (tab === 'log') setUnreadCount(0);
   };
 
+  /** WAI-ARIA 탭 패턴 — 화살표로 옮기고 Home/End 로 양끝. 옮기는 즉시 선택합니다 */
+  const handleTabKey = (event: React.KeyboardEvent<HTMLButtonElement>, index: number): void => {
+    const last = WORKSPACE_TABS.length - 1;
+    const next =
+      event.key === 'ArrowRight' ? (index === last ? 0 : index + 1)
+      : event.key === 'ArrowLeft' ? (index === 0 ? last : index - 1)
+      : event.key === 'Home' ? 0
+      : event.key === 'End' ? last
+      : null;
+    if (next === null) return;
+    event.preventDefault();
+    const tab = WORKSPACE_TABS[next]!;
+    selectTab(tab.key);
+    document.getElementById(`workspace-tab-${tab.key}`)?.focus();
+  };
+
   if (!drawerOpen) {
     return (
       <aside className={`${styles.drawerClosed} sidebar`} aria-label="활동 패널">
@@ -148,23 +164,37 @@ export function WorkspaceSidebar({
       {/* 직원 상세를 보는 동안에는 탭을 숨깁니다 — 되돌아갈 길은 패널 안에 있습니다 */}
       {!selectedAgentId && (
         <div className={styles.tabs} role="tablist" aria-label="업무 보기">
-          {WORKSPACE_TABS.map((tab) => (
+          {WORKSPACE_TABS.map((tab, index) => (
             <button
               key={tab.key}
+              id={`workspace-tab-${tab.key}`}
               type="button"
               role="tab"
               aria-selected={activeTab === tab.key}
+              aria-controls="workspace-tabpanel"
+              // 탭 묶음은 Tab 한 번으로 들어오고, 안에서는 화살표로 움직입니다
+              tabIndex={activeTab === tab.key ? 0 : -1}
               className={activeTab === tab.key ? styles.activeTab : ''}
               onClick={() => selectTab(tab.key)}
+              onKeyDown={(event) => handleTabKey(event, index)}
             >
               {tab.label}
-              {tab.key === 'log' && unreadCount > 0 && <b>{unreadCount}</b>}
+              {tab.key === 'log' && unreadCount > 0 && (
+                <b aria-label={`새 기록 ${unreadCount}건`}>{unreadCount}</b>
+              )}
             </button>
           ))}
         </div>
       )}
 
-      <div className={styles.body} role="tabpanel" data-scroll-root>
+      <div
+        id="workspace-tabpanel"
+        className={styles.body}
+        role={selectedAgentId ? 'region' : 'tabpanel'}
+        aria-labelledby={selectedAgentId ? undefined : `workspace-tab-${activeTab}`}
+        aria-label={selectedAgentId ? '직원 상세' : undefined}
+        data-scroll-root
+      >
         {selectedAgentId ? (
           <AgentDetailPanel
             agentId={selectedAgentId}

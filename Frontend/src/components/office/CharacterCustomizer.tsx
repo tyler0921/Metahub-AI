@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { HAIR_SWATCHES, SKIN_SWATCHES, type CustomAppearance } from './custom-character';
 import styles from './CharacterCustomizer.module.css';
 
@@ -16,8 +18,12 @@ export function CharacterCustomizer({
   onChange,
   onClose,
 }: Readonly<CharacterCustomizerProps>): React.JSX.Element {
+  const panelRef = useRef<HTMLElement>(null);
+  // 팝오버라 Tab 은 가두지 않습니다 — Esc 로 닫고 외형 버튼으로 돌아갑니다
+  useDialogFocus(panelRef, { active: true, onClose });
+
   return (
-    <section className={styles.panel} aria-label="대표님 외형 설정">
+    <section ref={panelRef} className={styles.panel} role="dialog" aria-label="대표님 외형 설정">
       <header className={styles.header}>
         <strong>대표님 외형</strong>
         <button type="button" onClick={onClose} aria-label="닫기">

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AutonomousInboxResponse } from '@shared';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { companyService } from '@/services/company.service';
 import styles from './AutonomousInbox.module.css';
 
@@ -16,6 +17,8 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
   const [priority, setPriority] = useState(3);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  useDialogFocus(panelRef, { active: open, onClose });
 
   const load = useCallback(async () => {
     try {
@@ -79,13 +82,13 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
   const history = inbox.approvals.filter((item) => item.status !== 'pending').slice(0, 5);
 
   return (
-    <section className={styles.panel} aria-label="자율 업무함">
+    <section ref={panelRef} className={styles.panel} role="dialog" aria-labelledby="autonomous-inbox-title">
       <header>
         <div>
-          <strong>자율 업무함</strong>
+          <strong id="autonomous-inbox-title">자율 업무함</strong>
           <small>우선순위 백로그 · 결과 승인</small>
         </div>
-        <button type="button" onClick={onClose} aria-label="닫기">×</button>
+        <button type="button" onClick={onClose} aria-label="업무함 닫기"><span aria-hidden="true">×</span></button>
       </header>
 
       <form
@@ -98,6 +101,7 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
         <textarea
           value={brief}
           onChange={(event) => setBrief(event.target.value)}
+          aria-label="자율 업무 내용"
           placeholder="AI 직원들이 알아서 처리할 업무를 적어주세요."
           maxLength={2_000}
         />

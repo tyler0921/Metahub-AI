@@ -199,7 +199,16 @@ export function OfficeCanvas({
       className={`${styles.stage} ${consoleExpanded ? styles.consoleOpen : ''}`}
       ref={stageRef}
     >
-      <canvas ref={canvasRef} className={styles.canvas} />
+      {/*
+        캔버스는 스크린리더에 그림 한 장입니다. 같은 정보(직원·상태·진행)는
+        활동 패널의 목록으로 읽을 수 있고, 이동은 WASD·방향키로 됩니다.
+      */}
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        role="img"
+        aria-label="MetaHub 오피스 지도. 직원 위치와 상태는 활동 패널에서 목록으로 볼 수 있습니다."
+      />
 
       <ConversationFlow
         speeches={activeSpeeches}

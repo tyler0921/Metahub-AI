@@ -109,11 +109,29 @@ button {
   font-family: inherit;
 }
 
-button:focus-visible,
-[role='button']:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--accent);
+/*
+ * 키보드 포커스 — 조작 가능한 모든 요소에 같은 링.
+ * 보라 바탕 버튼 위에서도 보이도록 밝은 --accent-text 를 씁니다 (네이비 위 7:1).
+ */
+:where(a, button, input, select, textarea, summary, iframe, [tabindex], [role='button']):focus-visible {
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
+}
+
+/*
+ * "동작 줄이기"를 켠 사용자에게는 장식 애니메이션을 끕니다.
+ * 컴포넌트마다 따로 챙기면 반드시 빠지는 곳이 생겨서 여기서 한 번에 막습니다.
+ * (0 이 아니라 0.01ms — animationend 를 기다리는 코드가 멈추지 않게)
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 ::-webkit-scrollbar {

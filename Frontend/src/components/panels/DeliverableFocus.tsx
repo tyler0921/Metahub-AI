@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Markdown } from '@/components/common/Markdown';
 import { ReviewCard } from '@/components/panels/ReviewCard';
 import { API_BASE_URL } from '@/config/env';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { formatBytes } from '@/lib/format-bytes';
 import { useSessionStore } from '@/store/session.store';
 import styles from './DeliverableFocus.module.css';
@@ -27,15 +28,16 @@ export function DeliverableFocus(): React.JSX.Element | null {
   const [reloadKey, setReloadKey] = useState(0);
 
   const close = useCallback(() => setFocusMode(false), [setFocusMode]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!focusMode) return;
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') close();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [focusMode, close]);
+  // 화면 전체를 덮는 모달이라 Tab 을 안에 가두고, 닫으면 연 버튼으로 돌아갑니다
+  useDialogFocus(dialogRef, {
+    active: focusMode && Boolean(result || previewUrl),
+    onClose: close,
+    trap: true,
+    initialFocus: closeRef,
+  });
 
   if (!focusMode) return null;
   if (!result && !previewUrl) return null;
@@ -51,13 +53,19 @@ export function DeliverableFocus(): React.JSX.Element | null {
   };
 
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="산출물 집중 모드">
+    <div
+      ref={dialogRef}
+      className={styles.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deliverable-focus-title"
+    >
       <header className={styles.head}>
         <div className={styles.headText}>
           <span className={styles.eyebrow}>
             산출물{isRunning && <em className={styles.live}> · 만드는 중</em>}
           </span>
-          <h2 className={styles.title}>{result?.brief || brief || '산출물'}</h2>
+          <h2 id="deliverable-focus-title" className={styles.title}>{result?.brief || brief || '산출물'}</h2>
         </div>
 
         <div className={styles.headActions}>
@@ -75,7 +83,7 @@ export function DeliverableFocus(): React.JSX.Element | null {
               </a>
             </>
           )}
-          <button type="button" className={styles.close} onClick={close}>
+          <button ref={closeRef} type="button" className={styles.close} onClick={close}>
             닫기 <kbd>Esc</kbd>
           </button>
         </div>
