@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # node:sqlite(세션 저장소)가 플래그 없이 동작하는 22 LTS 를 씁니다. README 권장 버전과 동일.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # typecheck → lint → 백엔드 테스트(빌드 포함) → 프론트 빌드(맵·아틀라스 검증 포함)
+      # LLM 호출은 없습니다 — api e2e 테스트가 AI_PROVIDER=mock 으로 서버를 띄웁니다.
+      - run: npm run verify
