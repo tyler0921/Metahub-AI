@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AgentId, PhaseKey } from '@shared';
+import type { PhaseKey } from '@shared';
 import type { AgentEntity } from '../../agents/entities/agent.entity';
 import { LlmService } from '../../llm/llm.service';
 import { WebSearchService } from '../../search/web-search.service';

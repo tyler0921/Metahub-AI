@@ -14,15 +14,21 @@
     "dev:frontend": "npm --workspace @ai-company/frontend run dev",
     "build": "npm --workspace @ai-company/backend run build && npm --workspace @ai-company/frontend run build",
     "typecheck": "npm --workspace @ai-company/backend run typecheck && npm --workspace @ai-company/frontend run typecheck",
+    "lint": "npm --workspace @ai-company/backend run lint && npm --workspace @ai-company/frontend run lint",
     "start:backend": "npm --workspace @ai-company/backend run start:prod",
     "preview": "npm --workspace @ai-company/frontend run preview",
     "runtime:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/metahub-supervisor.ps1",
     "runtime:build-start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/metahub-supervisor.ps1 -Build",
     "runtime:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runtime-status.ps1",
-    "verify": "npm run typecheck && npm --workspace @ai-company/backend test && npm --workspace @ai-company/frontend run build"
+    "verify": "npm run typecheck && npm run lint && npm --workspace @ai-company/backend test && npm --workspace @ai-company/frontend run build"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.1.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "typescript-eslint": "^8.71.2"
   },
   "engines": {
     "node": ">=20.0.0"

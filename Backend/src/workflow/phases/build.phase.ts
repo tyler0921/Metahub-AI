@@ -262,7 +262,7 @@ export class BuildPhase implements WorkflowPhase {
         `## 지금 만들 파일 — \`${planned.path}\``,
         planned.purpose,
         '',
-        ...this.rulesFor(planned.path, options),
+        ...this.rulesFor(planned.path),
         '',
         `출력은 \`${planned.path}\` 의 **전체 내용**입니다.`,
         '설명·머리말·후기를 붙이지 말고, 아래 형식 그대로 코드블록 하나만 출력하세요.',
@@ -278,7 +278,7 @@ export class BuildPhase implements WorkflowPhase {
     return this.extractCode(raw, planned.path);
   }
 
-  private rulesFor(filePath: string, options: BuildOptions): string[] {
+  private rulesFor(filePath: string): string[] {
     const lower = filePath.toLowerCase();
 
     if (lower.endsWith('.html')) {

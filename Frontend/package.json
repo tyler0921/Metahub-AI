@@ -10,6 +10,7 @@
     "build": "node tools/validate_office_map.mjs && node tools/validate_character_atlas.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "sprites": "node tools/generate_sprites.mjs",
     "map:generate": "npm run sprites && node tools/generate_office.mjs",
     "sprites:reference-characters": "node tools/build_reference_characters.mjs",

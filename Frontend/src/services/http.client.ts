@@ -92,7 +92,7 @@ class HttpClient {
 
     try {
       response = await fetch(this.resolve(path), init);
-    } catch (cause) {
+    } catch {
       throw new ApiError(
         0,
         '백엔드 서버에 연결할 수 없습니다.',
