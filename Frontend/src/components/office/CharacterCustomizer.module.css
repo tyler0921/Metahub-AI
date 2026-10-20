@@ -1,6 +1,7 @@
 .panel {
   position: absolute;
-  bottom: 146px;
+  /* 공간 메뉴 바로 위 — 콘솔이 펼쳐지면 --above-dock 이 함께 올라갑니다 */
+  bottom: calc(var(--above-dock, 224px) - 6px);
   left: 50%;
   z-index: 12;
   display: flex;
@@ -8,12 +9,13 @@
   gap: 12px;
   width: min(280px, calc(100% - 32px));
   padding: 14px 15px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--panel);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--line-glow);
+  border-radius: var(--radius-lg);
+  background: var(--panel-strong);
+  box-shadow: var(--edge), var(--shadow-lg);
+  backdrop-filter: var(--blur);
   transform: translateX(-50%);
-  animation: panelIn 0.18s ease-out;
+  animation: panelIn 0.32s var(--ease-out);
 }
 
 @keyframes panelIn {

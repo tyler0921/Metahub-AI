@@ -26,9 +26,11 @@
   margin-right: 14px;
 }
 
+/* 로고 아래로 은은한 보라 빛이 번집니다 (시안의 발광) */
 .logo {
-  width: 30px;
-  height: 22px;
+  width: 34px;
+  height: 26px;
+  filter: drop-shadow(0 3px 8px rgb(99 92 255 / 45%));
 }
 
 .brand b {
@@ -262,13 +264,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 부서 약칭 두 글자가 --fs-xs 로 들어가는 지름 */
+  /* 직원 얼굴(28px) + 테두리 — 시트에 없는 직원은 부서 약칭 두 글자 */
   width: 32px;
   height: 32px;
   margin-left: -6px;
+  overflow: hidden;
   border: 2px solid var(--chrome-panel);
   border-radius: 50%;
-  background: var(--accent-soft);
+  background: linear-gradient(180deg, #e7ecf8, #c9d2ea);
   color: var(--accent-text);
   font-size: var(--fs-xs);
   font-style: normal;

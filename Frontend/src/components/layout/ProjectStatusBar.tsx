@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { AgentFace } from '@/components/common/AgentFace';
+import { BrandLogo } from '@/components/common/BrandLogo';
 import { Icon, type IconName } from '@/components/common/Icon';
 import { AutonomousInbox } from './AutonomousInbox';
 import { PHASE_SEQUENCE, phaseIndexOf } from '@/constants/phases';
@@ -109,22 +111,7 @@ export function ProjectStatusBar(): React.JSX.Element {
       style={{ '--progress': `${progress}%` } as React.CSSProperties}
     >
       <span className={styles.brand}>
-        <svg className={styles.logo} viewBox="0 0 32 24" aria-hidden="true">
-          <defs>
-            <linearGradient id="metahub-logo" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stopColor="#8f7bff" />
-              <stop offset="1" stopColor="#5b8cff" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M3 21V5.5a2 2 0 0 1 3.5-1.3L16 15l9.5-10.8A2 2 0 0 1 29 5.5V21"
-            fill="none"
-            stroke="url(#metahub-logo)"
-            strokeWidth="4.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <BrandLogo className={styles.logo} />
         <b>MetaHub AI 회사</b>
       </span>
 
@@ -235,7 +222,9 @@ export function ProjectStatusBar(): React.JSX.Element {
 
       <span className={styles.avatars} aria-hidden="true">
         {agents.slice(0, 3).map((agent) => (
-          <i key={agent.id}>{deptAbbrev(agent.dept)}</i>
+          <i key={agent.id}>
+            <AgentFace agentId={agent.id} size={28} fallback={deptAbbrev(agent.dept)} />
+          </i>
         ))}
         {agents.length > 3 && <b>+{agents.length - 3}</b>}
       </span>

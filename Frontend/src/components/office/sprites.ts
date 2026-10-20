@@ -16,6 +16,9 @@ export interface SpriteManifest {
   characters: {
     frameWidth: number;
     frameHeight: number;
+    /** 화면(월드)에 그릴 크기. 없으면 프레임 크기 그대로 그립니다 */
+    drawWidth?: number;
+    drawHeight?: number;
     directions: string[];
     frames: number;
     rows: Record<string, number>;

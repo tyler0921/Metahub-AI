@@ -20,6 +20,36 @@ import { buildCustomCeoSheet, type CustomAppearance, type CustomCeoSheet } from 
 // 상태색의 출처는 한 곳입니다 — 예전에는 이 파일이 복사본을 들고 있어서
 // 팔레트를 바꿀 때마다 두 군데를 따로 고쳐야 했습니다.
 import { STATUS_COLOR } from '@/lib/agent-status';
+import {
+  LOGO_ARCH_PATH,
+  LOGO_GRADIENT,
+  LOGO_SPARK_PATH,
+  LOGO_STROKE,
+  LOGO_VIEWBOX,
+} from '@/components/common/brand-logo';
+
+/**
+ * 방 이름표 아이콘 — 24×24 선 아이콘(Icon.tsx 와 같은 문법)과 또렷한 강조색.
+ * 바닥 톤을 따르는 zone.color 는 이름표 위에서 너무 흐려서, 아이콘만 따로 선명한 색을 씁니다.
+ */
+const ZONE_ICON: Record<string, { path: string; color: string }> = {
+  researcher: { path: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3', color: '#a78bfa' },
+  reception: { path: 'M9 3h6v3H9zM8 4.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h4', color: '#fbbf5a' },
+  'ceo-office': { path: 'M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z', color: '#f6c453' },
+  boardroom: { path: 'M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 20v-1.5a3.5 3.5 0 0 0-2.5-3.35M15.5 4.15a3.5 3.5 0 0 1 0 6.7', color: '#7aa2ff' },
+  dev: { path: 'm16 18 6-6-6-6M8 6l-6 6 6 6', color: '#34d3b4' },
+  finance: { path: 'M4 20V10M10 20V4M16 20v-7M22 20H2', color: '#5eb8ff' },
+  writer: { path: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z', color: '#7dd3fc' },
+  marketer: { path: 'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15 9a3 3 0 0 1 0 6M18 6a7 7 0 0 1 0 12', color: '#f472b6' },
+  planner: { path: 'M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2z', color: '#facc15' },
+  designer: { path: 'M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2a2 2 0 0 0-1 3.7A1.6 1.6 0 0 1 12 22zM7.5 11h.01M10.5 7h.01M15.5 7.5h.01', color: '#c084fc' },
+  entrance: { path: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', color: '#93c5fd' },
+  showcase: { path: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20', color: '#fcd34d' },
+  cafe: { path: 'M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2', color: '#f9a8d4' },
+};
+
+/** 로비 간판 위치(타일 단위) — 안내 데스크(office-props.json, x 40.5·y 18) 바로 뒤 */
+const LOBBY_SIGN = { x: 41, y: 14.7, w: 160, h: 78 } as const;
 
 /** 타일/초 이동 속도 */
 const WALK_SPEED = 4.2;
@@ -38,12 +68,10 @@ const PLAYER_DECEL_TAU_MS = 100;
 const CAMERA_TAU_MS = 100;
 const ZOOM_TAU_MS = 120;
 /**
- * 자리에서 타자 치는 느낌을 내는 프레임 순서.
- * 걷기 프레임(1, 3)을 번갈아 쓰면 팔이 미세하게 움직여 보입니다.
+ * 좌석 좌표는 이동용 발 위치이므로, 자리에서 일할 때는 책상 앞모서리에 붙도록 살짝 올립니다.
+ * 캐릭터가 커져서(drawHeight 70) 많이 올리면 이름표가 윗벽의 방 이름표와 겹칩니다.
  */
-const TYPING_FRAMES = [0, 1, 0, 3] as const;
-/** 좌석 좌표는 이동용 발 위치이므로, 착석 렌더링은 의자 안쪽으로 올립니다. */
-const SEATED_FOOT_LIFT = TILE * 0.58;
+const SEATED_FOOT_LIFT = TILE * 0.12;
 /** 착석·기립 전환 속도. 순간 이동하면 벽에 하체가 잘린 것처럼 보입니다. */
 const SEATED_TRANSITION_SPEED = TILE * 3.4;
 
@@ -231,6 +259,8 @@ export class OfficeRenderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly actors = new Map<string, Actor>();
   private readonly keys = new Set<string>();
+  /** SVG 경로 문자열 → Path2D (이름표 아이콘·로고를 매 프레임 다시 파싱하지 않게) */
+  private readonly pathCache = new Map<string, Path2D>();
 
   private rafId = 0;
   private lastTime = 0;
@@ -1171,6 +1201,7 @@ export class OfficeRenderer {
     this.drawIdleZoneShade();
     this.drawDoors();
     this.drawDoorGlow();
+    this.drawLobbySign();
     this.drawZoneLabels();
     this.drawCeoSeatMarker();
 
@@ -1264,7 +1295,70 @@ export class OfficeRenderer {
     return Math.max(1, screenPx / (worldPx * this.zoom));
   }
 
-  /** 방 이름표 — 시안처럼 윗벽에 걸친 네이비 알약 + 부서색 표식 */
+  private iconPath(d: string): Path2D {
+    let path = this.pathCache.get(d);
+    if (!path) {
+      path = new Path2D(d);
+      this.pathCache.set(d, path);
+    }
+    return path;
+  }
+
+  /**
+   * 로비 안내 데스크 뒤의 MetaHub 간판 — 흰 유리 판에 로고와 회사 이름.
+   * 맵 이미지에 굽지 않고 여기서 그려 글자가 배율과 상관없이 또렷합니다.
+   */
+  private drawLobbySign(): void {
+    const { ctx } = this;
+    const { w, h } = LOBBY_SIGN;
+    const x = LOBBY_SIGN.x * TILE - w / 2;
+    const y = LOBBY_SIGN.y * TILE - h / 2;
+
+    ctx.save();
+    // 받침 기둥
+    ctx.fillStyle = '#9aa6bd';
+    ctx.fillRect(x + 28, y + h - 4, 5, 16);
+    ctx.fillRect(x + w - 33, y + h - 4, 5, 16);
+
+    ctx.shadowColor = 'rgba(40,50,90,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    const glass = ctx.createLinearGradient(x, y, x, y + h);
+    glass.addColorStop(0, '#ffffff');
+    glass.addColorStop(1, '#e4e8f8');
+    ctx.fillStyle = glass;
+    roundRect(ctx, x, y, w, h, 8);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(160,170,230,0.9)';
+    ctx.stroke();
+
+    // 로고 (viewBox 40×30 → 높이 24px)
+    const logoScale = 30 / LOGO_VIEWBOX.height;
+    ctx.save();
+    ctx.translate(LOBBY_SIGN.x * TILE - (LOGO_VIEWBOX.width * logoScale) / 2, y + 9);
+    ctx.scale(logoScale, logoScale);
+    const gradient = ctx.createLinearGradient(0, 0, LOGO_VIEWBOX.width, LOGO_VIEWBOX.height);
+    gradient.addColorStop(0, LOGO_GRADIENT[0]);
+    gradient.addColorStop(1, LOGO_GRADIENT[1]);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = LOGO_STROKE;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke(this.iconPath(LOGO_ARCH_PATH));
+    ctx.fillStyle = '#ffffff';
+    ctx.fill(this.iconPath(LOGO_SPARK_PATH));
+    ctx.restore();
+
+    ctx.fillStyle = '#1f2747';
+    ctx.font = '800 16px "Pretendard Variable", Pretendard, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('MetaHub AI', LOBBY_SIGN.x * TILE, y + h - 13);
+    ctx.restore();
+  }
+
+  /** 방 이름표 — 시안처럼 윗벽에 걸친 네이비 알약 + 방 아이콘 */
   private drawZoneLabels(): void {
     const { ctx } = this;
     ctx.save();
@@ -1284,33 +1378,50 @@ export class OfficeRenderer {
       const label = zone.kind === 'department' ? `${zone.label}팀` : zone.label;
 
       const textW = ctx.measureText(label).width;
-      const markW = 14;
-      const boxW = textW + 20 + markW;
-      const boxH = 18;
+      const markW = 15;
+      const boxW = textW + 24 + markW;
+      const boxH = 20;
 
       // 조명이 켜졌고 이 부서가 비활성이면 라벨도 함께 가라앉힙니다
       const dimmed = lighting && isDept && !active;
 
       ctx.save();
       // 윗벽 선에 걸쳐 둡니다 — 방 안쪽으로 내리면 맨 윗줄 직원 이름표와 겹칩니다
-      ctx.translate((zone.x + zone.w / 2) * TILE, zone.y * TILE + 4);
+      ctx.translate((zone.x + zone.w / 2) * TILE, zone.y * TILE - 4);
       ctx.scale(k, k);
       ctx.globalAlpha = dimmed ? 0.45 : 1;
 
-      ctx.fillStyle = 'rgba(20,24,48,0.92)';
-      roundRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 6);
+      ctx.shadowColor = 'rgba(6,10,28,0.45)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = 'rgba(22,30,58,0.96)';
+      roundRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 7);
       ctx.fill();
+      ctx.shadowColor = 'transparent';
       ctx.lineWidth = 0.8;
-      ctx.strokeStyle = active ? 'rgba(169,156,255,0.9)' : 'rgba(129,116,255,0.38)';
+      ctx.strokeStyle = active ? 'rgba(169,156,255,0.9)' : 'rgba(150,170,255,0.22)';
       ctx.stroke();
 
-      // 부서색 표식 — 미니맵과 같은 색이라 두 화면이 이어져 읽힙니다
-      ctx.fillStyle = zone.color;
-      roundRect(ctx, -boxW / 2 + 6, -4.5, 9, 9, 2.5);
-      ctx.fill();
+      // 방 아이콘 — 없으면 미니맵과 같은 부서색 사각 표식
+      const icon = ZONE_ICON[zone.id];
+      if (icon) {
+        ctx.save();
+        ctx.translate(-boxW / 2 + 7, -6.5);
+        ctx.scale(13 / 24, 13 / 24);
+        ctx.strokeStyle = icon.color;
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke(this.iconPath(icon.path));
+        ctx.restore();
+      } else {
+        ctx.fillStyle = zone.color;
+        roundRect(ctx, -boxW / 2 + 7, -4.5, 9, 9, 2.5);
+        ctx.fill();
+      }
 
       ctx.fillStyle = 'rgba(238,240,251,0.96)';
-      ctx.fillText(label, markW / 2 + 2, 3.6);
+      ctx.fillText(label, markW / 2 + 3, 3.6);
       ctx.restore();
     }
     ctx.restore();
@@ -1374,14 +1485,15 @@ export class OfficeRenderer {
             ? 'left'
             : 'right';
 
-      ctx.fillStyle = '#18202a';
-      ctx.strokeStyle = '#d3a15f';
+      // 시안의 문 — 짙은 통로 위에 금빛 문틀과 빛나는 발판
+      ctx.fillStyle = '#2b2a3a';
+      ctx.strokeStyle = '#f0b85a';
       ctx.lineWidth = 2;
 
       if (vertical) {
         // 세로 벽의 문: 벽을 어두운 통로로 덮고 위·아래에 문틀을 둡니다.
         ctx.fillRect(x + 7, y + 2, 18, TILE - 4);
-        ctx.fillStyle = '#b57d43';
+        ctx.fillStyle = '#d99a3e';
         ctx.fillRect(x + 5, y + 1, 4, TILE - 2);
         ctx.fillRect(x + 23, y + 1, 4, TILE - 2);
         ctx.fillStyle = '#e1b66f';
@@ -1397,7 +1509,7 @@ export class OfficeRenderer {
       } else {
         // 가로 벽의 문: 좌·우 문설주와 열린 문짝이 통행 방향을 보여줍니다.
         ctx.fillRect(x + 2, y + 7, TILE - 4, 18);
-        ctx.fillStyle = '#b57d43';
+        ctx.fillStyle = '#d99a3e';
         ctx.fillRect(x + 1, y + 5, TILE - 2, 4);
         ctx.fillRect(x + 1, y + 23, TILE - 2, 4);
         ctx.fillStyle = '#e1b66f';
@@ -1413,9 +1525,12 @@ export class OfficeRenderer {
       }
 
       // 문 중앙의 밝은 문턱은 실제 통과 가능한 타일이라는 신호입니다.
-      ctx.fillStyle = 'rgba(255, 231, 166, 0.68)';
-      if (vertical) ctx.fillRect(x + 13, y + 5, 6, TILE - 10);
-      else ctx.fillRect(x + 5, y + 13, TILE - 10, 6);
+      ctx.fillStyle = 'rgba(255, 214, 128, 0.9)';
+      if (vertical) {
+        for (let i = 0; i < 4; i++) ctx.fillRect(x + 9 + i * 4, y + 6, 2, TILE - 12);
+      } else {
+        for (let i = 0; i < 4; i++) ctx.fillRect(x + 6, y + 9 + i * 4, TILE - 12, 2);
+      }
     }
     ctx.restore();
   }
@@ -1437,8 +1552,8 @@ export class OfficeRenderer {
       const radius = TILE * 1.1;
 
       const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      gradient.addColorStop(0, `rgba(255, 224, 168, ${0.16 + breathe * 0.1})`);
-      gradient.addColorStop(1, 'rgba(255, 224, 168, 0)');
+      gradient.addColorStop(0, `rgba(255, 206, 120, ${0.26 + breathe * 0.12})`);
+      gradient.addColorStop(1, 'rgba(255, 206, 120, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
     }
@@ -1447,10 +1562,10 @@ export class OfficeRenderer {
 
   private drawActor(actor: Actor): void {
     const { ctx, assets } = this;
-    const { frameWidth, frameHeight } = assets.manifest.characters;
+    const { frameWidth, frameHeight, drawWidth, drawHeight } = assets.manifest.characters;
     const foot = this.visualFootPx(actor);
 
-    // 자리에 앉아 일하는 중이면 책상 쪽(위)을 보고 타자 치듯 미세하게 움직입니다
+    // 자리에 앉아 일하는 중이면 타자 치듯 어깨를 미세하게 들썩입니다
     const atDesk = actor.homeX !== undefined && actor.homeY !== undefined &&
       Math.hypot(actor.x - actor.homeX, actor.y - actor.homeY) < 0.35;
     const ambientWorking = actor.status === 'idle' && !actor.atLeisure && atDesk;
@@ -1461,13 +1576,11 @@ export class OfficeRenderer {
     const done = !actor.moving && !actor.isPlayer && actor.status === 'done';
     const idleSit = !actor.moving && !actor.isPlayer && actor.status === 'idle' &&
       !ambientWorking && !actor.ambientPartner;
-    const facing = working ? 'up' : actor.facing;
+    // 책상 앞에서 정면(화면 쪽)을 보고 일합니다 — 시안처럼 얼굴이 보이고 책상이 머리 뒤에 놓입니다.
+    // 다리를 흔드는 걷기 프레임 대신 서 있는 자세(0)에 어깨 들썩임(bob)으로 타자를 표현합니다.
+    const facing = working ? 'down' : actor.facing;
 
-    const frame = actor.moving
-      ? Math.floor(actor.distance / 0.35) % 4
-      : working
-        ? TYPING_FRAMES[Math.floor(performance.now() / 190) % TYPING_FRAMES.length] ?? 0
-        : 0;
+    const frame = actor.moving ? Math.floor(actor.distance / 0.35) % 4 : 0;
 
     // 대표님은 커스텀 외형이 있으면 공용 시트 대신 그 캔버스에서 그립니다
     const override = actor.isPlayer ? this.ceoOverride : null;
@@ -1477,8 +1590,9 @@ export class OfficeRenderer {
       : characterFrame(assets.manifest, actor.sprite, facing, frame);
     if (!rect) return;
 
-    const w = frameWidth;
-    const h = frameHeight;
+    // 시트는 고해상도로 구워 두고 화면에는 drawWidth×drawHeight 로 줄여 그립니다
+    const w = drawWidth ?? frameWidth;
+    const h = drawHeight ?? frameHeight;
     const drawX = Math.round(foot.x - w / 2);
     // 타자 칠 때 어깨가 들썩이고, 대기 중엔 숨 쉬듯 미세하게 흔들립니다
     const t = performance.now();
@@ -1497,7 +1611,12 @@ export class OfficeRenderer {
     ctx.fill();
     ctx.restore();
 
+    // 정수배가 아닌 축소라 최근접 보간이면 픽셀 굵기가 들쭉날쭉해집니다 — 캐릭터만 부드럽게 줄입니다
+    ctx.save();
+    ctx.imageSmoothingEnabled = w !== rect.w;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(image, rect.x, rect.y, rect.w, rect.h, drawX, drawY, w, h);
+    ctx.restore();
 
     if (working) this.drawWorkingEffect(foot.x, drawY);
     if (talking) this.drawTalkingEffect(foot.x, drawY);
@@ -1508,7 +1627,8 @@ export class OfficeRenderer {
       this.drawAlertEffect(foot.x, drawY);
     }
 
-    this.drawNameTag(actor, foot.x, drawY - 4);
+    // 시트 위쪽 여백(칸 높이의 약 10%)을 빼고 머리 바로 위에 이름표를 답니다
+    this.drawNameTag(actor, foot.x, drawY + Math.round(h * 0.08));
   }
 
   /**

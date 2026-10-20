@@ -1,7 +1,9 @@
 {
   "characters": {
-    "frameWidth": 32,
-    "frameHeight": 50,
+    "frameWidth": 64,
+    "frameHeight": 100,
+    "drawWidth": 45,
+    "drawHeight": 70,
     "directions": [
       "down",
       "left",
@@ -61,6 +63,18 @@
     },
     "glass": {
       "x": 192,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "floor_cream": {
+      "x": 224,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "carpet_blue": {
+      "x": 256,
       "y": 0,
       "w": 32,
       "h": 32
@@ -186,6 +200,54 @@
       "y": 0,
       "w": 64,
       "h": 28
+    },
+    "plant_large": {
+      "x": 1456,
+      "y": 0,
+      "w": 44,
+      "h": 64
+    },
+    "plant_bush": {
+      "x": 1502,
+      "y": 0,
+      "w": 40,
+      "h": 52
+    },
+    "armchair_l": {
+      "x": 1544,
+      "y": 0,
+      "w": 32,
+      "h": 40
+    },
+    "armchair_r": {
+      "x": 1578,
+      "y": 0,
+      "w": 32,
+      "h": 40
+    },
+    "reception_desk": {
+      "x": 1612,
+      "y": 0,
+      "w": 112,
+      "h": 56
+    },
+    "sofa_blue": {
+      "x": 1726,
+      "y": 0,
+      "w": 96,
+      "h": 44
+    },
+    "sofa_v": {
+      "x": 1824,
+      "y": 0,
+      "w": 40,
+      "h": 100
+    },
+    "round_coffee": {
+      "x": 1866,
+      "y": 0,
+      "w": 40,
+      "h": 34
     }
   }
 }

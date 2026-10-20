@@ -18,6 +18,8 @@ import { createCanvas } from '@napi-rs/canvas';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+// Node 24 는 .ts 의 타입을 지우고 바로 실행합니다 — 브라우저와 같은 캐릭터 그리기를 공유합니다
+import { CHIBI_ROSTER, CHIBI_SHEET_RES, drawChibi } from '../src/components/office/chibi-character.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +32,13 @@ const CHAR_W = 32;
 const CHAR_H = 50;
 const DIRECTIONS = ['down', 'left', 'right', 'up'];
 const FRAMES = 4;
+/**
+ * 시트는 2배 해상도로 굽고, 화면(월드)에는 원본의 1.4배 크기로 그립니다.
+ * 시안처럼 머리가 책상 폭의 절반쯤 되도록 키우면서도, 정수 배율로 구워
+ * 픽셀 경계가 뭉개지지 않게 합니다 (렌더러가 부드럽게 줄여 그립니다).
+ */
+const CHAR_RES = CHIBI_SHEET_RES;
+const CHAR_DRAW_SCALE = 1.4;
 
 const OUT_DIR = join(__dirname, '..', 'public', 'sprites');
 
@@ -129,168 +138,28 @@ function point(ctx, x, y, fill) {
 }
 
 // ── 캐릭터 정의 ─────────────────────────────────────────
-const CHARACTERS = [
-  ['ceo', '#26354a', '#252a35', '#f2cba3'],
-  ['chief', '#d99b2b', '#6f4128', '#f0c9a0'],
-  ['planner', '#367cae', '#252a35', '#e8bd94'],
-  ['researcher', '#8056a8', '#35283d', '#f3d0ab'],
-  ['marketer', '#d66767', '#7b3f32', '#f0c9a0'],
-  ['dev', '#178f88', '#242936', '#e0b088'],
-  ['finance', '#31577f', '#273247', '#f2cba3'],
-  ['writer', '#d8802f', '#6d4329', '#f5d5b0'],
-  ['designer', '#c9578b', '#3a2a20', '#f0c9a0'],
-];
-
-const TROUSERS = hexRgb('#39404f');
-const SHOES = hexRgb('#22262f');
-const OUTLINE = hexRgb('#1a1d24');
+// 행 순서·색은 헤더 얼굴 아바타와 같이 쓰도록 chibi-character.ts 에 있습니다
+const CHARACTERS = CHIBI_ROSTER.map(({ id, shirt, hair, skin }) => [id, shirt, hair, skin]);
 
 /**
- * 32×48 칸 하나에 캐릭터 한 포즈를 그립니다.
+ * 32×50 칸 하나에 캐릭터 한 포즈를 그립니다.
+ * 실제 그리기는 브라우저(대표님 외형)와 같이 쓰는 chibi-character.ts 가 맡습니다.
  *
  * @param {import('@napi-rs/canvas').SKRSContext2D} ctx
- * @param {number} ox
- * @param {number} oy
  * @param {[number, number, number]} shirt
  * @param {[number, number, number]} hair
  * @param {[number, number, number]} skin
- * @param {string} direction
- * @param {number} frame
  */
 function drawCharacter(ctx, ox, oy, shirt, hair, skin, direction, frame, role) {
-  const swing = { 0: 0, 1: 2, 2: 0, 3: -2 }[frame];
-  const sideView = direction === 'left' || direction === 'right';
-  const facing = direction === 'left' ? -1 : 1;
-
-  const cx = ox + 16;
-  const headTop = oy + 7;
-  const headBottom = oy + 21;
-  const halfW = sideView ? 5 : 7;
-
-  ellipse(ctx, cx - 8, oy + 42, cx + 8, oy + 47, [0, 0, 0, 70]);
-
-  if (sideView) {
-    for (const [depth, lift] of [
-      [0, -swing],
-      [1, swing],
-    ]) {
-      const lx = cx - 3 + depth * 2;
-      const leg = depth ? TROUSERS : shade(TROUSERS, -18);
-      rect(ctx, lx, oy + 33, lx + 4, oy + 42 + lift, leg);
-      rect(
-        ctx,
-        lx - (facing < 0 ? 2 : 0),
-        oy + 42 + lift,
-        lx + 4 + (facing > 0 ? 2 : 0),
-        oy + 45 + lift,
-        depth ? SHOES : shade(SHOES, -14),
-      );
-    }
-  } else {
-    for (const sign of [-1, 1]) {
-      const lift = sign < 0 ? swing : -swing;
-      const lx = cx + sign * 4;
-      rect(ctx, lx - 3, oy + 33, lx + 2, oy + 42 + lift, TROUSERS);
-      rect(ctx, lx - 3, oy + 42 + lift, lx + 2, oy + 45 + lift, SHOES);
-    }
-  }
-
-  const bodyTop = oy + 22;
-  rect(ctx, cx - halfW, bodyTop, cx + halfW - 1, oy + 35, shirt);
-  rect(ctx, cx - halfW, oy + 32, cx + halfW - 1, oy + 35, shade(shirt, -24));
-  rect(ctx, cx - halfW, bodyTop, cx + halfW - 1, bodyTop + 2, shade(shirt, 18));
-
-  if (direction === 'down') {
-    rect(ctx, cx - 2, bodyTop, cx + 1, bodyTop + 3, shade(shirt, -30));
-  } else if (direction === 'up') {
-    line(ctx, cx, bodyTop + 1, cx, oy + 34, shade(shirt, -16));
-  }
-
-  if (sideView) {
-    const ax = cx + facing * 3;
-    rect(ctx, ax - 2, oy + 23, ax + 2, oy + 32 + swing, shade(shirt, -14));
-    rect(ctx, ax - 2, oy + 32 + swing, ax + 2, oy + 35 + swing, skin);
-  } else {
-    for (const sign of [-1, 1]) {
-      const offset = sign < 0 ? -swing : swing;
-      const ax = cx + sign * 8;
-      rect(ctx, ax - 1, oy + 23, ax + 1, oy + 32 + offset, shade(shirt, -12));
-      rect(ctx, ax - 1, oy + 32 + offset, ax + 1, oy + 34 + offset, skin);
-    }
-  }
-
-  rect(ctx, cx - 2, oy + 20, cx + 1, oy + 23, shade(skin, -28));
-
-  if (sideView) {
-    const hx0 = cx - 5 + facing;
-    const hx1 = cx + 5 + facing;
-    rect(ctx, hx0, headTop, hx1, headBottom, skin);
-    rect(ctx, hx0, headBottom - 2, hx1, headBottom, shade(skin, -18));
-    const noseX = facing < 0 ? hx0 - 1 : hx1 + 1;
-    rect(ctx, noseX, oy + 15, noseX, oy + 17, shade(skin, -26));
-    rect(ctx, hx0, headTop - 1, hx1, headTop + 4, hair);
-    if (facing < 0) {
-      rect(ctx, hx1 - 3, headTop - 1, hx1, oy + 19, hair);
-    } else {
-      rect(ctx, hx0, headTop - 1, hx0 + 3, oy + 19, hair);
-    }
-    const earX = cx + (facing < 0 ? 2 : -3);
-    rect(ctx, earX, oy + 15, earX + 1, oy + 17, shade(skin, -22));
-    const eyeX = facing < 0 ? hx0 + 1 : hx1 - 2;
-    rect(ctx, eyeX, oy + 15, eyeX + 1, oy + 17, OUTLINE);
-  } else if (direction === 'up') {
-    rect(ctx, cx - 7, headTop - 1, cx + 6, headBottom, hair);
-    rect(ctx, cx - 7, headBottom - 2, cx + 6, headBottom, shade(hair, -18));
-    rect(ctx, cx - 5, headTop, cx + 4, headTop + 2, shade(hair, 22));
-  } else {
-    rect(ctx, cx - 7, headTop, cx + 6, headBottom, skin);
-    rect(ctx, cx - 7, headBottom - 2, cx + 6, headBottom, shade(skin, -18));
-    rect(ctx, cx - 7, headTop - 1, cx + 6, headTop + 4, hair);
-    rect(ctx, cx - 7, headTop - 1, cx - 4, oy + 15, hair);
-    rect(ctx, cx + 3, headTop - 1, cx + 6, oy + 15, hair);
-    rect(ctx, cx - 5, oy + 15, cx - 4, oy + 17, OUTLINE);
-    rect(ctx, cx + 3, oy + 15, cx + 4, oy + 17, OUTLINE);
-    rect(ctx, cx - 1, oy + 18, cx, oy + 18, shade(skin, -40));
-  }
-
-  // 색만으로 직원을 구분하지 않습니다. 작은 화면에서도 역할이 읽히도록
-  // 안경·헤드셋·후드·넥타이처럼 실루엣이 다른 1~2px 표식을 둡니다.
-  if (direction === 'down') {
-    if (role === 'ceo') {
-      line(ctx, cx - 5, bodyTop + 2, cx - 1, bodyTop + 7, [232, 228, 216]);
-      line(ctx, cx + 4, bodyTop + 2, cx, bodyTop + 7, [232, 228, 216]);
-    }
-    if (role === 'researcher' || role === 'dev') {
-      const glass = role === 'researcher' ? [119, 76, 163] : [23, 143, 136];
-      ctx.strokeStyle = toFill(glass);
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - 6.5, oy + 14.5, 5, 4);
-      ctx.strokeRect(cx + 1.5, oy + 14.5, 5, 4);
-      line(ctx, cx - 1, oy + 16, cx + 1, oy + 16, glass);
-    }
-    if (role === 'marketer') {
-      line(ctx, cx - 8, oy + 11, cx - 8, oy + 20, OUTLINE, 2);
-      line(ctx, cx + 7, oy + 11, cx + 7, oy + 20, OUTLINE, 2);
-      line(ctx, cx + 7, oy + 19, cx + 4, oy + 22, OUTLINE);
-    }
-    if (role === 'dev') {
-      line(ctx, cx - 5, bodyTop + 1, cx, bodyTop + 5, shade(shirt, 26));
-      line(ctx, cx + 4, bodyTop + 1, cx, bodyTop + 5, shade(shirt, 26));
-    }
-    if (role === 'finance') {
-      polygon(ctx, [[cx - 1, bodyTop + 2], [cx + 1, bodyTop + 2], [cx + 2, bodyTop + 9], [cx, bodyTop + 11], [cx - 2, bodyTop + 9]], [215, 157, 63]);
-    }
-    if (role === 'writer') {
-      ellipse(ctx, cx + 2, headTop - 5, cx + 8, headTop + 1, hair);
-      rect(ctx, cx + 4, headTop - 6, cx + 6, headTop - 4, [217, 155, 43]);
-    }
-  }
+  drawChibi(ctx, ox, oy, { shirt, hair, skin, role }, direction, frame);
 }
 
 function buildCharacters() {
   const cols = DIRECTIONS.length * FRAMES;
   const rows = CHARACTERS.length;
-  const canvas = createCanvas(cols * CHAR_W, rows * CHAR_H);
+  const frameW = CHAR_W * CHAR_RES;
+  const frameH = CHAR_H * CHAR_RES;
+  const canvas = createCanvas(cols * frameW, rows * frameH);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -307,14 +176,21 @@ function buildCharacters() {
       const direction = DIRECTIONS[d];
       for (let frame = 0; frame < FRAMES; frame++) {
         const col = d * FRAMES + frame;
-        drawCharacter(ctx, col * CHAR_W, row * CHAR_H, shirt, hair, skin, direction, frame, charId);
+        ctx.save();
+        ctx.translate(col * frameW, row * frameH);
+        ctx.scale(CHAR_RES, CHAR_RES);
+        drawCharacter(ctx, 0, 0, shirt, hair, skin, direction, frame, charId);
+        ctx.restore();
       }
     }
   }
 
   const meta = {
-    frameWidth: CHAR_W,
-    frameHeight: CHAR_H,
+    frameWidth: frameW,
+    frameHeight: frameH,
+    // 화면(월드 좌표)에 그릴 크기 — 타일 32px 기준
+    drawWidth: Math.round(CHAR_W * CHAR_DRAW_SCALE),
+    drawHeight: Math.round(CHAR_H * CHAR_DRAW_SCALE),
     directions: DIRECTIONS,
     frames: FRAMES,
     rows: index,
@@ -331,11 +207,13 @@ const TILE_NAMES = [
   'wall_top',
   'rug_edge',
   'glass',
+  'floor_cream',
+  'carpet_blue',
 ];
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawFloorWood(d, ox, oy) {
-  const base = hexRgb('#c99a69');
+  const base = hexRgb('#d59a5e');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
   for (const y of [0, 16]) {
     line(d, ox, oy + y, ox + TILE - 1, oy + y, shade(base, -13));
@@ -354,18 +232,12 @@ function drawFloorWood(d, ox, oy) {
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawFloorTile(d, ox, oy) {
-  const base = hexRgb('#c9d1dc');
+  // 복도 — 결 없는 큰 타일. 줄눈만 또렷하게 둡니다
+  const base = hexRgb('#d6dce7');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
-  const grain = shade(base, -8);
-  for (let i = 0; i < TILE; i += 8) {
-    line(d, ox + i, oy, ox + i + 7, oy + 7, grain);
-    line(d, ox + i, oy + 16, ox + i + 7, oy + 23, grain);
-    line(d, ox + i + 7, oy + 8, ox + i, oy + 15, grain);
-    line(d, ox + i + 7, oy + 24, ox + i, oy + 31, grain);
-  }
-  d.strokeStyle = toFill(shade(base, -12));
-  d.lineWidth = 1;
-  d.strokeRect(ox + 0.5, oy + 0.5, TILE - 1, TILE - 1);
+  rect(d, ox + 1, oy + 1, ox + TILE - 2, oy + 2, shade(base, 7));
+  rect(d, ox, oy + TILE - 1, ox + TILE - 1, oy + TILE - 1, shade(base, -16));
+  rect(d, ox + TILE - 1, oy, ox + TILE - 1, oy + TILE - 1, shade(base, -16));
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
@@ -386,24 +258,28 @@ function drawRugEdge(d, ox, oy) {
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, [224, 218, 205]);
   d.strokeStyle = toFill([184, 171, 151]);
   d.lineWidth = 1;
-  d.strokeRect(ox, oy, TILE, TILE);
+  // 픽셀 중앙(+0.5)에 그어야 왼쪽 이웃 타일(윗벽)의 마지막 열로 번지지 않습니다
+  d.strokeRect(ox + 0.5, oy + 0.5, TILE - 1, TILE - 1);
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawWallFace(d, ox, oy) {
-  const base = hexRgb('#303a4c');
+  // 짙은 네이비 벽 — 위쪽 모서리만 푸르게 빛을 받습니다
+  const base = hexRgb('#1d2847');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
-  rect(d, ox, oy, ox + TILE - 1, oy + 2, shade(base, -18));
-  rect(d, ox, oy + TILE - 5, ox + TILE - 1, oy + TILE - 1, hexRgb('#202837'));
-  rect(d, ox, oy + TILE - 2, ox + TILE - 1, oy + TILE - 1, hexRgb('#151b26'));
+  rect(d, ox, oy, ox + TILE - 1, oy + 1, hexRgb('#34467a'));
+  rect(d, ox + TILE - 1, oy, ox + TILE - 1, oy + TILE - 1, shade(base, -8));
+  rect(d, ox, oy + TILE - 4, ox + TILE - 1, oy + TILE - 1, hexRgb('#131a31'));
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
 function drawWallTop(d, ox, oy) {
-  const base = hexRgb('#465166');
+  // 윗벽 — 판넬 줄눈이 있는 네이비, 방 안쪽(아래)으로 그림자가 떨어집니다
+  const base = hexRgb('#26355f');
   rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
-  rect(d, ox, oy, ox + TILE - 1, oy + 1, shade(base, 16));
-  rect(d, ox, oy + TILE - 2, ox + TILE - 1, oy + TILE - 1, shade(base, -20));
+  rect(d, ox, oy, ox + TILE - 1, oy + 1, hexRgb('#3c5290'));
+  rect(d, ox, oy + 2, ox + TILE - 1, oy + 3, shade(base, 8));
+  rect(d, ox, oy + TILE - 5, ox + TILE - 1, oy + TILE - 1, hexRgb('#18213d'));
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
@@ -415,6 +291,31 @@ function drawGlass(d, ox, oy) {
   line(d, ox + 18, oy + 4, ox + 14, oy + TILE - 5, [255, 255, 255, 110], 2);
 }
 
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
+function drawFloorCream(d, ox, oy) {
+  // 테라조 — 크림 바탕에 작은 돌 알갱이
+  const base = hexRgb('#ece2cf');
+  rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
+  const chips = [[3, 5], [11, 2], [20, 7], [27, 3], [6, 15], [16, 13], [25, 18], [2, 24], [13, 26], [22, 28], [29, 25], [9, 20]];
+  chips.forEach(([x, y], i) => {
+    const tone = i % 3 === 0 ? -34 : i % 3 === 1 ? -20 : 10;
+    rect(d, ox + x, oy + y, ox + x + (i % 2), oy + y, shade(base, tone));
+  });
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d @param {number} ox @param {number} oy */
+function drawCarpetBlue(d, ox, oy) {
+  // 회의실·라운지 카펫 — 연한 청회색에 잔잔한 마름모 결
+  const base = hexRgb('#c3cfe3');
+  rect(d, ox, oy, ox + TILE - 1, oy + TILE - 1, base);
+  for (let y = 0; y < TILE; y += 4) {
+    for (let x = (y / 4) % 2 === 0 ? 0 : 2; x < TILE; x += 4) {
+      point(d, ox + x, oy + y, shade(base, 9));
+      point(d, ox + x + 1, oy + y + 2, shade(base, -9));
+    }
+  }
+}
+
 const TILE_DRAWERS = {
   floor_wood: drawFloorWood,
   floor_tile: drawFloorTile,
@@ -423,6 +324,8 @@ const TILE_DRAWERS = {
   wall_top: drawWallTop,
   rug_edge: drawRugEdge,
   glass: drawGlass,
+  floor_cream: drawFloorCream,
+  carpet_blue: drawCarpetBlue,
 };
 
 function buildTiles() {
@@ -463,6 +366,14 @@ const PROPS = [
   ['cluster_desk', 128, 96],
   ['printer', 32, 44],
   ['partition', 64, 28],
+  ['plant_large', 44, 64],
+  ['plant_bush', 40, 52],
+  ['armchair_l', 32, 40],
+  ['armchair_r', 32, 40],
+  ['reception_desk', 112, 56],
+  ['sofa_blue', 96, 44],
+  ['sofa_v', 40, 100],
+  ['round_coffee', 40, 34],
 ];
 
 const WOOD = hexRgb('#b77a48');
@@ -497,13 +408,18 @@ function monitor(d, mx, my, scale = 1) {
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d */
 function propDesk(d, ox, oy, w, h) {
-  const top = oy + 8;
-  shadow(d, ox + 2, oy + h - 9, ox + w - 3, oy + h - 1);
-  rect(d, ox + 2, top + 12, ox + w - 3, oy + h - 6, WOOD_DARK);
-  roundedRect(d, ox, top, ox + w - 1, top + 14, 3, TOP_WHITE, TOP_EDGE);
-  rect(d, ox + 2, top + 12, ox + w - 3, top + 14, TOP_EDGE);
-  monitor(d, ox + Math.floor(w / 2), oy);
-  roundedRect(d, ox + w / 2 - 10, top + 16, ox + w / 2 + 9, top + 21, 2, METAL_LIGHT);
+  // 크림색 상판 + 가는 다리 — 앞쪽에 앉은 직원 머리가 상판 앞모서리에 걸칩니다
+  const top = oy + 10;
+  shadow(d, ox + 2, oy + h - 8, ox + w - 3, oy + h - 1);
+  for (const lx of [ox + 3, ox + w - 7]) rect(d, lx, top + 14, lx + 3, oy + h - 4, WOOD_DARK);
+  roundedRect(d, ox, top + 4, ox + w - 1, top + 16, 3, TOP_EDGE);
+  roundedRect(d, ox, top, ox + w - 1, top + 13, 3, TOP_WHITE);
+  rect(d, ox + 2, top + 1, ox + w - 3, top + 1, shade(TOP_WHITE, 10));
+  monitor(d, ox + Math.floor(w / 2) - 8, oy, 0.8);
+  roundedRect(d, ox + w / 2 - 14, top + 6, ox + w / 2 + 2, top + 9, 1, METAL_LIGHT);
+  // 서류 한 장과 머그
+  roundedRect(d, ox + w - 22, top + 3, ox + w - 10, top + 10, 1, [255, 255, 255]);
+  roundedRect(d, ox + 6, top + 3, ox + 11, top + 9, 2, hexRgb('#6f9ede'));
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d */
@@ -585,6 +501,10 @@ function propWhiteboard(d, ox, oy, w, h) {
   line(d, ox + 8, oy + 10, ox + 30, oy + 10, ink, 2);
   line(d, ox + 8, oy + 16, ox + 44, oy + 16, ink, 2);
   line(d, ox + 8, oy + 22, ox + 24, oy + 22, hexRgb('#e08585'), 2);
+  // 포스트잇
+  for (const [nx, ny, color] of [[44, 6, '#f6d365'], [52, 12, '#f49ac1'], [44, 20, '#8fd3b6'], [30, 22, '#9ec5ff']]) {
+    rect(d, ox + nx, oy + ny, ox + nx + 6, oy + ny + 6, hexRgb(color));
+  }
   rect(d, ox + 12, oy + h - 12, ox + 15, oy + h - 4, METAL);
   rect(d, ox + w - 16, oy + h - 12, ox + w - 13, oy + h - 4, METAL);
 }
@@ -619,8 +539,8 @@ function propMeetingTable(d, ox, oy, w, h) {
 }
 
 /** @param {import('@napi-rs/canvas').SKRSContext2D} d */
-function propSofa(d, ox, oy, w, h) {
-  const fabric = hexRgb('#c8d3e2');
+function propSofa(d, ox, oy, w, h, fabricHex = '#c8d3e2') {
+  const fabric = hexRgb(fabricHex);
   shadow(d, ox + 4, oy + h - 8, ox + w - 5, oy + h - 1);
   roundedRect(d, ox + 2, oy + 2, ox + w - 3, oy + 19, 4, shade(fabric, 14));
   roundedRect(d, ox, oy + 14, ox + w - 1, oy + h - 6, 5, fabric);
@@ -782,6 +702,116 @@ function propPartition(d, ox, oy, w, h) {
   rect(d, ox, oy + h - 9, ox + w - 1, oy + h - 6, hexRgb('#aebdcd'));
 }
 
+/** 잎 하나 — 회전된 타원 + 가운데 잎맥 */
+function leaf(d, cx, cy, rx, ry, angle, color) {
+  d.save();
+  d.translate(cx, cy);
+  d.rotate(angle);
+  d.beginPath();
+  d.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  d.fillStyle = toFill(color);
+  d.fill();
+  d.strokeStyle = toFill(shade(color, 26));
+  d.lineWidth = 1;
+  d.beginPath();
+  d.moveTo(-rx + 2, 0);
+  d.lineTo(rx - 2, 0);
+  d.stroke();
+  d.restore();
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propPlantLarge(d, ox, oy, w, h) {
+  // 몬스테라 — 방 모서리를 채우는 큰 화분
+  const pot = hexRgb('#ebe7e1');
+  shadow(d, ox + 8, oy + h - 9, ox + w - 9, oy + h - 1);
+  polygon(d, [[ox + 11, oy + h - 22], [ox + w - 12, oy + h - 22], [ox + w - 15, oy + h - 3], [ox + 14, oy + h - 3]], pot);
+  rect(d, ox + 10, oy + h - 23, ox + w - 11, oy + h - 20, shade(pot, 10));
+  rect(d, ox + 14, oy + h - 8, ox + w - 15, oy + h - 4, shade(pot, -22));
+  const cx = ox + w / 2;
+  const dark = hexRgb('#2f7a43');
+  const mid = hexRgb('#43984f');
+  const light = hexRgb('#6bbb5e');
+  for (const [dx, dy, rx, ry, a, c] of [
+    [-11, 26, 11, 6, -0.5, dark], [11, 26, 11, 6, 0.5, dark],
+    [-9, 15, 11, 6, -0.9, mid], [9, 14, 11, 6, 0.9, mid],
+    [0, 9, 10, 5, -1.57, mid], [-13, 33, 9, 5, -0.2, mid], [13, 33, 9, 5, 0.2, mid],
+    [-4, 20, 9, 5, -1.2, light], [5, 21, 9, 5, 1.1, light],
+  ]) {
+    leaf(d, cx + dx, oy + dy, rx, ry, a, c);
+  }
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propPlantBush(d, ox, oy, w, h) {
+  // 로비의 둥근 관목 — 흰 사각 화분
+  const planter = hexRgb('#eef0f4');
+  shadow(d, ox + 4, oy + h - 8, ox + w - 5, oy + h - 1);
+  roundedRect(d, ox + 6, oy + h - 22, ox + w - 7, oy + h - 3, 2, planter);
+  rect(d, ox + 6, oy + h - 7, ox + w - 7, oy + h - 3, shade(planter, -24));
+  rect(d, ox + 6, oy + h - 22, ox + w - 7, oy + h - 21, [255, 255, 255]);
+  const cx = ox + w / 2;
+  for (const [dx, dy, r, c] of [
+    [-9, 22, 9, '#2f7a43'], [9, 22, 9, '#2f7a43'], [0, 24, 10, '#2f7a43'],
+    [-7, 13, 9, '#43984f'], [7, 12, 9, '#43984f'], [0, 17, 10, '#43984f'],
+    [-3, 9, 6, '#6bbb5e'], [5, 16, 5, '#6bbb5e'], [-8, 19, 4, '#6bbb5e'],
+  ]) {
+    ellipse(d, cx + dx - r, oy + dy - r, cx + dx + r, oy + dy + r, hexRgb(c));
+  }
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propArmchair(d, ox, oy, w, h, facingRight) {
+  // 나무 팔걸이의자 — 옆에서 본 모습. facingRight 면 앉는 쪽이 오른쪽
+  shadow(d, ox + 3, oy + h - 8, ox + w - 4, oy + h - 1);
+  const back = facingRight ? ox + 3 : ox + w - 10;
+  rect(d, ox + 5, oy + h - 9, ox + 7, oy + h - 3, WOOD_DARK);
+  rect(d, ox + w - 8, oy + h - 9, ox + w - 6, oy + h - 3, WOOD_DARK);
+  roundedRect(d, ox + 3, oy + 12, ox + w - 4, oy + h - 8, 3, WOOD);
+  roundedRect(d, ox + 6, oy + 15, ox + w - 7, oy + h - 11, 2, hexRgb('#d9a46b'));
+  roundedRect(d, back, oy + 4, back + 6, oy + h - 8, 3, shade(WOOD, -10));
+  rect(d, ox + 3, oy + 12, ox + w - 4, oy + 13, shade(WOOD, 18));
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propReceptionDesk(d, ox, oy, w, h) {
+  // 로비 안내 데스크 — 둥근 모서리 나무 상판 + 짙은 앞판
+  shadow(d, ox + 4, oy + h - 10, ox + w - 5, oy + h - 1);
+  roundedRect(d, ox + 2, oy + 16, ox + w - 3, oy + h - 5, 6, WOOD_DARK);
+  for (let i = 1; i < 4; i++) {
+    const x = Math.round(ox + 2 + (i * (w - 4)) / 4);
+    rect(d, x, oy + 26, x, oy + h - 9, shade(WOOD_DARK, -14));
+  }
+  roundedRect(d, ox, oy + 6, ox + w - 1, oy + 26, 8, WOOD);
+  roundedRect(d, ox + 4, oy + 9, ox + w - 5, oy + 22, 6, shade(WOOD, 14));
+  roundedRect(d, ox + 16, oy + 11, ox + 34, oy + 21, 1, [255, 255, 255]);
+  roundedRect(d, ox + 44, oy + 13, ox + 84, oy + 18, 2, hexRgb('#eef1f6'));
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propSofaV(d, ox, oy, w, h) {
+  // 세로로 놓인 소파 — 등받이가 왼쪽, 앉는 쪽이 오른쪽
+  const fabric = hexRgb('#5d7fb8');
+  shadow(d, ox + 4, oy + h - 10, ox + w - 3, oy + h - 1);
+  roundedRect(d, ox + 2, oy + 4, ox + w - 3, oy + h - 6, 5, fabric);
+  roundedRect(d, ox + 2, oy + 4, ox + 12, oy + h - 6, 4, shade(fabric, -16));
+  roundedRect(d, ox + 2, oy + 4, ox + w - 3, oy + 13, 4, shade(fabric, -10));
+  roundedRect(d, ox + 2, oy + h - 16, ox + w - 3, oy + h - 6, 4, shade(fabric, -10));
+  for (let i = 0; i < 2; i++) {
+    const cy = oy + 16 + i * 34;
+    roundedRect(d, ox + 14, cy, ox + w - 6, cy + 30, 3, shade(fabric, 10));
+  }
+}
+
+/** @param {import('@napi-rs/canvas').SKRSContext2D} d */
+function propRoundCoffee(d, ox, oy, w, h) {
+  shadow(d, ox + 5, oy + h - 9, ox + w - 6, oy + h - 1);
+  rect(d, ox + w / 2 - 2, oy + 16, ox + w / 2 + 1, oy + h - 5, WOOD_DARK);
+  ellipse(d, ox + 3, oy + 6, ox + w - 4, oy + 22, WOOD_DARK);
+  ellipse(d, ox + 3, oy + 3, ox + w - 4, oy + 19, hexRgb('#e3a86e'));
+  ellipse(d, ox + 14, oy + 7, ox + 24, oy + 14, [255, 255, 255, 200]);
+}
+
 const PROP_DRAWERS = {
   desk: propDesk,
   desk_v: propDeskV,
@@ -803,6 +833,14 @@ const PROP_DRAWERS = {
   cluster_desk: propClusterDesk,
   printer: propPrinter,
   partition: propPartition,
+  plant_large: propPlantLarge,
+  plant_bush: propPlantBush,
+  armchair_l: (d, x, y, w, h) => propArmchair(d, x, y, w, h, false),
+  armchair_r: (d, x, y, w, h) => propArmchair(d, x, y, w, h, true),
+  reception_desk: propReceptionDesk,
+  sofa_blue: (d, x, y, w, h) => propSofa(d, x, y, w, h, '#5d7fb8'),
+  sofa_v: propSofaV,
+  round_coffee: propRoundCoffee,
 };
 
 function buildProps() {

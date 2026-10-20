@@ -65,12 +65,25 @@ function isDoorTile(x, y) {
   return map.doors.some((door) => door.x === x && door.y === y);
 }
 
-/** 존 종류별 바닥 타일 이름 */
+/**
+ * 방마다 바닥 재질 — 시안처럼 따뜻한 나무·크림 테라조·청회색 카펫을 섞어
+ * 같은 줄의 방이 전부 같은 색으로 보이지 않게 합니다.
+ */
+const FLOOR_BY_ZONE = {
+  reception: 'floor_cream',
+  'ceo-office': 'floor_cream',
+  dev: 'floor_cream',
+  showcase: 'floor_cream',
+  boardroom: 'carpet_blue',
+  designer: 'carpet_blue',
+  entrance: 'carpet_blue',
+  cafe: 'carpet_blue',
+};
+
+/** 존별 바닥 타일 이름 (복도는 큰 타일) */
 function floorTileFor(zone) {
   if (!zone) return 'floor_tile';
-  if (zone.kind === 'department') return 'floor_wood';
-  if (zone.kind === 'reception' || zone.kind === 'lounge') return 'carpet';
-  return 'floor_tile';
+  return FLOOR_BY_ZONE[zone.id] ?? (zone.kind === 'department' ? 'floor_wood' : 'floor_tile');
 }
 
 // ── 캔버스 준비 ─────────────────────────────────────────
@@ -114,7 +127,9 @@ for (let y = 0; y < ROWS; y++) {
   }
 }
 
-// ── 3) 좌석마다 자동 책상 + 의자 ────────────────────────
+// ── 3) 좌석마다 자동 책상 ───────────────────────────────
+// 직원은 책상 앞에서 정면을 보고 일하므로(시안) 의자는 그리지 않습니다 —
+// 몸 뒤로 의자 등받이가 비치면 책상을 등지고 앉은 것처럼 읽힙니다.
 // 부서장 좌석(zones[].seat)에 더해, 팀원 좌석은 office-staff.ts 에 있어
 // 이 Node 스크립트에서 TS 파일을 직접 import 할 수 없으므로
 // office-props.json 에 좌석 좌표 사본을 함께 둡니다 (Step 2 참고).
@@ -126,7 +141,6 @@ if (map.ceoSeat) seats.push(map.ceoSeat);
 
 for (const seat of seats) {
   drawProp('desk', seat.x + 0.5, seat.y - 0.5);
-  drawProp('chair_up', seat.x + 0.5, seat.y + 0.5);
 }
 
 // ── 4) 회의 테이블 ──────────────────────────────────────
@@ -146,7 +160,8 @@ if (map.meetingSeats?.length) {
 }
 
 // ── 5) 장식 가구 ────────────────────────────────────────
-for (const item of propsData.items) {
+// 아래(앞)에 있는 가구가 위(뒤) 가구를 덮도록 바닥 y 순으로 그립니다
+for (const item of [...propsData.items].sort((a, b) => a.y - b.y)) {
   drawProp(item.type, item.x + 0.5, item.y + 0.5);
 }
 
