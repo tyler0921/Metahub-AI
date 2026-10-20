@@ -109,7 +109,7 @@ class HttpClient {
         response.status,
         fromBackend
           ? body.message
-          : `요청이 실패했습니다 (HTTP ${response.status})`,
+          : `요청을 처리하지 못했습니다 (오류 코드 ${response.status})`,
         path,
         fromBackend,
       );

@@ -93,7 +93,7 @@ export function OfficeMinimap({
   return (
     <div className={styles.wrap} aria-label="오피스 미니맵">
       <div className={styles.head}>
-        <span className={styles.label}>MAP</span>
+        <span className={styles.label}>지도</span>
         {onShowAll && (
           <button type="button" className={styles.showAll} onClick={onShowAll}>
             전체 보기

@@ -83,7 +83,7 @@ export function UsagePanel(): React.JSX.Element | null {
 
       <dl className={styles.stats}>
         <div>
-          <dt>호출</dt>
+          <dt>AI 호출</dt>
           <dd>{totals.calls}회</dd>
         </div>
         <div>
@@ -91,11 +91,11 @@ export function UsagePanel(): React.JSX.Element | null {
           <dd>{formatElapsed(elapsedSeconds)}</dd>
         </div>
         <div>
-          <dt>입력</dt>
+          <dt>입력 토큰</dt>
           <dd>{totals.inputTokens.toLocaleString()}</dd>
         </div>
         <div>
-          <dt>출력</dt>
+          <dt>출력 토큰</dt>
           <dd>{totals.outputTokens.toLocaleString()}</dd>
         </div>
       </dl>
@@ -111,7 +111,7 @@ export function UsagePanel(): React.JSX.Element | null {
             <li key={row.label}>
               <span>{row.label}</span>
               <em>
-                {row.calls}회 · {row.tokens.toLocaleString()} tok
+                {row.calls}회 · {row.tokens.toLocaleString()} 토큰
               </em>
             </li>
           ))}

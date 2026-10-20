@@ -57,13 +57,13 @@ export function CoPilotPanel({
 
   const actions: readonly string[] = (() => {
     if (result) {
-      return ['산출물 검토하기', '볼트에 저장된 노트 확인', '후속 과제 지시하기'];
+      return ['산출물 검토하기', '저장된 문서 확인', '후속 과제 지시하기'];
     }
     if (isRunning) {
       return [
         `${phaseLabel(currentPhase)} 단계 진행 중`,
         '진행 상황 요약 요청',
-        '교차검토 의견 확인',
+        '부서 간 검토 의견 확인',
       ];
     }
     if (logs.length > 0) {
@@ -80,11 +80,11 @@ export function CoPilotPanel({
         styles.panel,
         className,
       ].filter(Boolean).join(' ')}
-      aria-label="Co-pilot"
+      aria-label="빠른 실행"
     >
       <header className={styles.titleBar}>
         <span className={styles.title}>빠른 실행</span>
-        <span className={styles.titleHint}>AI COPILOT</span>
+        <span className={styles.titleHint}>추천</span>
       </header>
 
       <div className={styles.body}>
@@ -121,7 +121,7 @@ export function CoPilotPanel({
           </>
         )}
 
-        <h3 className={styles.sectionLabel}>추천 다음 액션</h3>
+        <h3 className={styles.sectionLabel}>다음에 할 일</h3>
         <ul className={styles.actionList}>
           {actions.map((action) => (
             <li key={action}>
@@ -137,7 +137,7 @@ export function CoPilotPanel({
           ))}
         </ul>
 
-        <h3 className={styles.sectionLabel}>스마트 프롬프트</h3>
+        <h3 className={styles.sectionLabel}>자주 쓰는 지시</h3>
         <div className={styles.promptGrid}>
           {SMART_PROMPTS.map((prompt) => (
             <button

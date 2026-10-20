@@ -12,7 +12,7 @@ const CLIP_HEIGHT = 120;
 
 const KIND_LABEL: Record<TimelineEntry['kind'], string> = {
   brief: '업무 접수',
-  recall: '자료 회상',
+  recall: '과거 기록 참고',
   plan: '팀 구성',
   phase: '단계 시작',
   speech: '직원 발언',
@@ -40,7 +40,11 @@ export function WorkTimeline(): React.JSX.Element {
 
   if (timeline.length === 0) {
     return (
-      <p className={styles.empty}>대표님의 지시를 기다리고 있습니다.</p>
+      <p className={styles.empty}>
+        아직 진행 중인 업무가 없습니다.
+        <br />
+        화면 아래 지시창에 업무를 적거나, 아래 추천에서 골라 시작하세요.
+      </p>
     );
   }
 

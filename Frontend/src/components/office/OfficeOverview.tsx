@@ -58,7 +58,7 @@ export function OfficeOverview({
       <div className={styles.roomInfo}>
         <span className={styles.titleRow}>
           <strong>{label}</strong>
-          <em>HQ 1F</em>
+          <em>본사 1층</em>
         </span>
         <small>
           {isRunning

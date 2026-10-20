@@ -58,6 +58,7 @@ export function OfficeCanvas({
     () => window.localStorage.getItem('metahub-office-guide-seen') !== '1',
   );
   const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [isTouch] = useState(() => window.matchMedia('(pointer: coarse)').matches);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -222,7 +223,7 @@ export function OfficeCanvas({
 
       {error && (
         <div className={`${styles.overlay} ${styles.error}`}>
-          <b>스프라이트를 불러오지 못했습니다.</b>
+          <b>오피스 그림을 불러오지 못했습니다. 아래 명령으로 다시 만든 뒤 새로고침하세요.</b>
           <pre>node Frontend/tools/generate_sprites.mjs</pre>
           <span>{error}</span>
         </div>
@@ -276,7 +277,12 @@ export function OfficeCanvas({
           <section className={styles.guide} aria-label="오피스 이동 안내">
             <div>
               <strong>MetaHub 오피스에 오신 것을 환영합니다</strong>
-              <p><kbd>WASD</kbd> 또는 바닥 더블클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
+              {/* 터치 화면에는 키보드가 없으니 화면에 보이는 조작으로 안내합니다 */}
+              {isTouch ? (
+                <p>왼쪽 아래 방향 버튼이나 바닥을 두 번 탭해 이동하고, 직원 곁에서 <b>말 걸기</b>를 눌러보세요.</p>
+              ) : (
+                <p><kbd>WASD</kbd> 또는 바닥 더블클릭으로 이동하고, 직원 곁에서 <kbd>F</kbd>를 눌러보세요.</p>
+              )}
             </div>
             <button type="button" onClick={dismissGuide} aria-label="안내 닫기">
               <span aria-hidden="true">×</span>
@@ -419,7 +425,7 @@ export function OfficeCanvas({
           type="button"
           className={styles.zoomLabel}
           onClick={resetZoom}
-          title="기본 배율 (0)"
+          title="원래 크기로 (0 키)"
         >
           {zoomPercent}%
         </button>

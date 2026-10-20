@@ -78,7 +78,7 @@ export function NearbyCard({
           </div>
         </div>
         {expanded && (
-          <button type="button" className={styles.close} onClick={onClose} aria-label="상호작용 닫기">
+          <button type="button" className={styles.close} onClick={onClose} aria-label="카드 닫기">
             ×
           </button>
         )}
@@ -112,10 +112,10 @@ export function NearbyCard({
       {!expanded ? (
         <button type="button" className={styles.interactHint} onClick={onExpand}>
           <kbd>F</kbd>
-          <span>상호작용</span>
+          <span>말 걸기</span>
         </button>
       ) : (
-        <div className={styles.actions} aria-label={`${agent.name} 상호작용`}>
+        <div className={styles.actions} aria-label={`${agent.name}에게 할 수 있는 일`}>
           <button type="button" onClick={() => selectAgent(agent.id)}>
             상세 보기
           </button>

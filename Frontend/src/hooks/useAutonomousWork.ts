@@ -22,7 +22,7 @@ export function useAutonomousWork(): AutonomousWorkBinding {
       setStatus(await companyService.getAutonomousWorkStatus());
       setError(null);
     } catch {
-      setError('자율 운영 상태를 불러오지 못했습니다.');
+      setError('AI 자동화 상태를 불러오지 못했습니다.');
     }
   }, []);
 
@@ -43,7 +43,7 @@ export function useAutonomousWork(): AutonomousWorkBinding {
       );
       setError(null);
     } catch {
-      setError('자율 운영 상태를 변경하지 못했습니다.');
+      setError('AI 자동화를 켜거나 끄지 못했습니다.');
     } finally {
       setBusy(false);
     }

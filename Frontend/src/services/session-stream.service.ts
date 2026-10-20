@@ -37,7 +37,7 @@ export function subscribeToSession(
     try {
       event = JSON.parse(message.data) as SessionEvent;
     } catch {
-      handlers.onError('서버 이벤트를 해석하지 못했습니다.');
+      handlers.onError('서버에서 받은 진행 정보를 읽지 못했습니다.');
       return;
     }
 
@@ -52,7 +52,7 @@ export function subscribeToSession(
   source.onerror = () => {
     // 정상 종료 직후에도 onerror 가 한 번 호출될 수 있으므로 상태를 확인
     if (source.readyState === EventSource.CLOSED && !closed) {
-      handlers.onError('스트림 연결이 끊어졌습니다.');
+      handlers.onError('서버와의 실시간 연결이 끊어졌습니다. 백엔드 서버가 켜져 있는지 확인하세요.');
       close();
     }
   };

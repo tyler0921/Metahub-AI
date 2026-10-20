@@ -42,7 +42,9 @@ export function DeliverablePanel({
         )}
         {!previewUrl && !latestReview && (
           <p className={`${styles.empty} ${isSidebar ? styles.sidebarEmpty : ''}`}>
-            {isRunning ? '부서들이 작업 중입니다…' : '아직 산출물이 없습니다.'}
+            {isRunning
+              ? '부서들이 작업 중입니다. 파일이 생기는 대로 여기에 나타납니다.'
+              : '아직 산출물이 없습니다. 업무를 지시하면 완성된 결과물이 여기에 모입니다.'}
           </p>
         )}
       </div>
@@ -87,7 +89,7 @@ export function DeliverablePanel({
       <Markdown content={result.body} />
 
       <footer className={styles.footer}>
-        {result.elapsedSeconds}초 소요 · LLM {result.usage.calls}회 호출 · 토큰{' '}
+        {result.elapsedSeconds}초 소요 · AI 호출 {result.usage.calls}회 · 토큰{' '}
         {(result.usage.inputTokens + result.usage.outputTokens).toLocaleString()}
       </footer>
     </div>

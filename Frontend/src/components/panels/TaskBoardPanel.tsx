@@ -14,7 +14,7 @@ import styles from './TaskBoardPanel.module.css';
 const TRACK: ReadonlyArray<{ key: PhaseKey; label: string }> = [
   { key: 'draft', label: '초안' },
   { key: 'feedback', label: '검토' },
-  { key: 'revise', label: '개정' },
+  { key: 'revise', label: '수정' },
 ];
 
 /**
@@ -36,7 +36,7 @@ export function TaskBoardPanel(): React.JSX.Element {
     return (
       <p className={styles.empty}>
         {isRunning
-          ? '비서실장이 업무를 쪼개는 중입니다…'
+          ? '비서실장이 업무를 부서별로 나누는 중입니다…'
           : '지시를 내리면 부서별 업무가 여기에 나타납니다.'}
       </p>
     );

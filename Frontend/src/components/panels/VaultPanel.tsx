@@ -22,17 +22,17 @@ export function VaultPanel({
   if (!data) {
     return (
       <p className={`${styles.empty} ${isSidebar ? styles.sidebarEmpty : ''}`}>
-        볼트 정보를 가져오지 못했습니다.
+        문서 목록을 불러오지 못했습니다. 백엔드 서버가 켜져 있는지 확인한 뒤 다시 열어 주세요.
       </p>
     );
   }
 
   return (
     <div className={isSidebar ? styles.sidebarRoot : undefined}>
-      <p className={styles.path}>📂 {data.basePath}</p>
+      <p className={styles.path} title="Obsidian 저장 위치">{data.basePath}</p>
 
       {data.projects.length === 0 ? (
-        <p className={styles.empty}>아직 저장된 프로젝트가 없습니다.</p>
+        <p className={styles.empty}>아직 저장된 문서가 없습니다. 업무가 끝나면 결과가 여기와 Obsidian에 자동으로 저장됩니다.</p>
       ) : (
         <ul className={styles.list}>
           {data.projects.map((project) => (

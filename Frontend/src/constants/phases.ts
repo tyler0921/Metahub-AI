@@ -13,11 +13,11 @@ export interface PhaseDescriptor {
  * 비어 보이므로 하나의 슬롯으로 묶었습니다.
  */
 export const PHASE_SEQUENCE: readonly PhaseDescriptor[] = [
-  { key: 'recall', label: '회상' },
+  { key: 'recall', label: '기록 참고' },
   { key: 'kickoff', label: '착수' },
   { key: 'draft', label: '초안' },
-  { key: 'feedback', label: '교차검토' },
-  { key: 'revise', label: '개정' },
+  { key: 'feedback', label: '상호 검토' },
+  { key: 'revise', label: '수정' },
   { key: 'integrate', label: '통합·구현' },
   { key: 'review', label: '검수' },
   { key: 'save', label: '저장' },

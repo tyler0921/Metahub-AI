@@ -86,7 +86,7 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
       <header>
         <div>
           <strong id="autonomous-inbox-title">자율 업무함</strong>
-          <small>우선순위 백로그 · 결과 승인</small>
+          <small>AI 직원에게 맡길 일과 승인할 결과</small>
         </div>
         <button type="button" onClick={onClose} aria-label="업무함 닫기"><span aria-hidden="true">×</span></button>
       </header>
@@ -116,7 +116,7 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
               <option value={1}>나중</option>
             </select>
           </label>
-          <button type="submit" disabled={busy || brief.trim().length < 5}>백로그 추가</button>
+          <button type="submit" disabled={busy || brief.trim().length < 5}>대기 업무에 추가</button>
         </div>
       </form>
 
@@ -125,7 +125,7 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
       <div className={styles.sections}>
         <section>
           <h3>대기 업무 <b>{queued.length}</b></h3>
-          {queued.length === 0 ? <p className={styles.empty}>등록된 대기 업무가 없습니다.</p> : (
+          {queued.length === 0 ? <p className={styles.empty}>대기 업무가 없습니다. 위에 적어 추가하면 AI 자동화가 켜져 있을 때 순서대로 처리합니다.</p> : (
             <ul>
               {queued.map((item) => (
                 <li key={item.id}>
@@ -142,7 +142,7 @@ export function AutonomousInbox({ open, onClose }: AutonomousInboxProps): React.
 
         <section>
           <h3>승인 대기 <b>{approvals.length}</b></h3>
-          {approvals.length === 0 ? <p className={styles.empty}>검토할 결과가 없습니다.</p> : (
+          {approvals.length === 0 ? <p className={styles.empty}>승인을 기다리는 결과가 없습니다.</p> : (
             <ul>
               {approvals.map((item) => (
                 <li key={item.id} className={styles.approval}>

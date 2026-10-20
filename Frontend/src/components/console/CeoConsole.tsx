@@ -152,7 +152,7 @@ export function CeoConsole({
             disabled={isCancelling}
             onClick={onCancel}
           >
-            {isCancelling ? '중단 중…' : '중단'}
+            {isCancelling ? '중단하는 중…' : '업무 중단'}
           </button>
         ) : (
           <button

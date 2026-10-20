@@ -70,7 +70,7 @@ export function ProjectStatusBar(): React.JSX.Element {
   const isKnownPhase = index >= 0;
   const step = isKnownPhase ? index + 1 : PHASE_SEQUENCE.length;
   const phaseLabel = idle
-    ? '대기 중'
+    ? '지시 대기'
     : isKnownPhase
       ? PHASE_SEQUENCE[index].label
       : '완료';
@@ -163,9 +163,10 @@ export function ProjectStatusBar(): React.JSX.Element {
             onClick={() => void autonomous.toggle()}
             disabled={autonomous.isBusy}
             aria-pressed={autonomous.status.enabled}
+            title={`켜 두면 AI 직원들이 업무함의 대기 업무를 스스로 처리합니다 (오늘 ${autonomous.status.runsToday}/${autonomous.status.dailyLimit}회)`}
           >
             <Icon name="bolt" size={15} />
-            {autonomous.status.enabled ? 'AI 자동화 ON' : 'AI 자동화 정지'}
+            {autonomous.status.enabled ? 'AI 자동화 ON' : 'AI 자동화 OFF'}
             <small>
               {autonomous.status.runsToday}/{autonomous.status.dailyLimit}
             </small>
@@ -215,7 +216,7 @@ export function ProjectStatusBar(): React.JSX.Element {
               : `${team.length}명 참여`}
           </span>
           <span className={styles.metric}>{formatElapsed(elapsedSeconds)}</span>
-          <span className={`${styles.metric} ${styles.tokenMetric}`}>LLM {calls}회</span>
+          <span className={`${styles.metric} ${styles.tokenMetric}`}>AI 호출 {calls}회</span>
           {tokens > 0 && (
             <span className={`${styles.metric} ${styles.tokenMetric}`}>
               {tokens.toLocaleString()} tok

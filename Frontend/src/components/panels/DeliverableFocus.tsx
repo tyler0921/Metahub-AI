@@ -117,7 +117,7 @@ export function DeliverableFocus(): React.JSX.Element | null {
               </p>
               {result.workspaceFolder && (
                 <p className={styles.path}>
-                  <span>workspace</span>
+                  <span>작업 폴더</span>
                   <code>{result.workspaceFolder}</code>
                 </p>
               )}
@@ -179,7 +179,7 @@ export function DeliverableFocus(): React.JSX.Element | null {
       <footer className={styles.foot}>
         <span className={styles.meta}>
           {result
-            ? `${result.elapsedSeconds}초 소요 · LLM ${result.usage.calls}회 호출 · 토큰 ${(
+            ? `${result.elapsedSeconds}초 소요 · AI 호출 ${result.usage.calls}회 · 토큰 ${(
                 result.usage.inputTokens + result.usage.outputTokens
               ).toLocaleString()}`
             : '작업이 진행 중입니다…'}
@@ -190,7 +190,7 @@ export function DeliverableFocus(): React.JSX.Element | null {
           disabled={!result || isRunning}
           onClick={startFollowUp}
         >
-          이 결과 이어서 수정하기
+          이 산출물 이어서 수정하기
         </button>
       </footer>
     </div>

@@ -268,7 +268,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         });
         if (event.provider === 'mock') {
           get().appendSystemLog(
-            'mock 모드 — Backend/.env 에 API 키를 넣거나 AI_PROVIDER=ollama 로 두면 실제 AI 직원이 일합니다.',
+            '체험 모드 — 지금은 미리 준비된 예시 답변이 나옵니다. Backend/.env 에 API 키를 넣거나 AI_PROVIDER=ollama 로 두면 실제 AI 직원이 일합니다.',
             'warn',
           );
         }
@@ -339,7 +339,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
               kind: 'system',
               id: nextLogId(),
               level: 'info',
-              text: `볼트에서 과거 노트 ${event.notes.length}건 참조: ${event.notes.map((n) => n.title).join(' / ')}`,
+              text: `과거 기록 ${event.notes.length}건 참고: ${event.notes.map((n) => n.title).join(' / ')}`,
             },
           ],
           timeline: [
@@ -521,8 +521,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set((state) => {
           const summary =
             event.result.kind === 'website'
-              ? `완료 (${event.result.elapsedSeconds}초 · LLM 호출 ${event.result.usage.calls}회) — 파일 ${event.result.artifacts.length}개를 만들었습니다.`
-              : `완료 (${event.result.elapsedSeconds}초 · LLM 호출 ${event.result.usage.calls}회) — 볼트에 저장했습니다.`;
+              ? `완료 (${event.result.elapsedSeconds}초 · AI 호출 ${event.result.usage.calls}회) — 파일 ${event.result.artifacts.length}개를 만들었습니다.`
+              : `완료 (${event.result.elapsedSeconds}초 · AI 호출 ${event.result.usage.calls}회) — 문서에 저장했습니다.`;
           return {
             result: event.result,
             previewUrl: event.result.previewUrl ?? state.previewUrl,
