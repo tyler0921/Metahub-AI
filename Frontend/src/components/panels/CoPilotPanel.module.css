@@ -3,10 +3,10 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid var(--line-dark);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel-solid);
-  box-shadow: none;
+  background: rgb(255 255 255 / 3%);
+  box-shadow: var(--edge);
   overflow: hidden;
 }
 
@@ -16,22 +16,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--line-dark);
-  background: rgb(255 255 255 / 3%);
+  padding: 10px 12px 4px;
 }
 
 .title {
   color: var(--text-on-dark);
   font-size: var(--fs-md);
   font-weight: 700;
+  letter-spacing: var(--tracking-tight);
 }
 
 .titleHint {
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-tint);
   color: var(--accent-text);
   font-size: var(--fs-xs);
-  font-weight: 900;
-  letter-spacing: 0.65px;
+  font-weight: 700;
 }
 
 .body {
@@ -48,8 +49,7 @@
   margin: 0 0 8px;
   color: var(--dim-on-dark);
   font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  font-weight: 600;
 }
 
 .deptStack {
@@ -66,9 +66,8 @@
   align-items: center;
   margin-bottom: 8px;
   padding: 8px 9px;
-  border: 1px solid var(--line-dark);
   border-radius: var(--radius-sm);
-  background: rgb(255 255 255 / 3%);
+  background: rgb(255 255 255 / 4%);
 }
 
 .deptBadge {
@@ -133,25 +132,33 @@
   width: 100%;
   margin-bottom: 6px;
   padding: 9px 11px;
-  border: 1px solid var(--line-dark);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: rgb(255 255 255 / 3%);
+  background: rgb(255 255 255 / 5%);
   color: var(--text-on-dark);
   font: inherit;
   font-size: var(--fs-sm);
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
 }
 
 .actionBtn:hover {
-  border-color: rgb(129 116 255 / 45%);
-  background: rgb(129 116 255 / 10%);
+  border-color: rgb(129 116 255 / 30%);
+  background: var(--accent-tint);
 }
 
 .arrow {
-  color: rgb(255 255 255 / 30%);
+  display: inline-block;
+  color: var(--dim);
   font-size: var(--fs-lg);
+  transition: transform var(--dur) var(--ease-spring), color var(--dur-fast) var(--ease-out);
+}
+
+/* 누를 곳을 가리키듯 화살표가 한 칸 나아갑니다 */
+.actionBtn:hover .arrow {
+  color: var(--accent-text);
+  transform: translateX(3px);
 }
 
 .promptGrid {
@@ -162,19 +169,18 @@
 
 .promptBtn {
   padding: 9px 8px;
-  border: 1px solid rgb(129 116 255 / 30%);
+  border: 1px solid rgb(129 116 255 / 24%);
   border-radius: var(--radius-sm);
-  background: rgb(129 116 255 / 14%);
+  background: var(--accent-tint);
   color: var(--accent-text);
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, filter 0.15s;
 }
 
 .promptBtn:hover {
-  background: rgb(129 116 255 / 24%);
-  filter: brightness(1.06);
+  background: rgb(129 116 255 / 26%);
+  color: var(--text);
 }
 

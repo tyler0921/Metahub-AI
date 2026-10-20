@@ -136,7 +136,7 @@ export function ProjectStatusBar(): React.JSX.Element {
           onClick={() => requestPanel('office')}
         >
           <Icon name="home" size={17} />
-          오피스
+          <span className={styles.tabLabel}>오피스</span>
         </button>
         {WORKSPACE_TABS.map((tab) => (
           <button
@@ -147,7 +147,7 @@ export function ProjectStatusBar(): React.JSX.Element {
             onClick={() => requestPanel(tab.key)}
           >
             <Icon name={TAB_ICONS[tab.key]} size={17} />
-            {tab.label}
+            <span className={styles.tabLabel}>{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -166,7 +166,9 @@ export function ProjectStatusBar(): React.JSX.Element {
             title={`켜 두면 AI 직원들이 업무함의 대기 업무를 스스로 처리합니다 (오늘 ${autonomous.status.runsToday}/${autonomous.status.dailyLimit}회)`}
           >
             <Icon name="bolt" size={15} />
-            {autonomous.status.enabled ? 'AI 자동화 ON' : 'AI 자동화 OFF'}
+            <span className={styles.autoLabel}>
+              {autonomous.status.enabled ? 'AI 자동화 ON' : 'AI 자동화 OFF'}
+            </span>
             <small>
               {autonomous.status.runsToday}/{autonomous.status.dailyLimit}
             </small>

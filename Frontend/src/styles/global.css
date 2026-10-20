@@ -3,22 +3,25 @@
  *
  * 따뜻한 픽셀 오피스 위에 **네이비 유리 HUD** 를 얹습니다.
  *  - 오피스: 캔버스가 칠하는 따뜻한 바닥·방
- *  - HUD·패널: 짙은 네이비 + 보라빛 테두리. 같은 표면을 쓰는 것끼리 한 덩어리로 읽힙니다.
+ *  - HUD·패널: 짙은 네이비 유리. 테두리는 중립 헤어라인이고, 위쪽 1px 하이라이트가
+ *    유리 모서리처럼 빛을 받습니다. 보라는 "지금 활성인 것"에만 씁니다.
  *
  * 규칙 — 액센트 1색(보라) + 상태 4색. UI 색은 여기서만 나옵니다.
  * 대비는 모두 패널(--panel)·카드(--panel-solid)·눌린 표면(--accent-soft) 위에서 4.5:1 이상입니다.
  */
 :root {
   /* 표면 */
-  --bg:            #10152b;   /* 전체 화면 오버레이(집중 모드) 바탕 */
-  --frame:         #0c1124;   /* 캔버스 뒤·레터박스 */
-  --panel:         rgb(23 28 53 / 94%);   /* HUD 카드·패널 본체 */
-  --panel-solid:   #1e2444;   /* 패널 위에 얹히는 카드 */
-  --panel-dark:    rgb(17 21 42 / 92%);   /* 메뉴·콘솔처럼 공간 위에 직접 뜨는 것 */
-  --line:          rgb(160 170 255 / 14%);
-  --line-dark:     rgb(160 170 255 / 16%);
-  /* HUD 테두리 — 시안의 보라빛 윤곽 */
-  --line-glow:     rgb(129 116 255 / 34%);
+  --bg:            #0e1328;   /* 전체 화면 오버레이(집중 모드) 바탕 */
+  --frame:         #0a0e1e;   /* 캔버스 뒤·레터박스 */
+  --panel:         rgb(20 25 50 / 92%);   /* HUD 카드·패널 본체 */
+  --panel-solid:   #1c2244;   /* 패널 위에 얹히는 카드 */
+  /* 메뉴·콘솔처럼 공간 위에 직접 뜨는 유리 (blur 와 함께).
+     밝은 오피스 바닥 위에서도 --dim 이 4.5:1 을 넘기는 하한이 86% 입니다 */
+  --panel-dark:    rgb(15 19 40 / 86%);
+  --line:          rgb(196 202 255 / 10%);
+  --line-dark:     rgb(196 202 255 / 12%);
+  /* 떠 있는 유리 HUD 의 윤곽 — 보라 발광 대신 중립 헤어라인 */
+  --line-glow:     rgb(196 202 255 / 15%);
   --text:          #eef0fb;
   --text-2:        #c3c8de;
   --dim:           #9aa1bd;
@@ -27,13 +30,15 @@
 
   /*
    * 액센트 — 보라 하나.
-   * --accent 는 흰 글자를 얹는 바탕(5.2:1), 글자로 쓸 때는 --accent-text 입니다.
+   * --accent 는 흰 글자를 얹는 바탕(4.5:1), 글자로 쓸 때는 --accent-text 입니다.
    */
   --accent:        #6352f5;
   --accent-strong: #5444e0;
-  --accent-text:   #a99cff;
+  --accent-text:   #ada1ff;
   /* 이름과 달리 액센트 색조가 아니라 "한 단계 눌린 표면"입니다 */
-  --accent-soft:   #262d52;
+  --accent-soft:   #232a4e;
+  /* 액센트를 바탕에 옅게 깔 때 (선택된 탭·배지) */
+  --accent-tint:   rgb(129 116 255 / 16%);
 
   /* 상태 4색 — 점·막대·테두리용 */
   --st-work:  #f2b84b;   /* 작업 중 */
@@ -58,21 +63,37 @@
   --fs-lg:  15px;   /* 카드 제목 */
   --fs-xl:  18px;   /* 패널 제목 */
   --fs-2xl: 22px;   /* 화면 제목·큰 글리프 */
+  /* 제목은 살짝 조여야 한글이 단단해 보입니다 */
+  --tracking-tight: -0.02em;
 
-  --blur:      blur(14px);
-  --shadow:    0 10px 30px rgb(4 6 18 / 45%);
-  --shadow-lg: 0 18px 48px rgb(4 6 18 / 55%);
-  /* 시안의 은은한 보라 발광 — 활성 요소에만 */
-  --glow:      0 0 0 1px rgb(129 116 255 / 40%), 0 8px 24px rgb(99 82 245 / 35%);
+  /* 유리 재질 */
+  --blur:      blur(20px) saturate(150%);
+  /* 위 모서리가 빛을 받는 1px 하이라이트 — 모든 떠 있는 유리에 함께 겁니다 */
+  --edge:      inset 0 1px 0 rgb(255 255 255 / 7%);
+  /* 그림자는 검정이 아니라 배경 네이비로 물들입니다. 가까운 그림자 + 먼 그림자 두 겹 */
+  --shadow:    0 1px 2px rgb(4 6 20 / 40%), 0 10px 28px -8px rgb(4 6 20 / 60%);
+  --shadow-lg: 0 2px 6px rgb(4 6 20 / 35%), 0 24px 56px -16px rgb(4 6 20 / 75%);
+  /* 활성 요소 — 퍼지는 발광 대신 아래로 떨어지는 보라 그림자 + 윗면 광택 */
+  --glow:      inset 0 1px 0 rgb(255 255 255 / 22%), 0 6px 18px -6px rgb(99 82 245 / 75%);
+
+  /* 모서리 — 바깥 컨테이너일수록 둥글게 (안쪽 = 바깥 - 패딩) */
+  --radius-lg: 20px;   /* 콘솔·패널처럼 화면에 떠 있는 큰 판 */
   --radius:    14px;
   --radius-sm: 10px;
+  --radius-xs: 6px;
   --radius-pill: 999px;
 
+  /* 모션 — 빠르게 출발해 부드럽게 멈춥니다. 누름은 살짝 튀는 스프링 */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: linear(0, 0.38 9%, 0.74 19%, 0.97 30%, 1.06 40%, 1.04 52%, 1 66%, 0.995 82%, 1);
+  --dur-fast:    140ms;
+  --dur:         240ms;
+
   /* 보조 표면 */
-  --panel-strong: rgb(23 28 53 / 96%);
-  --line-strong:  rgb(160 170 255 / 24%);
-  --chrome-panel: #141936;
-  --hover-soft:   rgb(129 116 255 / 14%);
+  --panel-strong: rgb(20 25 50 / 94%);
+  --line-strong:  rgb(196 202 255 / 22%);
+  --chrome-panel: #11162f;
+  --hover-soft:   rgb(176 166 255 / 10%);
 
   color-scheme: dark;
 
@@ -96,9 +117,12 @@ body {
   margin: 0;
   background: var(--frame);
   color: var(--text);
-  font-family: Pretendard, -apple-system, 'Segoe UI', 'Malgun Gothic', system-ui,
-    sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Segoe UI',
+    'Malgun Gothic', system-ui, sans-serif;
+  /* 지표·시간·토큰 수가 바뀔 때 글자 폭이 흔들리지 않게 */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
@@ -107,6 +131,30 @@ body {
 
 button {
   font-family: inherit;
+}
+
+::selection {
+  background: rgb(99 82 245 / 45%);
+  color: var(--text);
+}
+
+/*
+ * 버튼 공통 촉감 — 색은 부드럽게 바뀌고, 누르면 살짝 들어갑니다.
+ * :where 로 감싸 우선순위가 0 이라 컴포넌트가 정한 transition·transform 이 항상 이깁니다.
+ */
+:where(button) {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button:not(:disabled):active) {
+  transform: scale(0.96);
+  transition-duration: 60ms;
 }
 
 /*
@@ -131,6 +179,20 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  :where(button:not(:disabled):active) {
+    transform: none;
+  }
+}
+
+/* 투명도 줄이기 — 유리를 불투명 판으로 바꿔 글자 대비를 지킵니다 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --panel:        #141932;
+    --panel-dark:   #0f1328;
+    --panel-strong: #141932;
+    --blur:         none;
   }
 }
 

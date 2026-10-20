@@ -7,6 +7,22 @@
   font-weight: 700;
 }
 
+/* 빈 상태 — 패널 바닥보다 한 단계 패인 안내 영역. 문장은 줄마다 길이를 맞춥니다 */
+.emptyState {
+  margin: 6px 0;
+  padding: 36px 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgb(129 116 255 / 8%), transparent 70%),
+    rgb(0 0 0 / 14%);
+  color: var(--dim);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: balance;
+}
+
 .statusBadge {
   display: inline-flex;
   flex-shrink: 0;

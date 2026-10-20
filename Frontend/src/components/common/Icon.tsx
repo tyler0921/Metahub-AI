@@ -21,6 +21,9 @@ const PATHS = {
   minus: 'M5 12h14',
   maximize: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
   bolt: 'M13 2 3 14h9l-1 8 10-12h-9z',
+  chevronDown: 'm6 9 6 6 6-6',
+  check: 'M20 6 9 17l-5-5',
+  lock: 'M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

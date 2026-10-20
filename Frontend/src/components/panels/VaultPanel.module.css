@@ -1,8 +1,5 @@
 .empty {
-  padding: 40px 10px;
-  color: var(--dim);
-  font-size: var(--fs-md);
-  text-align: center;
+  composes: emptyState from '../../styles/shared.module.css';
 }
 
 .path {

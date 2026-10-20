@@ -10,7 +10,7 @@
   border: 1px solid var(--line-glow);
   border-radius: var(--radius);
   background: var(--panel-dark);
-  box-shadow: var(--shadow);
+  box-shadow: var(--edge), var(--shadow);
   backdrop-filter: var(--blur);
 }
 
@@ -51,7 +51,7 @@
   display: block;
   width: 200px;
   height: auto;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   image-rendering: pixelated;
 }
 

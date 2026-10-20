@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AgentId, AgentStatus, AppConfigResponse, SpeechEvent } from '@shared';
-import { Icon, type IconName } from '@/components/common/Icon';
+import { Icon } from '@/components/common/Icon';
 import { WorkspaceSidebar } from '@/components/layout/WorkspaceSidebar';
 import { useSessionStore } from '@/store/session.store';
-import { WORKSPACE_TABS, useUiStore, type WorkspaceTabKey } from '@/store/ui.store';
+import { useUiStore, type WorkspaceTabKey } from '@/store/ui.store';
 import { CharacterCustomizer } from './CharacterCustomizer';
 import { ConversationFlow } from './ConversationFlow';
 import { MeetingRoomBadge } from './MeetingRoomBadge';
@@ -17,14 +17,6 @@ import { spaceActionAt } from './office-interactions';
 import styles from './OfficeCanvas.module.css';
 
 const MAX_BUBBLES = 4;
-
-/** 하단 메뉴 아이콘 — 상단 탭과 같은 이름(WORKSPACE_TABS)을 씁니다 */
-const TAB_ICONS: Record<WorkspaceTabKey, IconName> = {
-  tasks: 'tasks',
-  log: 'chat',
-  result: 'package',
-  vault: 'book',
-};
 const SPEECH_VISIBLE_MS = 14_000;
 
 interface OfficeCanvasProps {
@@ -54,7 +46,6 @@ export function OfficeCanvas({
   const [interactionOpen, setInteractionOpen] = useState(false);
   const requestPanel = useUiStore((s) => s.requestPanel);
   const panelRequest = useUiStore((s) => s.panelRequest);
-  const openTab = useUiStore((s) => s.openPanel);
   const [showGuide, setShowGuide] = useState(
     () => window.localStorage.getItem('metahub-office-guide-seen') !== '1',
   );
@@ -307,32 +298,8 @@ export function OfficeCanvas({
           </button>
         )}
 
+        {/* 화면 이동(오피스·업무·진행·산출물·문서)은 상단 바 탭만 맡습니다 */}
         <nav className={styles.spaceRail} aria-label="공간 메뉴">
-          <div className={styles.railGroup}>
-            <button
-              type="button"
-              className={openTab === null ? styles.railActive : ''}
-              aria-label="오피스 보기"
-              aria-current={openTab === null ? 'page' : undefined}
-              data-label="오피스"
-              onClick={() => requestPanel('office')}
-            >
-              <Icon name="home" />
-            </button>
-            {WORKSPACE_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={openTab === tab.key ? styles.railActive : ''}
-                aria-label={`${tab.label} 열기`}
-                aria-current={openTab === tab.key ? 'page' : undefined}
-                data-label={tab.label}
-                onClick={() => openPanel(tab.key)}
-              >
-                <Icon name={TAB_ICONS[tab.key]} />
-              </button>
-            ))}
-          </div>
           {/* 실행 환경 — 어떤 모델이 일하고 있는지, 바꿀 수도 있습니다 */}
           {config && <ModelPicker />}
           <div className={styles.railGroup}>

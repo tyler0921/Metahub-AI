@@ -6,12 +6,13 @@
   z-index: 8;
   width: min(268px, calc(100% - 36px));
   padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border: 1px solid var(--line-glow);
+  border-radius: var(--radius-lg);
   background: var(--panel);
   color: var(--text);
-  box-shadow: var(--shadow-lg);
-  animation: rise 0.18s ease-out;
+  box-shadow: var(--edge), var(--shadow-lg);
+  backdrop-filter: var(--blur);
+  animation: rise 0.36s var(--ease-out);
   pointer-events: auto;
 }
 
@@ -37,9 +38,9 @@
   align-self: flex-start;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--accent-soft);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 6%);
   color: var(--dim);
   font: inherit;
   font-size: var(--fs-xl);
@@ -48,8 +49,8 @@
 }
 
 .close:hover {
-  border-color: var(--accent-text);
-  color: var(--accent-text);
+  background: rgb(255 255 255 / 12%);
+  color: var(--text);
 }
 
 .badge {
@@ -68,8 +69,9 @@
 
 .name {
   color: var(--text);
-  font-size: var(--fs-md);
-  font-weight: 650;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
 }
 
 .meta {
@@ -144,9 +146,9 @@
   width: 100%;
   margin-top: 11px;
   padding: 8px;
-  border: 1px solid var(--line);
+  border: 1px solid rgb(129 116 255 / 22%);
   border-radius: var(--radius-sm);
-  background: var(--accent-soft);
+  background: var(--accent-tint);
   color: var(--accent-text);
   font: inherit;
   font-size: var(--fs-sm);
@@ -186,9 +188,9 @@
 
 .actions button {
   min-height: 36px;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--panel-solid);
+  background: rgb(255 255 255 / 6%);
   color: var(--text-2);
   font: inherit;
   font-size: var(--fs-sm);
@@ -197,9 +199,9 @@
 }
 
 .actions button:hover {
-  border-color: var(--accent-text);
-  background: var(--accent-soft);
-  color: var(--accent-text);
+  border-color: rgb(129 116 255 / 30%);
+  background: var(--accent-tint);
+  color: var(--text);
 }
 
 @media (width <= 640px) {
