@@ -7,6 +7,7 @@ import { WORKSPACE_TABS, useUiStore, type WorkspaceTabKey } from '@/store/ui.sto
 import { CharacterCustomizer } from './CharacterCustomizer';
 import { ConversationFlow } from './ConversationFlow';
 import { MeetingRoomBadge } from './MeetingRoomBadge';
+import { ModelPicker } from './ModelPicker';
 import { NearbyCard } from './NearbyCard';
 import { OfficeMinimap } from './OfficeMinimap';
 import { OfficeOverview } from './OfficeOverview';
@@ -332,15 +333,8 @@ export function OfficeCanvas({
               </button>
             ))}
           </div>
-          {/* 실행 환경 — 어떤 모델이 일하고 있는지 */}
-          {config && (
-            <div className={styles.railMeta} title={`${config.provider} · ${config.model}`}>
-              <span>AI 모델</span>
-              <span className={styles.railMetaModel}>
-                {config.provider === 'mock' ? '체험 모드' : config.model}
-              </span>
-            </div>
-          )}
+          {/* 실행 환경 — 어떤 모델이 일하고 있는지, 바꿀 수도 있습니다 */}
+          {config && <ModelPicker />}
           <div className={styles.railGroup}>
             <button
               type="button"

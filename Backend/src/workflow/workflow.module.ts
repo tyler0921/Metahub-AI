@@ -19,12 +19,13 @@ import { AutonomousWorkService } from './autonomous-work.service';
 import { AutonomousBriefPlannerService } from './autonomous-brief-planner.service';
 import { AutonomousStateStore } from './autonomous-state.store';
 import { AutonomousWorkController } from './autonomous-work.controller';
+import { LlmModelController } from './llm-model.controller';
 import { AdminMutationGuard } from '../common/guards/admin-mutation.guard';
 import { AutonomousInboxStore } from './autonomous-inbox.store';
 
 @Module({
   imports: [AgentsModule, LlmModule, SearchModule, VaultModule, WorkspaceModule],
-  controllers: [WorkflowController, AutonomousWorkController],
+  controllers: [WorkflowController, AutonomousWorkController, LlmModelController],
   providers: [
     SessionRepository,
     WorkflowService,

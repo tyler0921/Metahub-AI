@@ -7,12 +7,12 @@ import { AgentIdParamDto } from './dto/agent-id.param.dto';
 import { AmbientChatDto } from './dto/ambient-chat.dto';
 import type {
   AutonomousWorkConfig,
-  LlmConfig,
   VaultConfig,
   WorkflowConfig,
   SecurityConfig,
 } from '../config/configuration';
 import { LlmBudgetService } from '../llm/llm-budget.service';
+import { LlmModelRegistry } from '../llm/llm-model.registry';
 
 @Controller()
 export class AgentsController {
@@ -21,6 +21,7 @@ export class AgentsController {
     private readonly ambientChat: AmbientChatService,
     private readonly config: ConfigService,
     private readonly budget: LlmBudgetService,
+    private readonly models: LlmModelRegistry,
   ) {}
 
   /** 직원 명단 + 오피스 맵 */
@@ -46,7 +47,8 @@ export class AgentsController {
   /** 실행 환경 (API 키 같은 비밀값은 내보내지 않습니다) */
   @Get('config')
   getConfig(): AppConfigResponse {
-    const llm = this.config.getOrThrow<LlmConfig>('llm');
+    // 화면에서 모델을 바꿨을 수 있으므로 .env 가 아니라 지금 쓰는 값을 내보냅니다
+    const llm = this.models.config;
     const vault = this.config.getOrThrow<VaultConfig>('vault');
     const workflow = this.config.getOrThrow<WorkflowConfig>('workflow');
     const autonomousWork = this.config.getOrThrow<AutonomousWorkConfig>('autonomousWork');

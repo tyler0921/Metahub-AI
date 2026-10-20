@@ -1,11 +1,9 @@
 import {
-  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { TokenUsage } from '@shared';
 import type { LlmConfig } from '../config/configuration';
 import { buildDateContext } from '../common/utils/date.util';
@@ -15,14 +13,11 @@ import {
   LlmRequestError,
   LlmTransientError,
 } from './errors/llm.errors';
-import {
-  LLM_PROVIDER,
-  type CompletionOptions,
-  type LlmProvider,
-} from './interfaces/llm-provider.interface';
+import type { CompletionOptions } from './interfaces/llm-provider.interface';
 import { RateLimiter } from './rate-limiter';
 import type { UsageTracker } from './usage.tracker';
 import { LlmBudgetService } from './llm-budget.service';
+import { LlmModelRegistry } from './llm-model.registry';
 
 /**
  * LLM 파사드.
@@ -38,27 +33,44 @@ import { LlmBudgetService } from './llm-budget.service';
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private readonly config: LlmConfig;
-  private readonly limiter: RateLimiter;
+  private limiter: RateLimiter;
+  /** limiter 를 만든 설정 — 화면에서 모델을 바꾸면 달라집니다 */
+  private limiterConfig: LlmConfig;
 
   constructor(
-    @Inject(LLM_PROVIDER) private readonly provider: LlmProvider,
-    configService: ConfigService,
+    private readonly models: LlmModelRegistry,
     private readonly budget: LlmBudgetService,
   ) {
-    this.config = configService.getOrThrow<LlmConfig>('llm');
-    this.limiter = new RateLimiter({
-      maxConcurrent: this.config.maxConcurrent,
-      requestsPerMinute: this.config.requestsPerMinute,
-    });
+    this.limiterConfig = models.config;
+    this.limiter = this.createLimiter(this.limiterConfig);
   }
 
   get providerName(): string {
-    return this.provider.name;
+    return this.models.provider.name;
   }
 
   get model(): string {
-    return this.provider.model;
+    return this.models.provider.model;
+  }
+
+  private get config(): LlmConfig {
+    return this.models.config;
+  }
+
+  /** 프로바이더가 바뀌면 그 한도에 맞는 대기열로 갈아탑니다 */
+  private get gate(): RateLimiter {
+    if (this.limiterConfig !== this.models.config) {
+      this.limiterConfig = this.models.config;
+      this.limiter = this.createLimiter(this.limiterConfig);
+    }
+    return this.limiter;
+  }
+
+  private createLimiter(config: LlmConfig): RateLimiter {
+    return new RateLimiter({
+      maxConcurrent: config.maxConcurrent,
+      requestsPerMinute: config.requestsPerMinute,
+    });
   }
 
   /** 자유 형식 텍스트 응답 */
@@ -69,9 +81,11 @@ export class LlmService {
     tracker?: UsageTracker,
   ): Promise<string> {
     this.budget.reserveCall();
+    // 호출 도중 모델이 바뀌어도 재시도는 처음 고른 모델로 합니다
+    const provider = this.models.provider;
     const result = await this.callWithRetry(
       () =>
-        this.provider.complete({
+        provider.complete({
           system: this.withDateContext(system),
           prompt,
           ...options,
@@ -110,13 +124,14 @@ export class LlmService {
     signal?: AbortSignal,
   ): Promise<T> {
     let lastError: Error | null = null;
+    const limiter = this.gate;
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       // 대기열에서 차례를 기다리는 사이에 중단됐을 수 있습니다
       if (signal?.aborted) throw new LlmCancelledError();
 
       try {
-        return await this.limiter.acquire(task);
+        return await limiter.acquire(task);
       } catch (error) {
         // 대표가 중단한 것이라면 오류가 아니므로 재시도하지 않습니다
         if (signal?.aborted) throw new LlmCancelledError();
@@ -130,7 +145,7 @@ export class LlmService {
           lastError = error;
           // 한 요청이 걸렸으면 나머지도 걸린다 — 게이트 전체를 세운다
           const waitMs = error.retryAfterMs ?? this.backoffMs(attempt);
-          this.limiter.pause(waitMs);
+          limiter.pause(waitMs);
           if (attempt === this.config.maxRetries) break;
           await this.sleep(waitMs, signal);
           continue;

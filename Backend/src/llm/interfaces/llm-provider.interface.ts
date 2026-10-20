@@ -30,6 +30,3 @@ export interface LlmProvider {
   readonly model: string;
   complete(request: CompletionRequest): Promise<CompletionResult>;
 }
-
-/** DI 토큰 */
-export const LLM_PROVIDER = Symbol('LLM_PROVIDER');

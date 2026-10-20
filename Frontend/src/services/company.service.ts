@@ -9,6 +9,8 @@ import type {
   AutonomousApprovalItem,
   CreateSessionResponse,
   HealthResponse,
+  LlmModelOption,
+  LlmModelsResponse,
   SessionDetailResponse,
   SessionSummary,
 } from '@shared';
@@ -25,6 +27,12 @@ export const companyService = {
     http.post('/agents/ambient-chat', { agentA, agentB }),
 
   getConfig: (): Promise<AppConfigResponse> => http.get('/config'),
+
+  getLlmModels: (): Promise<LlmModelsResponse> => http.get('/llm/models'),
+
+  /** 다음 업무부터 쓸 모델을 바꿉니다 — 업무가 진행 중이면 서버가 거절합니다 */
+  selectLlmModel: (option: LlmModelOption): Promise<LlmModelsResponse> =>
+    http.post('/llm/model', option),
 
   /**
    * 대표 지시 접수 — 실제 작업은 서버에서 백그라운드로 진행됩니다.

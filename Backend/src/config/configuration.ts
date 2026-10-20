@@ -39,6 +39,8 @@ export interface LlmConfig {
   /** 하루 입력+출력 토큰 한도. 0이면 제한하지 않습니다. */
   dailyTokenLimit: number;
   budgetStatePath: string;
+  /** 화면에서 고른 모델을 서버 재시작 뒤에도 기억하는 파일 */
+  selectionStatePath: string;
 }
 
 export interface SecurityConfig {
@@ -114,9 +116,23 @@ const PROVIDER_DEFAULTS: Record<
   // Groq 무료 등급의 병목은 요청 수가 아니라 분당 토큰(12K TPM)입니다.
   // 이 앱은 프롬프트가 길어 분당 4회가 현실적인 상한입니다.
   groq: { model: 'llama-3.3-70b-versatile', maxConcurrent: 1, requestsPerMinute: 4 },
-  claude: { model: 'claude-sonnet-5', maxConcurrent: 4, requestsPerMinute: 50 },
+  claude: { model: 'claude-opus-5-5', maxConcurrent: 4, requestsPerMinute: 50 },
   mock: { model: 'mock', maxConcurrent: 8, requestsPerMinute: 0 },
 };
+
+const apiKeyOf = (provider: LlmProviderName): string => {
+  if (provider === 'gemini') return process.env.GEMINI_API_KEY?.trim() ?? '';
+  if (provider === 'groq') return process.env.GROQ_API_KEY?.trim() ?? '';
+  if (provider === 'claude') return process.env.ANTHROPIC_API_KEY?.trim() ?? '';
+  return '';
+};
+
+const KEYED_PROVIDERS = ['gemini', 'groq', 'claude'] as const;
+
+/** 키가 있어 지금 바로 쓸 수 있는 프로바이더 (Ollama·mock 은 키가 없어도 됩니다) */
+export function availableLlmProviders(): LlmProviderName[] {
+  return ['ollama', ...KEYED_PROVIDERS.filter((p) => apiKeyOf(p)), 'mock'];
+}
 
 /**
  * 어떤 프로바이더로 뜰지 결정합니다.
@@ -124,69 +140,46 @@ const PROVIDER_DEFAULTS: Record<
  * 2) 명시하지 않았으면 키가 있는 쪽을 자동 선택 (Gemini 우선)
  * 3) 아무 키도 없으면 mock
  */
-function resolveProvider(): { provider: LlmProviderName; apiKey: string } {
-  const geminiKey = process.env.GEMINI_API_KEY?.trim() ?? '';
-  const groqKey = process.env.GROQ_API_KEY?.trim() ?? '';
-  const claudeKey = process.env.ANTHROPIC_API_KEY?.trim() ?? '';
+function resolveProvider(): LlmProviderName {
   const requested = process.env.AI_PROVIDER?.trim().toLowerCase();
 
   // Ollama 는 API 키가 없습니다. 명시하면 그대로 씁니다.
-  if (requested === 'ollama') return { provider: 'ollama', apiKey: '' };
-
-  if (requested === 'mock') return { provider: 'mock', apiKey: '' };
-  if (requested === 'gemini') {
-    return geminiKey
-      ? { provider: 'gemini', apiKey: geminiKey }
-      : { provider: 'mock', apiKey: '' };
-  }
-  if (requested === 'groq') {
-    return groqKey
-      ? { provider: 'groq', apiKey: groqKey }
-      : { provider: 'mock', apiKey: '' };
-  }
-  if (requested === 'claude') {
-    return claudeKey
-      ? { provider: 'claude', apiKey: claudeKey }
-      : { provider: 'mock', apiKey: '' };
+  if (requested === 'ollama' || requested === 'mock') return requested;
+  if (requested === 'gemini' || requested === 'groq' || requested === 'claude') {
+    return apiKeyOf(requested) ? requested : 'mock';
   }
 
-  if (geminiKey) return { provider: 'gemini', apiKey: geminiKey };
-  if (groqKey) return { provider: 'groq', apiKey: groqKey };
-  if (claudeKey) return { provider: 'claude', apiKey: claudeKey };
-  return { provider: 'mock', apiKey: '' };
+  return KEYED_PROVIDERS.find((p) => apiKeyOf(p)) ?? 'mock';
 }
 
-export const appConfig = registerAs(
-  'app',
-  (): AppConfig => ({
-    port: toInt(process.env.PORT, 3000),
-    corsOrigins: (process.env.CORS_ORIGIN ?? '*')
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
-    version: process.env.npm_package_version ?? '2.0.0',
-  }),
-);
-
-export const llmConfig = registerAs('llm', (): LlmConfig => {
-  const { provider, apiKey } = resolveProvider();
-  const defaults = PROVIDER_DEFAULTS[provider];
-
-  const explicitModel =
+/** .env 에 적어 둔 프로바이더별 모델 — 없으면 기본값 */
+export function defaultModelOf(provider: LlmProviderName): string {
+  const explicit =
     provider === 'ollama'
       ? process.env.OLLAMA_MODEL?.trim()
       : provider === 'gemini'
-      ? process.env.GEMINI_MODEL?.trim()
-      : provider === 'groq'
-        ? process.env.GROQ_MODEL?.trim()
-        : provider === 'claude'
-          ? process.env.ANTHROPIC_MODEL?.trim()
-          : undefined;
+        ? process.env.GEMINI_MODEL?.trim()
+        : provider === 'groq'
+          ? process.env.GROQ_MODEL?.trim()
+          : provider === 'claude'
+            ? process.env.ANTHROPIC_MODEL?.trim()
+            : undefined;
+  return explicit || PROVIDER_DEFAULTS[provider].model;
+}
+
+/**
+ * 프로바이더·모델 하나에 대한 LLM 설정.
+ *
+ * 서버가 뜰 때뿐 아니라 화면에서 모델을 바꿀 때도 이 함수로 다시 만듭니다.
+ * 한도 기본값이 프로바이더마다 달라서 바꿀 때마다 새로 계산해야 합니다.
+ */
+export function llmConfigFor(provider: LlmProviderName, model?: string): LlmConfig {
+  const defaults = PROVIDER_DEFAULTS[provider];
 
   return {
     provider,
-    apiKey,
-    model: explicitModel || defaults.model,
+    apiKey: apiKeyOf(provider),
+    model: model || defaultModelOf(provider),
     maxConcurrent: toInt(process.env.LLM_MAX_CONCURRENT, defaults.maxConcurrent),
     requestsPerMinute: toInt(
       process.env.LLM_REQUESTS_PER_MINUTE,
@@ -202,8 +195,25 @@ export const llmConfig = registerAs('llm', (): LlmConfig => {
     budgetStatePath:
       process.env.LLM_BUDGET_STATE_PATH?.trim() ||
       path.join(PROJECT_ROOT, 'data', 'llm-budget.json'),
+    selectionStatePath:
+      process.env.LLM_SELECTION_STATE_PATH?.trim() ||
+      path.join(PROJECT_ROOT, 'data', 'llm-selection.json'),
   };
-});
+}
+
+export const appConfig = registerAs(
+  'app',
+  (): AppConfig => ({
+    port: toInt(process.env.PORT, 3000),
+    corsOrigins: (process.env.CORS_ORIGIN ?? '*')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    version: process.env.npm_package_version ?? '2.0.0',
+  }),
+);
+
+export const llmConfig = registerAs('llm', (): LlmConfig => llmConfigFor(resolveProvider()));
 
 export const securityConfig = registerAs(
   'security',

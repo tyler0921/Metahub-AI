@@ -10,7 +10,10 @@ const RATES: Record<string, { input: number; output: number }> = {
   'gemini-2.5-pro': { input: 1.25, output: 10 },
   'llama-3.3-70b-versatile': { input: 0.59, output: 0.79 },
   'claude-sonnet-4': { input: 3, output: 15 },
-  'claude-sonnet-5': { input: 3, output: 15 },
+  'claude-sonnet-5': { input: 2, output: 10 },
+  'claude-opus-5-5': { input: 4, output: 20 },
+  'claude-sonnet-5-5': { input: 2, output: 10 },
+  'claude-haiku-5-5': { input: 0.1, output: 0.5 },
   'claude-opus-4': { input: 15, output: 75 },
   mock: { input: 0, output: 0 },
 };

@@ -8,10 +8,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import type {
   AppConfig,
-  LlmConfig,
   VaultConfig,
   WorkspaceConfig,
 } from './config/configuration';
+import { LlmModelRegistry } from './llm/llm-model.registry';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -20,7 +20,8 @@ async function bootstrap(): Promise<void> {
 
   const config = app.get(ConfigService);
   const appCfg = config.getOrThrow<AppConfig>('app');
-  const llmCfg = config.getOrThrow<LlmConfig>('llm');
+  // .env 값이 아니라 화면에서 마지막으로 고른 모델을 보여줍니다
+  const llmCfg = app.get(LlmModelRegistry).config;
   const vaultCfg = config.getOrThrow<VaultConfig>('vault');
   const workspaceCfg = config.getOrThrow<WorkspaceConfig>('workspace');
 

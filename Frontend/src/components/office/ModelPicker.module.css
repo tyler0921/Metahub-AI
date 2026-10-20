@@ -1,0 +1,63 @@
+.picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 0 10px;
+  border-right: 1px solid var(--line-dark);
+  color: var(--dim-on-dark);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+
+.select {
+  max-width: 180px;
+  padding: 2px 4px;
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-on-dark);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 펼친 목록은 OS 가 그리므로 어두운 배경에서도 읽히게 색을 되돌립니다 */
+.select option,
+.select optgroup {
+  background: #1a1f3a;
+  color: var(--text-on-dark);
+}
+
+.error {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: #3a1a24;
+  color: #ffd7de;
+  white-space: normal;
+}
+
+@media (width <= 900px) {
+  .picker {
+    padding: 0 6px;
+  }
+
+  .label {
+    display: none;
+  }
+
+  .select {
+    max-width: 120px;
+  }
+}

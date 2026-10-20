@@ -46,6 +46,23 @@ export interface AppConfigResponse {
   };
 }
 
+/** 고를 수 있는 모델 하나 */
+export interface LlmModelOption {
+  provider: string;
+  model: string;
+}
+
+/** GET /api/llm/models */
+export interface LlmModelsResponse {
+  current: LlmModelOption;
+  options: LlmModelOption[];
+  /** 업무가 진행 중이면 끝날 때까지 바꿀 수 없습니다 */
+  locked: boolean;
+}
+
+/** POST /api/llm/model */
+export type SelectLlmModelRequest = LlmModelOption;
+
 export interface AutonomousWorkStatusResponse {
   configured: boolean;
   enabled: boolean;
