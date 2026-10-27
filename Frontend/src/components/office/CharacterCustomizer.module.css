@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 12px;
   width: min(280px, calc(100% - 32px));
-  padding: 14px 15px;
+  padding: 14px 14px;
   border: 1px solid var(--line-glow);
   border-radius: var(--radius-lg);
   background: var(--panel-strong);
